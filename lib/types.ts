@@ -84,6 +84,7 @@ export interface UserSettings {
   target_date: string | null;
   target_title: string | null;
   day_end_time?: string;
+  quotes?: string[];
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

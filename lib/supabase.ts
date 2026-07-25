@@ -18,6 +18,14 @@ export const supabase = isSupabaseConfigured
 const STORAGE_KEY = 'learning_hub_db_v5';
 const DEFAULT_USER_ID = 'user-owner';
 
+const DEFAULT_QUOTES = [
+  'Focus on being productive instead of busy.',
+  'Discipline is choosing between what you want now and what you want most.',
+  'Small daily improvements over time lead to stunning results.',
+  'Success is the sum of small efforts, repeated day in and day out.',
+  'The secret of getting ahead is getting started.',
+];
+
 interface LocalDB {
   subjects: Subject[];
   topics: Topic[];
@@ -42,6 +50,7 @@ const CLEAN_EMPTY_DB: LocalDB = {
     target_date: null,
     target_title: null,
     day_end_time: '00:00',
+    quotes: DEFAULT_QUOTES,
     focus_seconds_today: 0,
     focus_seconds_week: 0,
     current_rank: 'Unranked',
@@ -61,6 +70,9 @@ function getLocalDB(): LocalDB {
     if (!parsed.subtopics) parsed.subtopics = [];
     if (!parsed.settings) parsed.settings = CLEAN_EMPTY_DB.settings;
     if (!parsed.settings.day_end_time) parsed.settings.day_end_time = '00:00';
+    if (!parsed.settings.quotes || parsed.settings.quotes.length === 0) {
+      parsed.settings.quotes = DEFAULT_QUOTES;
+    }
     return parsed;
   } catch {
     return CLEAN_EMPTY_DB;
@@ -109,6 +121,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
       if (!error && data) {
         return {
           day_end_time: '00:00',
+          quotes: DEFAULT_QUOTES,
           ...data,
         };
       }
@@ -118,6 +131,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         target_date: null,
         target_title: null,
         day_end_time: '00:00',
+        quotes: DEFAULT_QUOTES,
         focus_seconds_today: 0,
         focus_seconds_week: 0,
         current_rank: 'Unranked',
@@ -169,6 +183,25 @@ export async function updateDayEndTimeConfig(dayEndTime: string): Promise<void> 
 
   const db = getLocalDB();
   db.settings.day_end_time = dayEndTime;
+  saveLocalDB(db);
+}
+
+export async function updateQuotesConfig(quotes: string[]): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        quotes,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.quotes = quotes;
   saveLocalDB(db);
 }
 
