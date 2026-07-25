@@ -54,18 +54,29 @@ export default function TaskCreatorModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+
     if (!title.trim()) {
       setErrorMessage('Task title is required.');
       return;
     }
 
+    if (!selectedSubjectId) {
+      setErrorMessage('Please select a subject.');
+      return;
+    }
+
+    if (!selectedTopicId) {
+      setErrorMessage('Please select a topic under the subject.');
+      return;
+    }
+
     setIsSubmitting(true);
-    setErrorMessage('');
 
     try {
       await createTask({
         title: title.trim(),
-        topic_id: selectedTopicId || null,
+        topic_id: selectedTopicId,
         priority,
         next_revision_date: initialDate || getTodayDateString(),
       });
@@ -118,10 +129,12 @@ export default function TaskCreatorModal({
             />
           </div>
 
-          {/* Subject Dropdown (Read-only selection from /topics) */}
+          {/* Subject Dropdown (Mandatory) */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-zinc-300">Subject</label>
+              <label className="text-xs font-medium text-zinc-300">
+                Subject *
+              </label>
               <Link
                 href="/topics"
                 onClick={onClose}
@@ -134,7 +147,7 @@ export default function TaskCreatorModal({
 
             {subjects.length === 0 ? (
               <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 text-xs text-zinc-400">
-                No subjects found. Create subjects in the{' '}
+                No subjects found. Create subjects and topics first in the{' '}
                 <Link href="/topics" onClick={onClose} className="text-zinc-200 underline font-medium">
                   Topics tab
                 </Link>.
@@ -147,8 +160,9 @@ export default function TaskCreatorModal({
                   setSelectedTopicId('');
                 }}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
+                required
               >
-                <option value="">Select Subject</option>
+                <option value="">Select Subject *</option>
                 {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -158,17 +172,24 @@ export default function TaskCreatorModal({
             )}
           </div>
 
-          {/* Topic Dropdown (Read-only selection from /topics) */}
+          {/* Topic Dropdown (Mandatory) */}
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1">Topic</label>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">
+              Topic *
+            </label>
             <select
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
               disabled={!selectedSubjectId || filteredTopics.length === 0}
+              required
             >
               <option value="">
-                {filteredTopics.length === 0 ? 'No topics available for subject' : 'Select Topic'}
+                {!selectedSubjectId
+                  ? 'Select Subject first'
+                  : filteredTopics.length === 0
+                  ? 'No topics found under this subject (Add in Topics tab)'
+                  : 'Select Topic *'}
               </option>
               {filteredTopics.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -219,8 +240,8 @@ export default function TaskCreatorModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-50"
+              disabled={isSubmitting || !title.trim() || !selectedSubjectId || !selectedTopicId}
+              className="px-5 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-40"
             >
               {isSubmitting ? 'Creating...' : 'Create Task'}
             </button>

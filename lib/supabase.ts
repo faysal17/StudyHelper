@@ -318,7 +318,7 @@ export async function fetchTaskById(id: string): Promise<Task | null> {
 
 export async function createTask(taskData: {
   title: string;
-  topic_id: string | null;
+  topic_id: string;
   priority: number;
   next_revision_date: string;
 }): Promise<Task> {
