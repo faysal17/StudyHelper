@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,6 +34,8 @@ export default function RootLayout({
         <footer className="border-t border-zinc-800/60 py-6 text-center text-xs text-zinc-500 mt-16">
           <p>Learning Hub &bull; Spaced Repetition Task Manager</p>
         </footer>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
