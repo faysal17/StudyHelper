@@ -23,8 +23,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
   // Find start of current week (Monday)
   const todayObj = new Date();
-  const currentDayOfWeek = todayObj.getDay(); // 0 = Sun, 1 = Mon...
-  // Distance to Monday: if Sun (0), distance is 6 days back. Otherwise (day - 1) days back.
+  const currentDayOfWeek = todayObj.getDay();
   const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
   const startOfMondayObj = new Date(todayObj);
@@ -71,7 +70,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
   return (
     <div className="glass-panel rounded-xl p-6 border border-zinc-800/80 shadow-sm space-y-5">
-      {/* Calendar Header with Controls */}
+      {/* Calendar Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
@@ -113,8 +112,8 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
       {/* Monday-Start Calendar Grid */}
       <div className="w-full space-y-4">
-        {/* Day Header Row starting from Monday */}
-        <div className="grid grid-cols-7 gap-2 text-center mb-1">
+        {/* Day Header Row */}
+        <div className="grid grid-cols-7 gap-2.5 text-center mb-1">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
             <div key={day} className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
               {day}
@@ -122,9 +121,9 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
           ))}
         </div>
 
-        {/* Week 1 Row with Week Number Tag */}
+        {/* Week 1 Row */}
         <div>
-          <div className="flex items-center space-x-2 mb-1.5">
+          <div className="flex items-center space-x-2 mb-2">
             <span className="text-[10px] font-mono font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
               Week {week1Number}
             </span>
@@ -140,7 +139,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                 <div
                   key={day.dateStr}
                   onClick={() => setSelectedDayStr(day.dateStr)}
-                  className={`min-h-[140px] p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`min-h-[240px] p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                     day.isToday
                       ? 'bg-zinc-900 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
                       : isSelected
@@ -148,7 +147,8 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       : 'bg-zinc-950/90 border-zinc-800 hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5 mb-2">
+                  {/* Date Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2 mb-2 shrink-0">
                     <div className="flex items-baseline space-x-1">
                       <span className="text-xs font-bold text-zinc-300">{day.dayName}</span>
                       <span
@@ -160,15 +160,16 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       </span>
                     </div>
                     {dayTasks.length > 0 && (
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1 rounded">
+                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
                         {dayTasks.length} task(s)
                       </span>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[110px] pr-0.5 scrollbar-thin">
+                  {/* Task List (Expanded Height) */}
+                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[185px] pr-1 scrollbar-thin">
                     {dayTasks.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 italic py-2">No tasks</p>
+                      <p className="text-[10px] text-zinc-600 italic py-4 text-center">No tasks</p>
                     ) : (
                       dayTasks.map((t) => {
                         const isNew = !t.last_reviewed_date;
@@ -178,7 +179,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                         return (
                           <div
                             key={t.id}
-                            className={`p-1.5 rounded-lg border text-[11px] space-y-1 transition-all ${
+                            className={`p-2 rounded-lg border text-[11px] space-y-1 transition-all ${
                               isNew
                                 ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
                                 : t.status_color === 'red'
@@ -189,8 +190,8 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                             }`}
                           >
                             <div className="font-semibold line-clamp-2 leading-tight">{t.title}</div>
-                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-0.5">
-                              <span className="truncate max-w-[90px]">{t.subject?.name || 'Subject'}</span>
+                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-1 border-t border-zinc-800/40">
+                              <span className="truncate max-w-[85px]">{t.subject?.name || 'Subject'}</span>
                               {firstNote && firstNote.overlays && firstNote.overlays.length > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
@@ -201,7 +202,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                                   <span>Study</span>
                                 </Link>
                               ) : (
-                                <span className="text-[9px] text-zinc-500">No overlays</span>
+                                <span className="text-[9px] text-zinc-500">No note</span>
                               )}
                             </div>
                           </div>
@@ -215,9 +216,9 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
           </div>
         </div>
 
-        {/* Week 2 Row with Week Number Tag */}
+        {/* Week 2 Row */}
         <div>
-          <div className="flex items-center space-x-2 mb-1.5">
+          <div className="flex items-center space-x-2 mb-2">
             <span className="text-[10px] font-mono font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
               Week {week2Number}
             </span>
@@ -233,7 +234,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                 <div
                   key={day.dateStr}
                   onClick={() => setSelectedDayStr(day.dateStr)}
-                  className={`min-h-[140px] p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`min-h-[240px] p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
                     day.isToday
                       ? 'bg-zinc-900 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
                       : isSelected
@@ -241,7 +242,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       : 'bg-zinc-950/90 border-zinc-800 hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5 mb-2">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2 mb-2 shrink-0">
                     <div className="flex items-baseline space-x-1">
                       <span className="text-xs font-bold text-zinc-300">{day.dayName}</span>
                       <span
@@ -253,15 +254,15 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       </span>
                     </div>
                     {dayTasks.length > 0 && (
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1 rounded">
+                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
                         {dayTasks.length} task(s)
                       </span>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[110px] pr-0.5 scrollbar-thin">
+                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[185px] pr-1 scrollbar-thin">
                     {dayTasks.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 italic py-2">No tasks</p>
+                      <p className="text-[10px] text-zinc-600 italic py-4 text-center">No tasks</p>
                     ) : (
                       dayTasks.map((t) => {
                         const isNew = !t.last_reviewed_date;
@@ -271,7 +272,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                         return (
                           <div
                             key={t.id}
-                            className={`p-1.5 rounded-lg border text-[11px] space-y-1 transition-all ${
+                            className={`p-2 rounded-lg border text-[11px] space-y-1 transition-all ${
                               isNew
                                 ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
                                 : t.status_color === 'red'
@@ -282,8 +283,8 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                             }`}
                           >
                             <div className="font-semibold line-clamp-2 leading-tight">{t.title}</div>
-                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-0.5">
-                              <span className="truncate max-w-[90px]">{t.subject?.name || 'Subject'}</span>
+                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-1 border-t border-zinc-800/40">
+                              <span className="truncate max-w-[85px]">{t.subject?.name || 'Subject'}</span>
                               {firstNote && firstNote.overlays && firstNote.overlays.length > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
@@ -294,7 +295,7 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                                   <span>Study</span>
                                 </Link>
                               ) : (
-                                <span className="text-[9px] text-zinc-500">No overlays</span>
+                                <span className="text-[9px] text-zinc-500">No note</span>
                               )}
                             </div>
                           </div>
