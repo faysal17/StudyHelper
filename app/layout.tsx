@@ -20,8 +20,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} dark`}>
-      <body className="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-zinc-800 selection:text-zinc-100">
+    <html lang="en" className={`${inter.variable} dark`} suppressHydrationWarning>
+      <body
+        className="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-zinc-800 selection:text-zinc-100"
+        suppressHydrationWarning
+      >
         <Navbar />
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8">
           {children}
