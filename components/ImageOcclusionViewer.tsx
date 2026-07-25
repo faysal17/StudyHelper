@@ -173,17 +173,17 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                   width: `${overlay.width}%`,
                   height: `${overlay.height}%`,
                 }}
-                className={`absolute transition-all rounded ${
+                className={`absolute transition-all rounded z-10 ${
                   isRevealed
-                    ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow'
+                    ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow-lg'
                     : isFailing
-                    ? 'bg-red-500/40 border border-red-500/80 shadow cursor-pointer hover:bg-red-500/50'
-                    : 'bg-zinc-900/95 border border-zinc-700 shadow cursor-pointer hover:border-zinc-500'
+                    ? 'bg-red-950 border-2 border-red-500 shadow-md cursor-pointer hover:bg-red-900'
+                    : 'bg-zinc-950 border-2 border-zinc-700 shadow-md cursor-pointer hover:border-zinc-400'
                 }`}
                 onClick={() => toggleReveal(overlay.id)}
               >
                 {!isRevealed && (
-                  <div className="absolute top-0.5 left-1 text-[9px] font-mono text-zinc-400 opacity-60">
+                  <div className="absolute top-0.5 left-1 text-[9px] font-mono text-zinc-400 font-bold opacity-80">
                     #{idx + 1}
                   </div>
                 )}
@@ -191,7 +191,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                 {isRevealed && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 bg-zinc-950 border border-zinc-700 rounded-lg p-1 flex items-center space-x-1 shadow-xl"
+                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-30 bg-zinc-950 border border-zinc-700 rounded-lg p-1 flex items-center space-x-1 shadow-xl"
                   >
                     <span className="text-[10px] text-zinc-400 px-1 font-medium">Recalled?</span>
                     <button

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Overlay } from '@/lib/types';
 import { saveOverlays } from '@/lib/supabase';
-import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle } from 'lucide-react';
+import { Save, Trash2, Layers, ArrowLeft, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -156,7 +156,7 @@ export default function ImageOcclusionCreator({
               <span>Image Occlusion Editor</span>
             </h2>
             <p className="text-xs text-zinc-400">
-              Click & drag over text to create occlusion boxes &bull; Overlays: <strong className="text-zinc-200 font-mono">{boxes.length}</strong>
+              Click & drag over text to create 100% opaque occlusion boxes &bull; Overlays: <strong className="text-zinc-200 font-mono">{boxes.length}</strong>
             </p>
           </div>
         </div>
@@ -215,9 +215,9 @@ export default function ImageOcclusionCreator({
                 width: `${box.width}%`,
                 height: `${box.height}%`,
               }}
-              className="absolute bg-zinc-900/90 border border-zinc-500 rounded shadow flex items-center justify-between px-1 overflow-hidden group hover:border-red-400 transition-colors"
+              className="absolute bg-zinc-950 border-2 border-zinc-500 rounded shadow-md flex items-center justify-between px-1 overflow-hidden group hover:border-red-400 transition-colors z-10"
             >
-              <span className="text-[9px] font-mono text-zinc-400 font-bold opacity-80 pointer-events-none">
+              <span className="text-[9px] font-mono text-zinc-300 font-bold opacity-90 pointer-events-none">
                 #{index + 1}
               </span>
               <button
@@ -225,7 +225,7 @@ export default function ImageOcclusionCreator({
                   e.stopPropagation();
                   handleDeleteBox(box.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-950/80 rounded"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-900 rounded"
                 title="Delete box"
               >
                 <Trash2 className="w-3 h-3" />
@@ -241,7 +241,7 @@ export default function ImageOcclusionCreator({
                 width: `${currentDrawBox.width}%`,
                 height: `${currentDrawBox.height}%`,
               }}
-              className="absolute bg-zinc-700/30 border border-dashed border-zinc-300 rounded pointer-events-none"
+              className="absolute bg-zinc-950/80 border-2 border-dashed border-zinc-100 rounded pointer-events-none z-20"
             />
           )}
         </div>
