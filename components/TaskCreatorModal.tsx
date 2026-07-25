@@ -202,7 +202,7 @@ export default function TaskCreatorModal({
                 type="date"
                 min="2026-01-01"
                 max="2099-12-31"
-                value={initialDate}
+                defaultValue={initialDate}
                 onChange={(e) => setInitialDate(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
               />

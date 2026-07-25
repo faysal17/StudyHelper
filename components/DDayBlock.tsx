@@ -4,10 +4,51 @@ import { useState, useEffect } from 'react';
 import { Edit2, Check, X, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { updateDDayConfig } from '@/lib/supabase';
 import { UserSettings } from '@/lib/types';
+import DateWheelPicker from '@/components/DateWheelPicker';
 
 interface DDayBlockProps {
   settings?: UserSettings | null;
   onSettingsUpdate?: () => void;
+}
+
+function calculateExactDDayBreakdown(targetDateStr: string) {
+  const parts = targetDateStr.split('-').map(Number);
+  if (parts.length !== 3) return null;
+
+  const target = new Date(parts[0], parts[1] - 1, parts[2]);
+  const nowObj = new Date();
+  const today = new Date(nowObj.getFullYear(), nowObj.getMonth(), nowObj.getDate());
+
+  if (isNaN(target.getTime()) || target.getTime() <= today.getTime()) {
+    return { months: 0, weeks: 0, days: 0, isPast: true };
+  }
+
+  // Count full calendar months
+  let temp = new Date(today);
+  let months = 0;
+
+  while (true) {
+    const nextMonth = new Date(temp.getFullYear(), temp.getMonth() + 1, temp.getDate());
+    // Handle month end overflow (e.g. Jan 31 -> Feb 28)
+    if (nextMonth.getDate() !== temp.getDate()) {
+      nextMonth.setDate(0);
+    }
+
+    if (nextMonth.getTime() <= target.getTime()) {
+      months++;
+      temp = nextMonth;
+    } else {
+      break;
+    }
+  }
+
+  // Calculate remaining days between temp and target
+  const diffMs = target.getTime() - temp.getTime();
+  const remainingDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const weeks = Math.floor(remainingDays / 7);
+  const days = remainingDays % 7;
+
+  return { months, weeks, days, isPast: false };
 }
 
 export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps) {
@@ -16,7 +57,9 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
   const [isEditing, setIsEditing] = useState(false);
 
   const [editTitle, setEditTitle] = useState('');
-  const [editDate, setEditDate] = useState('');
+  const [editDay, setEditDay] = useState('');
+  const [editMonth, setEditMonth] = useState('');
+  const [editYear, setEditYear] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   const [countdown, setCountdown] = useState<{
@@ -31,12 +74,20 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
       setTargetTitle(settings.target_title || 'Target Goal Date');
       setTargetDate(settings.target_date);
       setEditTitle(settings.target_title || 'Target Goal Date');
-      setEditDate(settings.target_date);
+
+      const parts = settings.target_date.split('-');
+      if (parts.length === 3) {
+        setEditYear(parts[0]);
+        setEditMonth(parts[1]);
+        setEditDay(parts[2]);
+      }
     } else {
       setTargetTitle(null);
       setTargetDate(null);
       setEditTitle('');
-      setEditDate('');
+      setEditDay('');
+      setEditMonth('');
+      setEditYear('');
     }
   }, [settings]);
 
@@ -47,22 +98,8 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
     }
 
     function calculateCountdown() {
-      const target = new Date(`${targetDate}T00:00:00`).getTime();
-      const now = new Date().getTime();
-      const diff = target - now;
-
-      if (isNaN(target) || diff <= 0) {
-        setCountdown({ months: 0, weeks: 0, days: 0, isPast: true });
-        return;
-      }
-
-      const totalDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const months = Math.floor(totalDays / 30);
-      const rem1 = totalDays % 30;
-      const weeks = Math.floor(rem1 / 7);
-      const days = rem1 % 7;
-
-      setCountdown({ months, weeks, days, isPast: false });
+      const res = calculateExactDDayBreakdown(targetDate!);
+      setCountdown(res);
     }
 
     calculateCountdown();
@@ -72,32 +109,43 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
 
   const handleSave = async () => {
     setErrorMsg('');
-    if (!editDate) {
-      setErrorMsg('Please select a valid date.');
+
+    const dayNum = parseInt(editDay, 10);
+    const monthNum = parseInt(editMonth, 10);
+    const yearNum = parseInt(editYear, 10);
+
+    if (!editDay || !editMonth || !editYear) {
+      setErrorMsg('Fill day, month & year.');
       return;
     }
 
-    // Sanitize & Validate YYYY-MM-DD
-    const parts = editDate.split('-');
-    if (parts.length !== 3) {
-      setErrorMsg('Invalid date format.');
+    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
+      setErrorMsg('Day must be 01–31.');
       return;
     }
 
-    const yearStr = parts[0];
-    if (yearStr.length > 4) {
-      setErrorMsg('Year must be 4 digits (e.g. 2026).');
+    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+      setErrorMsg('Month must be 01–12.');
       return;
     }
 
-    const year = Number(yearStr);
-    if (year < 2026 || year > 2099) {
-      setErrorMsg('Year must be between 2026 and 2099.');
+    if (isNaN(yearNum) || editYear.length !== 4 || yearNum < 2026 || yearNum > 2099) {
+      setErrorMsg('Year must be 4 digits (2026–2099).');
       return;
     }
 
+    const dateObj = new Date(yearNum, monthNum - 1, dayNum);
+    if (
+      dateObj.getFullYear() !== yearNum ||
+      dateObj.getMonth() !== monthNum - 1 ||
+      dateObj.getDate() !== dayNum
+    ) {
+      setErrorMsg('Invalid date (e.g. Feb 31).');
+      return;
+    }
+
+    const sanitizedDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     const newTitle = editTitle.trim() || 'Target Goal Date';
-    const sanitizedDate = `${yearStr}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
 
     await updateDDayConfig(sanitizedDate, newTitle);
     setTargetDate(sanitizedDate);
@@ -107,8 +155,8 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
   };
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[180px] w-full">
-      <div className="flex items-center justify-between">
+    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[190px] min-h-[190px] max-h-[190px] overflow-hidden w-full">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-1.5 text-zinc-300">
           <CalendarIcon className="w-4 h-4 text-zinc-400" />
           <span className="text-xs font-semibold text-zinc-200">D-Day Counter</span>
@@ -126,31 +174,38 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
       </div>
 
       {isEditing ? (
-        <div className="space-y-1.5 my-auto py-1">
+        <div className="space-y-1.5 my-auto">
           <input
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none"
-            placeholder="Target Title (e.g. Exam Date)"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-0.5 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
+            placeholder="Target Title..."
           />
-          <div className="flex gap-1">
-            <input
-              type="date"
-              min="2026-01-01"
-              max="2099-12-31"
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none"
-            />
-            <button onClick={handleSave} className="p-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-              <Check className="w-3.5 h-3.5" />
+          <DateWheelPicker
+            day={editDay}
+            month={editMonth}
+            year={editYear}
+            onDayChange={setEditDay}
+            onMonthChange={setEditMonth}
+            onYearChange={setEditYear}
+          />
+          <div className="flex gap-1 pt-0.5">
+            <button
+              onClick={handleSave}
+              className="flex-1 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors"
+            >
+              <Check className="w-3 h-3" />
+              <span>Save</span>
             </button>
-            <button onClick={() => setIsEditing(false)} className="p-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded">
-              <X className="w-3.5 h-3.5" />
+            <button
+              onClick={() => setIsEditing(false)}
+              className="px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded text-[11px] transition-colors"
+            >
+              <X className="w-3 h-3" />
             </button>
           </div>
-          {errorMsg && <p className="text-[10px] text-red-400">{errorMsg}</p>}
+          {errorMsg && <p className="text-[10px] text-red-400 text-center">{errorMsg}</p>}
         </div>
       ) : !targetDate || !countdown ? (
         <div className="my-auto text-center p-2 bg-zinc-950/60 rounded-lg border border-zinc-800/60">
@@ -164,7 +219,7 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
           </button>
         </div>
       ) : (
-        <div className="my-auto py-1">
+        <div className="my-auto">
           <div className="text-[11px] text-zinc-400 truncate mb-1">{targetTitle}</div>
           <div className="flex items-center justify-between text-center bg-zinc-950/80 p-2 rounded-lg border border-zinc-800/80">
             <div>
@@ -191,7 +246,7 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
         </div>
       )}
 
-      <div className="text-[10px] text-zinc-500 border-t border-zinc-800/80 pt-2 truncate">
+      <div className="text-[10px] text-zinc-500 border-t border-zinc-800/80 pt-2 truncate shrink-0">
         {targetDate ? `Target: ${targetDate}` : 'No date set'}
       </div>
     </div>

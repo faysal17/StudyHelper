@@ -17,13 +17,13 @@ export default function TaskCountersBlock({ tasks }: TaskCountersBlockProps) {
   ).length;
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[180px] w-full">
-      <div className="flex items-center justify-between">
+    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[190px] min-h-[190px] max-h-[190px] overflow-hidden w-full">
+      <div className="flex items-center justify-between shrink-0">
         <span className="text-xs font-semibold text-zinc-200">Daily Task Counters</span>
         <span className="text-[10px] text-zinc-500 font-mono">Today</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 my-auto py-1">
+      <div className="grid grid-cols-2 gap-3 my-auto">
         <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-2 flex flex-col items-center justify-center">
           <div className="flex items-center space-x-1 text-blue-400 mb-0.5">
             <BookOpen className="w-3 h-3" />
@@ -41,7 +41,7 @@ export default function TaskCountersBlock({ tasks }: TaskCountersBlockProps) {
         </div>
       </div>
 
-      <div className="text-[10px] text-zinc-500 text-center border-t border-zinc-800/80 pt-2">
+      <div className="text-[10px] text-zinc-500 text-center border-t border-zinc-800/80 pt-2 shrink-0">
         Scheduled task overview
       </div>
     </div>

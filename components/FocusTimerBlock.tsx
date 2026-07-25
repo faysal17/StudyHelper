@@ -45,8 +45,8 @@ export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockPr
   const seconds = secondsLeft % 60;
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[180px] w-full">
-      <div className="flex items-center justify-between">
+    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[190px] min-h-[190px] max-h-[190px] overflow-hidden w-full">
+      <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-2">
           <Clock className="w-4 h-4 text-zinc-400" />
           <span className="text-xs font-semibold text-zinc-200">Focus Timer</span>
@@ -68,13 +68,13 @@ export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockPr
         </div>
       </div>
 
-      <div className="text-center my-auto py-1">
+      <div className="text-center my-auto">
         <span className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </span>
       </div>
 
-      <div className="flex items-center justify-center space-x-2 pt-2 border-t border-zinc-800/80">
+      <div className="flex items-center justify-center space-x-2 pt-2 border-t border-zinc-800/80 shrink-0">
         <button
           onClick={toggleTimer}
           className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-all ${
