@@ -1,9 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Task, StatusColor } from '@/lib/types';
-import { RotateCcw, Eye, FileImage, ArrowRight } from 'lucide-react';
+import { RotateCcw, Eye, FileImage, ArrowRight, AlertCircle } from 'lucide-react';
 import { getTodayDateString } from '@/lib/spacedRepetition';
+import { fetchUserSettings } from '@/lib/supabase';
 
 interface RevisionBlockProps {
   tasks: Task[];
@@ -11,12 +13,28 @@ interface RevisionBlockProps {
 }
 
 export default function RevisionBlock({ tasks, onUploadNote }: RevisionBlockProps) {
-  const today = getTodayDateString();
+  const [dayEndTime, setDayEndTime] = useState('00:00');
 
-  const revisionTasks = tasks.filter((t) => {
-    if (!t.last_reviewed_date) return false;
-    return t.next_revision_date <= today;
-  });
+  useEffect(() => {
+    fetchUserSettings().then((s) => {
+      if (s?.day_end_time) setDayEndTime(s.day_end_time);
+    });
+  }, []);
+
+  const today = getTodayDateString(dayEndTime);
+
+  // Filter reviewed tasks due today or earlier, with OVERDUE tasks sorted at the VERY TOP
+  const revisionTasks = tasks
+    .filter((t) => Boolean(t.last_reviewed_date) && t.next_revision_date <= today)
+    .sort((a, b) => {
+      const aOverdue = a.next_revision_date < today;
+      const bOverdue = b.next_revision_date < today;
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
+      return a.next_revision_date.localeCompare(b.next_revision_date);
+    });
+
+  const overdueCount = revisionTasks.filter((t) => t.next_revision_date < today).length;
 
   const getStatusBadgeStyle = (color: StatusColor) => {
     switch (color) {
@@ -45,8 +63,14 @@ export default function RevisionBlock({ tasks, onUploadNote }: RevisionBlockProp
               <span className="bg-zinc-800 text-zinc-300 border border-zinc-700 text-[11px] px-2 py-0.2 rounded-full font-mono">
                 {revisionTasks.length}
               </span>
+              {overdueCount > 0 && (
+                <span className="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] px-2 py-0.2 rounded-full font-mono font-bold flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {overdueCount} Overdue
+                </span>
+              )}
             </h2>
-            <p className="text-[11px] text-zinc-400">Tasks due for spaced repetition review today</p>
+            <p className="text-[11px] text-zinc-400">Tasks due for spaced repetition review today & overdue</p>
           </div>
         </div>
       </div>
@@ -62,18 +86,32 @@ export default function RevisionBlock({ tasks, onUploadNote }: RevisionBlockProp
             const firstNote = hasNote ? task.notes![0] : null;
             const overlayCount = firstNote?.overlays?.length || 0;
             const statusStyle = getStatusBadgeStyle(task.status_color);
+            const isOverdue = task.next_revision_date < today;
 
             return (
               <div
                 key={task.id}
-                className="glass-card rounded-lg p-3.5 border border-zinc-800 hover:border-zinc-700 flex flex-col justify-between transition-all"
+                className={`glass-card rounded-lg p-3.5 border flex flex-col justify-between transition-all ${
+                  isOverdue
+                    ? 'bg-red-950/20 border-red-500/40 hover:border-red-500/60 shadow-sm'
+                    : 'border-zinc-800 hover:border-zinc-700'
+                }`}
               >
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[10px] font-medium text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded truncate max-w-[180px]">
-                      {task.subject?.name || 'Subject'} &bull; {task.topic?.name || 'Topic'}
-                    </span>
-                    <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border ${statusStyle}`}>
+                    <div className="flex items-center space-x-1.5 truncate max-w-[200px]">
+                      {isOverdue && (
+                        <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-0.5 shrink-0">
+                          <AlertCircle className="w-2.5 h-2.5" />
+                          OVERDUE
+                        </span>
+                      )}
+                      <span className="text-[10px] font-medium text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded truncate">
+                        {task.subject?.name || 'Subject'} &bull; {task.topic?.name || 'Topic'}
+                      </span>
+                    </div>
+
+                    <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border ${statusStyle} shrink-0`}>
                       P{task.priority} &bull; {task.status_color}
                     </span>
                   </div>
@@ -92,7 +130,11 @@ export default function RevisionBlock({ tasks, onUploadNote }: RevisionBlockProp
                     {hasNote && overlayCount > 0 ? (
                       <Link
                         href={`/study/${task.id}`}
-                        className="px-2.5 py-1 rounded text-[11px] font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all flex items-center space-x-1 shadow-sm"
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all flex items-center space-x-1 shadow-sm ${
+                          isOverdue
+                            ? 'bg-red-500 text-white hover:bg-red-600'
+                            : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200'
+                        }`}
                       >
                         <Eye className="w-3 h-3" />
                         <span>Start Revision</span>
