@@ -18,8 +18,8 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
   const titleText = settings?.current_title || 'Learner';
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-full">
-      <div className="flex items-center justify-between mb-1">
+    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[180px] w-full">
+      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-1.5 text-zinc-300">
           <Flame className="w-4 h-4 text-amber-400" />
           <span className="text-xs font-semibold text-zinc-200">Focus & Rank</span>
@@ -29,12 +29,12 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
         </span>
       </div>
 
-      <div className="space-y-2 my-1 text-xs">
-        <div className="flex justify-between items-center bg-zinc-950/80 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
+      <div className="space-y-1.5 my-auto py-1 text-xs">
+        <div className="flex justify-between items-center bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800/80">
           <span className="text-zinc-400 text-[11px]">Today Focus:</span>
           <strong className="text-zinc-100 font-mono">{todayHours} hrs</strong>
         </div>
-        <div className="flex justify-between items-center bg-zinc-950/80 px-2.5 py-1.5 rounded-lg border border-zinc-800/80">
+        <div className="flex justify-between items-center bg-zinc-950/80 px-2.5 py-1 rounded-lg border border-zinc-800/80">
           <span className="text-zinc-400 text-[11px]">Week Focus:</span>
           <strong className="text-zinc-100 font-mono">{weekHours} hrs</strong>
         </div>

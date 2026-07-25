@@ -31,7 +31,6 @@ export default function DashboardPage() {
   const checkAuthAndLoad = async () => {
     setLoading(true);
 
-    // Auth gate check
     if (isSupabaseConfigured && supabase) {
       const { data } = await supabase.auth.getSession();
       if (!data?.session) {
@@ -39,7 +38,6 @@ export default function DashboardPage() {
         return;
       }
     } else {
-      // Local check
       if (typeof window !== 'undefined') {
         const storedSession = localStorage.getItem('studyhub_user_session');
         if (!storedSession) {
@@ -70,18 +68,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 w-full">
-      {/* 4-Block Header Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Block 1: Focus Study Timer */}
+      {/* 4-Block Header Row with Aligned Card Heights */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
         <FocusTimerBlock onSessionComplete={reloadSettings} />
-
-        {/* Block 2: Study & Revision Counters */}
         <TaskCountersBlock tasks={tasks} />
-
-        {/* Block 3: Real Focus Hours & Rank/Title */}
         <FocusStatsBlock settings={userSettings} />
-
-        {/* Block 4: User-Specific Online D-Day Counter */}
         <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
       </div>
 
