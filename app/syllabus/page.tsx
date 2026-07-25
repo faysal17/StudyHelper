@@ -29,6 +29,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function SyllabusPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -53,6 +54,14 @@ export default function SyllabusPage() {
     topicId: string;
     subtopicId: string;
     subtopicName: string;
+  } | null>(null);
+
+  // Custom Confirm Modal State
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{
+    type: 'subject' | 'topic' | 'subtopic';
+    id: string;
+    title: string;
+    message: string;
   } | null>(null);
 
   useEffect(() => {
@@ -148,28 +157,29 @@ export default function SyllabusPage() {
     await updateSubtopicStatus(id, nextStatus);
   };
 
-  const handleDeleteSubject = async (id: string) => {
-    if (confirm('Deleting a subject will remove all its topics and subtopics. Proceed?')) {
-      await deleteSubject(id);
-      setSubjects((prev) => prev.filter((s) => s.id !== id));
-      const topicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
-      setTopics((prev) => prev.filter((t) => t.subject_id !== id));
-      setSubtopics((prev) => prev.filter((st) => !topicIds.includes(st.topic_id)));
-    }
-  };
+  const executeDelete = async () => {
+    if (!confirmDeleteTarget) return;
+    const { type, id } = confirmDeleteTarget;
 
-  const handleDeleteTopic = async (id: string) => {
-    if (confirm('Deleting a topic will remove all its subtopics. Proceed?')) {
-      await deleteTopic(id);
-      setTopics((prev) => prev.filter((t) => t.id !== id));
-      setSubtopics((prev) => prev.filter((st) => st.topic_id !== id));
-    }
-  };
-
-  const handleDeleteSubtopic = async (id: string) => {
-    if (confirm('Delete this subtopic?')) {
-      await deleteSubtopic(id);
-      setSubtopics((prev) => prev.filter((st) => st.id !== id));
+    try {
+      if (type === 'subject') {
+        await deleteSubject(id);
+        setSubjects((prev) => prev.filter((s) => s.id !== id));
+        const topicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
+        setTopics((prev) => prev.filter((t) => t.subject_id !== id));
+        setSubtopics((prev) => prev.filter((st) => !topicIds.includes(st.topic_id)));
+      } else if (type === 'topic') {
+        await deleteTopic(id);
+        setTopics((prev) => prev.filter((t) => t.id !== id));
+        setSubtopics((prev) => prev.filter((st) => st.topic_id !== id));
+      } else if (type === 'subtopic') {
+        await deleteSubtopic(id);
+        setSubtopics((prev) => prev.filter((st) => st.id !== id));
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+    } finally {
+      setConfirmDeleteTarget(null);
     }
   };
 
@@ -386,7 +396,14 @@ export default function SyllabusPage() {
                       />
                     </div>
                     <button
-                      onClick={() => handleDeleteSubject(subject.id)}
+                      onClick={() =>
+                        setConfirmDeleteTarget({
+                          type: 'subject',
+                          id: subject.id,
+                          title: 'Delete Subject',
+                          message: `Are you sure you want to delete "${subject.name}"? This will also remove all its topics and subtopics.`,
+                        })
+                      }
                       className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
                       title="Delete Subject"
                     >
@@ -417,7 +434,14 @@ export default function SyllabusPage() {
                               </span>
                             </div>
                             <button
-                              onClick={() => handleDeleteTopic(topic.id)}
+                              onClick={() =>
+                                setConfirmDeleteTarget({
+                                  type: 'topic',
+                                  id: topic.id,
+                                  title: 'Delete Topic',
+                                  message: `Are you sure you want to delete "${topic.name}"? This will also remove all its subtopics.`,
+                                })
+                              }
                               className="p-0.5 text-zinc-600 hover:text-red-400 transition-colors"
                               title="Delete Topic"
                             >
@@ -478,7 +502,14 @@ export default function SyllabusPage() {
                                         <span>Study</span>
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteSubtopic(subtopic.id)}
+                                        onClick={() =>
+                                          setConfirmDeleteTarget({
+                                            type: 'subtopic',
+                                            id: subtopic.id,
+                                            title: 'Delete Subtopic',
+                                            message: `Delete subtopic "${subtopic.name}" from your syllabus?`,
+                                          })
+                                        }
                                         className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
                                         title="Delete subtopic"
                                       >
@@ -501,7 +532,7 @@ export default function SyllabusPage() {
         </div>
       )}
 
-      {/* Task Creator Modal when clicking "Study Subtopic" */}
+      {/* Task Creator Modal pre-filled when clicking "⚡ Study" */}
       {studyTarget && (
         <TaskCreatorModal
           isOpen={Boolean(studyTarget)}
@@ -510,6 +541,22 @@ export default function SyllabusPage() {
             setStudyTarget(null);
             loadSyllabusData();
           }}
+          initialSubjectId={studyTarget.subjectId}
+          initialTopicId={studyTarget.topicId}
+          initialSubtopicId={studyTarget.subtopicId}
+          initialTitle={`Study: ${studyTarget.subtopicName}`}
+        />
+      )}
+
+      {/* Custom Confirmation Popup Modal */}
+      {confirmDeleteTarget && (
+        <ConfirmModal
+          isOpen={Boolean(confirmDeleteTarget)}
+          title={confirmDeleteTarget.title}
+          message={confirmDeleteTarget.message}
+          confirmText="Delete"
+          onConfirm={executeDelete}
+          onCancel={() => setConfirmDeleteTarget(null)}
         />
       )}
     </div>

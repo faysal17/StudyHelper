@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Subject, Topic, Subtopic } from '@/lib/types';
 import { fetchSubjects, fetchTopics, fetchSubtopics, createTask } from '@/lib/supabase';
@@ -11,13 +12,22 @@ interface TaskCreatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTaskCreated: () => void;
+  initialSubjectId?: string;
+  initialTopicId?: string;
+  initialSubtopicId?: string;
+  initialTitle?: string;
 }
 
 export default function TaskCreatorModal({
   isOpen,
   onClose,
   onTaskCreated,
+  initialSubjectId,
+  initialTopicId,
+  initialSubtopicId,
+  initialTitle,
 }: TaskCreatorModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<number>(2);
   const [initialDate, setInitialDate] = useState<string>(getTodayDateString());
@@ -34,10 +44,14 @@ export default function TaskCreatorModal({
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (isOpen) {
       loadDropdownData();
     }
-  }, [isOpen]);
+  }, [isOpen, initialSubjectId, initialTopicId, initialSubtopicId, initialTitle]);
 
   const loadDropdownData = async () => {
     try {
@@ -50,8 +64,21 @@ export default function TaskCreatorModal({
       setTopics(topData);
       setSubtopics(subtopData);
 
-      if (subData.length > 0 && !selectedSubjectId) {
+      // Pre-fill initial values if provided
+      if (initialTitle) {
+        setTitle(initialTitle);
+      }
+      if (initialSubjectId) {
+        setSelectedSubjectId(initialSubjectId);
+      } else if (subData.length > 0) {
         setSelectedSubjectId(subData[0].id);
+      }
+
+      if (initialTopicId) {
+        setSelectedTopicId(initialTopicId);
+      }
+      if (initialSubtopicId) {
+        setSelectedSubtopicId(initialSubtopicId);
       }
     } catch (err) {
       console.error('Error loading subjects/topics:', err);
@@ -99,11 +126,11 @@ export default function TaskCreatorModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
+  return createPortal(
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-5">
           <div>
             <h3 className="text-base font-semibold text-zinc-100">Create Study Task</h3>
@@ -288,6 +315,7 @@ export default function TaskCreatorModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

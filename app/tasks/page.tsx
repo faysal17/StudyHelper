@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import NoteUploader from '@/components/NoteUploader';
+import ConfirmModal from '@/components/ConfirmModal';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -29,6 +30,9 @@ export default function TasksPage() {
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [noteTaskTarget, setNoteTaskTarget] = useState<Task | null>(null);
+
+  // Custom Delete Confirm Modal state
+  const [deleteTargetTask, setDeleteTargetTask] = useState<Task | null>(null);
 
   useEffect(() => {
     loadData();
@@ -47,10 +51,15 @@ export default function TasksPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      await deleteTask(id);
-      setTasks((prev) => prev.filter((t) => t.id !== id));
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetTask) return;
+    try {
+      await deleteTask(deleteTargetTask.id);
+      setTasks((prev) => prev.filter((t) => t.id !== deleteTargetTask.id));
+    } catch (err) {
+      console.error('Error deleting task:', err);
+    } finally {
+      setDeleteTargetTask(null);
     }
   };
 
@@ -154,6 +163,7 @@ export default function TasksPage() {
 
             const subjectName = t.subject?.name || t.topic?.subject?.name || 'Subject';
             const topicName = t.topic?.name || 'Topic';
+            const subtopicName = t.subtopic?.name;
 
             return (
               <div
@@ -180,9 +190,15 @@ export default function TasksPage() {
                     </span>
                   </div>
 
-                  <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 mb-2">
+                  <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 mb-1">
                     {t.title}
                   </h3>
+
+                  {subtopicName && (
+                    <p className="text-[11px] text-zinc-400 font-medium mb-2">
+                      Target: <span className="text-zinc-200">{subtopicName}</span>
+                    </p>
+                  )}
 
                   <div className="text-[11px] text-zinc-500 space-y-0.5 mb-4 font-mono">
                     <p>Next revision: <strong className="text-zinc-300">{t.next_revision_date}</strong></p>
@@ -192,7 +208,7 @@ export default function TasksPage() {
 
                 <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
                   <button
-                    onClick={() => handleDelete(t.id)}
+                    onClick={() => setDeleteTargetTask(t)}
                     className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
                     title="Delete task"
                   >
@@ -251,6 +267,18 @@ export default function TasksPage() {
           loadData();
         }}
       />
+
+      {/* Custom Confirmation Popup */}
+      {deleteTargetTask && (
+        <ConfirmModal
+          isOpen={Boolean(deleteTargetTask)}
+          title="Delete Study Task"
+          message={`Are you sure you want to delete "${deleteTargetTask.title}"? This cannot be undone.`}
+          confirmText="Delete Task"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTargetTask(null)}
+        />
+      )}
     </div>
   );
 }
