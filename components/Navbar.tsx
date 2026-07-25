@@ -107,8 +107,18 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {/* Right Action Buttons & Profile & Settings */}
+            {/* Right Action Block (Ordered: 1. Add Task -> 2. Username -> 3. Settings -> 4. Logout) */}
             <div className="flex items-center space-x-2 sm:space-x-3">
+              {/* 1. Add Task Button */}
+              <button
+                onClick={() => setIsTaskModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Task</span>
+              </button>
+
+              {/* 2. Username Badge */}
               {userEmail && (
                 <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
                   <User className="w-3 h-3 text-zinc-500" />
@@ -116,7 +126,7 @@ export default function Navbar() {
                 </span>
               )}
 
-              {/* Settings Icon Link beside username */}
+              {/* 3. Settings Icon Link */}
               <Link
                 href="/settings"
                 className={`p-2 rounded-lg border transition-colors ${
@@ -129,14 +139,7 @@ export default function Navbar() {
                 <SettingsIcon className="w-4 h-4" />
               </Link>
 
-              <button
-                onClick={() => setIsTaskModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Add Task</span>
-              </button>
-
+              {/* 4. Logout / Sign Out Button */}
               <button
                 onClick={handleSignOut}
                 className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 rounded-lg transition-colors"
