@@ -1,5 +1,6 @@
 -- =========================================================
 -- BCS / Learning Hub Supabase Database Schema & Storage Setup
+-- (Idempotent script - Safe to run multiple times)
 -- =========================================================
 
 -- 1. Enable UUID Extension
@@ -24,11 +25,22 @@ CREATE TABLE IF NOT EXISTS public.topics (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- Subtopics Table (Syllabus Hierarchy Level 3)
+CREATE TABLE IF NOT EXISTS public.subtopics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    topic_id UUID NOT NULL REFERENCES public.topics(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'unstudied' CHECK (status IN ('unstudied', 'in_progress', 'completed')),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Tasks Table
 CREATE TABLE IF NOT EXISTS public.tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     topic_id UUID REFERENCES public.topics(id) ON DELETE SET NULL,
+    subtopic_id UUID REFERENCES public.subtopics(id) ON DELETE SET NULL,
     priority INTEGER NOT NULL DEFAULT 2 CHECK (priority BETWEEN 1 AND 3),
     last_reviewed_date DATE,
     current_interval INTEGER DEFAULT 1,
@@ -38,6 +50,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure subtopic_id exists on existing tasks table
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS subtopic_id UUID REFERENCES public.subtopics(id) ON DELETE SET NULL;
 
 -- Notes Table
 CREATE TABLE IF NOT EXISTS public.notes (
@@ -90,38 +105,52 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
 
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.topics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subtopics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.overlays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.revision_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
--- 4. Create RLS Policies for Owner Access
+-- 4. Create RLS Policies for Owner Access (with DROP IF EXISTS to avoid duplication errors)
 
+DROP POLICY IF EXISTS "Users can access their own subjects" ON public.subjects;
 CREATE POLICY "Users can access their own subjects" ON public.subjects
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can access their own topics" ON public.topics;
 CREATE POLICY "Users can access their own topics" ON public.topics
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can access their own subtopics" ON public.subtopics;
+CREATE POLICY "Users can access their own subtopics" ON public.subtopics
+    FOR ALL USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can access their own tasks" ON public.tasks;
 CREATE POLICY "Users can access their own tasks" ON public.tasks
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can access their own notes" ON public.notes;
 CREATE POLICY "Users can access their own notes" ON public.notes
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can access their own overlays" ON public.overlays;
 CREATE POLICY "Users can access their own overlays" ON public.overlays
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can access their own revision logs" ON public.revision_logs;
 CREATE POLICY "Users can access their own revision logs" ON public.revision_logs
     FOR ALL USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can view their own settings" ON public.user_settings;
 CREATE POLICY "Users can view their own settings" ON public.user_settings
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own settings" ON public.user_settings;
 CREATE POLICY "Users can insert their own settings" ON public.user_settings
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own settings" ON public.user_settings;
 CREATE POLICY "Users can update their own settings" ON public.user_settings
     FOR UPDATE USING (auth.uid() = user_id);
 
@@ -130,11 +159,14 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('scanned-notes', 'scanned-notes', true)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Allow public select on scanned-notes" ON storage.objects;
 CREATE POLICY "Allow public select on scanned-notes" ON storage.objects
     FOR SELECT USING (bucket_id = 'scanned-notes');
 
+DROP POLICY IF EXISTS "Allow authenticated insert on scanned-notes" ON storage.objects;
 CREATE POLICY "Allow authenticated insert on scanned-notes" ON storage.objects
     FOR INSERT WITH CHECK (bucket_id = 'scanned-notes' AND auth.uid() = owner);
 
+DROP POLICY IF EXISTS "Allow authenticated delete on scanned-notes" ON storage.objects;
 CREATE POLICY "Allow authenticated delete on scanned-notes" ON storage.objects
     FOR DELETE USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);

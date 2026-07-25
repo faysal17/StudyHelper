@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, FolderKanban, Plus, LogOut, User } from 'lucide-react';
+import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 
@@ -91,15 +91,15 @@ export default function Navbar() {
               </Link>
 
               <Link
-                href="/topics"
+                href="/syllabus"
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                  pathname === '/topics'
+                  pathname === '/syllabus' || pathname === '/topics'
                     ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
               >
-                <FolderKanban className="w-3.5 h-3.5" />
-                <span>Topics</span>
+                <ListTree className="w-3.5 h-3.5" />
+                <span>Syllabus</span>
               </Link>
             </nav>
 

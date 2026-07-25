@@ -1,5 +1,6 @@
 export type Priority = 1 | 2 | 3;
 export type StatusColor = 'blue' | 'red' | 'yellow' | 'green';
+export type SubtopicStatus = 'unstudied' | 'in_progress' | 'completed';
 
 export interface Subject {
   id: string;
@@ -14,6 +15,18 @@ export interface Topic {
   subject_id: string;
   user_id: string;
   created_at?: string;
+  subject?: Subject;
+  subtopics?: Subtopic[];
+}
+
+export interface Subtopic {
+  id: string;
+  name: string;
+  topic_id: string;
+  status: SubtopicStatus;
+  user_id: string;
+  created_at?: string;
+  topic?: Topic;
   subject?: Subject;
 }
 
@@ -43,6 +56,7 @@ export interface Task {
   id: string;
   title: string;
   topic_id: string | null;
+  subtopic_id?: string | null;
   priority: Priority;
   last_reviewed_date: string | null;
   current_interval: number;
@@ -52,6 +66,7 @@ export interface Task {
   user_id: string;
   created_at?: string;
   topic?: Topic;
+  subtopic?: Subtopic;
   subject?: Subject;
   notes?: Note[];
 }

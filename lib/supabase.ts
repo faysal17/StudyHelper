@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Subject, Topic, Task, Note, Overlay, RevisionLog, UserSettings } from './types';
+import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus } from './types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -21,6 +21,7 @@ const DEFAULT_USER_ID = 'user-owner';
 interface LocalDB {
   subjects: Subject[];
   topics: Topic[];
+  subtopics: Subtopic[];
   tasks: Task[];
   notes: Note[];
   overlays: Overlay[];
@@ -31,6 +32,7 @@ interface LocalDB {
 const CLEAN_EMPTY_DB: LocalDB = {
   subjects: [],
   topics: [],
+  subtopics: [],
   tasks: [],
   notes: [],
   overlays: [],
@@ -54,7 +56,9 @@ function getLocalDB(): LocalDB {
     return CLEAN_EMPTY_DB;
   }
   try {
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    if (!parsed.subtopics) parsed.subtopics = [];
+    return parsed;
   } catch {
     return CLEAN_EMPTY_DB;
   }
@@ -68,6 +72,7 @@ function saveLocalDB(db: LocalDB) {
 
 function populateTaskRelations(task: Task, db: LocalDB): Task {
   const topic = db.topics.find((t) => t.id === task.topic_id);
+  const subtopic = db.subtopics.find((st) => st.id === task.subtopic_id);
   const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
   const notes = db.notes
     .filter((n) => n.task_id === task.id)
@@ -79,6 +84,7 @@ function populateTaskRelations(task: Task, db: LocalDB): Task {
   return {
     ...task,
     topic: topic ? { ...topic, subject } : undefined,
+    subtopic,
     subject,
     notes,
   };
@@ -168,7 +174,7 @@ export async function recordFocusSession(minutes: number): Promise<UserSettings>
   return db.settings;
 }
 
-// SUBJECT, TOPIC, TASK DATA API
+// SUBJECT, TOPIC, SUBTOPIC DATA API
 
 export async function fetchSubjects(): Promise<Subject[]> {
   if (isSupabaseConfigured && supabase) {
@@ -191,6 +197,28 @@ export async function fetchTopics(): Promise<Topic[]> {
     ...t,
     subject: db.subjects.find((s) => s.id === t.subject_id),
   }));
+}
+
+export async function fetchSubtopics(): Promise<Subtopic[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('subtopics')
+      .select('*, topic:topics(*, subject:subjects(*))')
+      .order('name');
+    if (!error && data) {
+      return data.map((st: any) => ({
+        ...st,
+        subject: st.topic?.subject || undefined,
+      }));
+    }
+  }
+
+  const db = getLocalDB();
+  return db.subtopics.map((st) => {
+    const topic = db.topics.find((t) => t.id === st.topic_id);
+    const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
+    return { ...st, topic: topic ? { ...topic, subject } : undefined, subject };
+  });
 }
 
 export async function createSubject(name: string): Promise<Subject> {
@@ -226,7 +254,9 @@ export async function deleteSubject(id: string): Promise<void> {
 
   const db = getLocalDB();
   db.subjects = db.subjects.filter((s) => s.id !== id);
+  const topicIds = db.topics.filter((t) => t.subject_id === id).map((t) => t.id);
   db.topics = db.topics.filter((t) => t.subject_id !== id);
+  db.subtopics = db.subtopics.filter((st) => !topicIds.includes(st.topic_id));
   saveLocalDB(db);
 }
 
@@ -265,8 +295,70 @@ export async function deleteTopic(id: string): Promise<void> {
 
   const db = getLocalDB();
   db.topics = db.topics.filter((t) => t.id !== id);
+  db.subtopics = db.subtopics.filter((st) => st.topic_id !== id);
   saveLocalDB(db);
 }
+
+export async function createSubtopic(name: string, topicId: string): Promise<Subtopic> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const { data, error } = await supabase
+      .from('subtopics')
+      .insert([{ name, topic_id: topicId, status: 'unstudied', user_id: userId }])
+      .select('*, topic:topics(*, subject:subjects(*))')
+      .single();
+    if (error) throw error;
+    return {
+      ...data,
+      subject: data.topic?.subject || undefined,
+    };
+  }
+
+  const db = getLocalDB();
+  const topic = db.topics.find((t) => t.id === topicId);
+  const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
+  const newSubtopic: Subtopic = {
+    id: `subtop-${Date.now()}`,
+    name,
+    topic_id: topicId,
+    status: 'unstudied',
+    user_id: DEFAULT_USER_ID,
+    topic: topic ? { ...topic, subject } : undefined,
+    subject,
+    created_at: new Date().toISOString(),
+  };
+  db.subtopics.push(newSubtopic);
+  saveLocalDB(db);
+  return newSubtopic;
+}
+
+export async function updateSubtopicStatus(id: string, status: SubtopicStatus): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('subtopics').update({ status }).eq('id', id);
+    return;
+  }
+
+  const db = getLocalDB();
+  const idx = db.subtopics.findIndex((st) => st.id === id);
+  if (idx !== -1) {
+    db.subtopics[idx].status = status;
+    saveLocalDB(db);
+  }
+}
+
+export async function deleteSubtopic(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('subtopics').delete().eq('id', id);
+    return;
+  }
+
+  const db = getLocalDB();
+  db.subtopics = db.subtopics.filter((st) => st.id !== id);
+  saveLocalDB(db);
+}
+
+// TASK DATA API
 
 export async function fetchTasks(): Promise<Task[]> {
   if (isSupabaseConfigured && supabase) {
@@ -275,6 +367,7 @@ export async function fetchTasks(): Promise<Task[]> {
       .select(`
         *,
         topic:topics(*, subject:subjects(*)),
+        subtopic:subtopics(*),
         notes:notes(*, overlays(*))
       `)
       .order('created_at', { ascending: false });
@@ -298,6 +391,7 @@ export async function fetchTaskById(id: string): Promise<Task | null> {
       .select(`
         *,
         topic:topics(*, subject:subjects(*)),
+        subtopic:subtopics(*),
         notes:notes(*, overlays(*))
       `)
       .eq('id', id)
@@ -319,6 +413,7 @@ export async function fetchTaskById(id: string): Promise<Task | null> {
 export async function createTask(taskData: {
   title: string;
   topic_id: string;
+  subtopic_id?: string | null;
   priority: number;
   next_revision_date: string;
 }): Promise<Task> {
@@ -331,6 +426,7 @@ export async function createTask(taskData: {
         {
           title: taskData.title,
           topic_id: taskData.topic_id,
+          subtopic_id: taskData.subtopic_id || null,
           priority: taskData.priority,
           next_revision_date: taskData.next_revision_date,
           status_color: 'blue',
@@ -340,7 +436,7 @@ export async function createTask(taskData: {
           user_id: userId,
         },
       ])
-      .select(`*, topic:topics(*, subject:subjects(*))`)
+      .select(`*, topic:topics(*, subject:subjects(*)), subtopic:subtopics(*)`)
       .single();
 
     if (error) throw error;
@@ -355,6 +451,7 @@ export async function createTask(taskData: {
     id: `task-${Date.now()}`,
     title: taskData.title,
     topic_id: taskData.topic_id,
+    subtopic_id: taskData.subtopic_id || null,
     priority: taskData.priority as any,
     last_reviewed_date: null,
     current_interval: 1,

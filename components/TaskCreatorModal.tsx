@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Subject, Topic } from '@/lib/types';
-import { fetchSubjects, fetchTopics, createTask } from '@/lib/supabase';
+import { Subject, Topic, Subtopic } from '@/lib/types';
+import { fetchSubjects, fetchTopics, fetchSubtopics, createTask } from '@/lib/supabase';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { X, AlertCircle, ExternalLink } from 'lucide-react';
 
@@ -24,9 +24,11 @@ export default function TaskCreatorModal({
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
+  const [subtopics, setSubtopics] = useState<Subtopic[]>([]);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
+  const [selectedSubtopicId, setSelectedSubtopicId] = useState<string>('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -39,9 +41,15 @@ export default function TaskCreatorModal({
 
   const loadDropdownData = async () => {
     try {
-      const [subData, topData] = await Promise.all([fetchSubjects(), fetchTopics()]);
+      const [subData, topData, subtopData] = await Promise.all([
+        fetchSubjects(),
+        fetchTopics(),
+        fetchSubtopics(),
+      ]);
       setSubjects(subData);
       setTopics(topData);
+      setSubtopics(subtopData);
+
       if (subData.length > 0 && !selectedSubjectId) {
         setSelectedSubjectId(subData[0].id);
       }
@@ -51,6 +59,7 @@ export default function TaskCreatorModal({
   };
 
   const filteredTopics = topics.filter((t) => t.subject_id === selectedSubjectId);
+  const filteredSubtopics = subtopics.filter((st) => st.topic_id === selectedTopicId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +76,7 @@ export default function TaskCreatorModal({
     }
 
     if (!selectedTopicId) {
-      setErrorMessage('Please select a topic under the subject.');
+      setErrorMessage('Please select a topic.');
       return;
     }
 
@@ -77,6 +86,7 @@ export default function TaskCreatorModal({
       await createTask({
         title: title.trim(),
         topic_id: selectedTopicId,
+        subtopic_id: selectedSubtopicId || null,
         priority,
         next_revision_date: initialDate || getTodayDateString(),
       });
@@ -96,8 +106,8 @@ export default function TaskCreatorModal({
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-4 mb-5">
           <div>
-            <h3 className="text-base font-semibold text-zinc-100">Create New Task</h3>
-            <p className="text-xs text-zinc-400">Set topic, priority, and study schedule date</p>
+            <h3 className="text-base font-semibold text-zinc-100">Create Study Task</h3>
+            <p className="text-xs text-zinc-400">Set topic, syllabus subtopic, priority, and schedule date</p>
           </div>
           <button
             onClick={onClose}
@@ -129,27 +139,27 @@ export default function TaskCreatorModal({
             />
           </div>
 
-          {/* Subject Dropdown (Mandatory) */}
+          {/* Subject Dropdown */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-zinc-300">
                 Subject *
               </label>
               <Link
-                href="/topics"
+                href="/syllabus"
                 onClick={onClose}
                 className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center space-x-1"
               >
-                <span>Manage Topics</span>
+                <span>Manage Syllabus</span>
                 <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
 
             {subjects.length === 0 ? (
               <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 text-xs text-zinc-400">
-                No subjects found. Create subjects and topics first in the{' '}
-                <Link href="/topics" onClick={onClose} className="text-zinc-200 underline font-medium">
-                  Topics tab
+                No subjects found. Create subjects in the{' '}
+                <Link href="/syllabus" onClick={onClose} className="text-zinc-200 underline font-medium">
+                  Syllabus tab
                 </Link>.
               </div>
             ) : (
@@ -158,6 +168,7 @@ export default function TaskCreatorModal({
                 onChange={(e) => {
                   setSelectedSubjectId(e.target.value);
                   setSelectedTopicId('');
+                  setSelectedSubtopicId('');
                 }}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
                 required
@@ -172,14 +183,17 @@ export default function TaskCreatorModal({
             )}
           </div>
 
-          {/* Topic Dropdown (Mandatory) */}
+          {/* Topic Dropdown */}
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1">
               Topic *
             </label>
             <select
               value={selectedTopicId}
-              onChange={(e) => setSelectedTopicId(e.target.value)}
+              onChange={(e) => {
+                setSelectedTopicId(e.target.value);
+                setSelectedSubtopicId('');
+              }}
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
               disabled={!selectedSubjectId || filteredTopics.length === 0}
               required
@@ -188,12 +202,38 @@ export default function TaskCreatorModal({
                 {!selectedSubjectId
                   ? 'Select Subject first'
                   : filteredTopics.length === 0
-                  ? 'No topics found under this subject (Add in Topics tab)'
+                  ? 'No topics found under subject (Add in Syllabus tab)'
                   : 'Select Topic *'}
               </option>
               {filteredTopics.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Subtopic Dropdown (Optional/Targeted) */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-300 mb-1">
+              Syllabus Subtopic (Optional Target)
+            </label>
+            <select
+              value={selectedSubtopicId}
+              onChange={(e) => setSelectedSubtopicId(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
+              disabled={!selectedTopicId}
+            >
+              <option value="">
+                {!selectedTopicId
+                  ? 'Select Topic first'
+                  : filteredSubtopics.length === 0
+                  ? 'No subtopics defined (Add in Syllabus tab)'
+                  : 'Select Subtopic (Optional)'}
+              </option>
+              {filteredSubtopics.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name} ({st.status})
                 </option>
               ))}
             </select>
