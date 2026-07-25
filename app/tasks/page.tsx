@@ -18,6 +18,7 @@ import Link from 'next/link';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import NoteUploader from '@/components/NoteUploader';
 import ConfirmModal from '@/components/ConfirmModal';
+import CustomSelect from '@/components/CustomSelect';
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -80,6 +81,18 @@ export default function TasksPage() {
     return matchesSearch && matchesSubject && matchesPriority;
   });
 
+  const subjectFilterOptions = [
+    { value: 'all', label: 'All Subjects' },
+    ...subjects.map((s) => ({ value: s.id, label: s.name })),
+  ];
+
+  const priorityFilterOptions = [
+    { value: 'all', label: 'All Priorities' },
+    { value: '1', label: 'Priority 1 (High)' },
+    { value: '2', label: 'Priority 2 (Normal)' },
+    { value: '3', label: 'Priority 3 (Low)' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -103,7 +116,7 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Filter Toolbar */}
+      {/* Custom Filter Toolbar */}
       <div className="glass-panel p-3.5 rounded-xl border border-zinc-800/80 flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -116,32 +129,22 @@ export default function TasksPage() {
           />
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Filter className="w-3.5 h-3.5 text-zinc-500" />
-          <select
+        <div className="flex items-center space-x-2 min-w-[170px]">
+          <Filter className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+          <CustomSelect
+            options={subjectFilterOptions}
             value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-700"
-          >
-            <option value="all">All Subjects</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setSelectedSubject(val)}
+          />
         </div>
 
-        <select
-          value={selectedPriority}
-          onChange={(e) => setSelectedPriority(e.target.value)}
-          className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-700"
-        >
-          <option value="all">All Priorities</option>
-          <option value="1">Priority 1 (High)</option>
-          <option value="2">Priority 2 (Normal)</option>
-          <option value="3">Priority 3 (Low)</option>
-        </select>
+        <div className="min-w-[150px]">
+          <CustomSelect
+            options={priorityFilterOptions}
+            value={selectedPriority}
+            onChange={(val) => setSelectedPriority(val)}
+          />
+        </div>
       </div>
 
       {/* Task Grid */}

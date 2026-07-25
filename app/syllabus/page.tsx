@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import ConfirmModal from '@/components/ConfirmModal';
+import CustomSelect from '@/components/CustomSelect';
 
 export default function SyllabusPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -189,6 +190,12 @@ export default function SyllabusPage() {
   const inProgressSubtopics = subtopics.filter((st) => st.status === 'in_progress').length;
   const overallPercent = totalSubtopics > 0 ? Math.round((completedSubtopics / totalSubtopics) * 100) : 0;
 
+  const subjectOptions = subjects.map((s) => ({ value: s.id, label: s.name }));
+  const topicOptions = topics.map((t) => ({
+    value: t.id,
+    label: t.subject?.name ? `${t.subject.name} → ${t.name}` : t.name,
+  }));
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       {/* Header & Overall Syllabus Dashboard */}
@@ -276,19 +283,12 @@ export default function SyllabusPage() {
             <span>2. Add Topic</span>
           </div>
           <form onSubmit={handleCreateTopic} className="space-y-2">
-            <select
+            <CustomSelect
+              options={subjectOptions}
               value={selectedSubjectIdForTopic}
-              onChange={(e) => setSelectedSubjectIdForTopic(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none"
-              required
-            >
-              <option value="">Select Subject</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedSubjectIdForTopic(val)}
+              placeholder="Select Subject"
+            />
             <div className="flex gap-1.5">
               <input
                 type="text"
@@ -317,19 +317,12 @@ export default function SyllabusPage() {
             <span>3. Add Subtopic (Syllabus Item)</span>
           </div>
           <form onSubmit={handleCreateSubtopic} className="space-y-2">
-            <select
+            <CustomSelect
+              options={topicOptions}
               value={selectedTopicIdForSubtopic}
-              onChange={(e) => setSelectedTopicIdForSubtopic(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none"
-              required
-            >
-              <option value="">Select Topic</option>
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.subject?.name ? `${t.subject.name} → ` : ''}{t.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedTopicIdForSubtopic(val)}
+              placeholder="Select Topic"
+            />
             <div className="flex gap-1.5">
               <input
                 type="text"

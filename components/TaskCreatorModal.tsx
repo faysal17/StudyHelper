@@ -7,6 +7,7 @@ import { Subject, Topic, Subtopic } from '@/lib/types';
 import { fetchSubjects, fetchTopics, fetchSubtopics, createTask } from '@/lib/supabase';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { X, AlertCircle, ExternalLink } from 'lucide-react';
+import CustomSelect from './CustomSelect';
 
 interface TaskCreatorModalProps {
   isOpen: boolean;
@@ -128,6 +129,19 @@ export default function TaskCreatorModal({
 
   if (!isOpen || !mounted) return null;
 
+  const subjectOptions = subjects.map((s) => ({ value: s.id, label: s.name }));
+  const topicOptions = filteredTopics.map((t) => ({ value: t.id, label: t.name }));
+  const subtopicOptions = filteredSubtopics.map((st) => ({
+    value: st.id,
+    label: `${st.name} (${st.status})`,
+  }));
+
+  const priorityOptions = [
+    { value: '1', label: 'Priority 1 (High - 1.5x)' },
+    { value: '2', label: 'Priority 2 (Normal - 1.0x)' },
+    { value: '3', label: 'Priority 3 (Low - 0.5x)' },
+  ];
+
   return createPortal(
     <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl max-w-lg w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
@@ -166,7 +180,7 @@ export default function TaskCreatorModal({
             />
           </div>
 
-          {/* Subject Dropdown */}
+          {/* Subject Custom Dropdown */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-zinc-300">
@@ -190,80 +204,60 @@ export default function TaskCreatorModal({
                 </Link>.
               </div>
             ) : (
-              <select
+              <CustomSelect
+                options={subjectOptions}
                 value={selectedSubjectId}
-                onChange={(e) => {
-                  setSelectedSubjectId(e.target.value);
+                onChange={(val) => {
+                  setSelectedSubjectId(val);
                   setSelectedTopicId('');
                   setSelectedSubtopicId('');
                 }}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-                required
-              >
-                <option value="">Select Subject *</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select Subject *"
+              />
             )}
           </div>
 
-          {/* Topic Dropdown */}
+          {/* Topic Custom Dropdown */}
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1">
               Topic *
             </label>
-            <select
+            <CustomSelect
+              options={topicOptions}
               value={selectedTopicId}
-              onChange={(e) => {
-                setSelectedTopicId(e.target.value);
+              onChange={(val) => {
+                setSelectedTopicId(val);
                 setSelectedSubtopicId('');
               }}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-              disabled={!selectedSubjectId || filteredTopics.length === 0}
-              required
-            >
-              <option value="">
-                {!selectedSubjectId
+              placeholder={
+                !selectedSubjectId
                   ? 'Select Subject first'
                   : filteredTopics.length === 0
                   ? 'No topics found under subject (Add in Syllabus tab)'
-                  : 'Select Topic *'}
-              </option>
-              {filteredTopics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+                  : 'Select Topic *'
+              }
+              disabled={!selectedSubjectId || filteredTopics.length === 0}
+            />
           </div>
 
-          {/* Subtopic Dropdown (Optional/Targeted) */}
+          {/* Subtopic Custom Dropdown */}
           <div>
             <label className="block text-xs font-medium text-zinc-300 mb-1">
               Syllabus Subtopic (Optional Target)
             </label>
-            <select
+            <CustomSelect
+              options={subtopicOptions}
               value={selectedSubtopicId}
-              onChange={(e) => setSelectedSubtopicId(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-              disabled={!selectedTopicId}
-            >
-              <option value="">
-                {!selectedTopicId
+              onChange={(val) => setSelectedSubtopicId(val)}
+              placeholder={
+                !selectedTopicId
                   ? 'Select Topic first'
                   : filteredSubtopics.length === 0
                   ? 'No subtopics defined (Add in Syllabus tab)'
-                  : 'Select Subtopic (Optional)'}
-              </option>
-              {filteredSubtopics.map((st) => (
-                <option key={st.id} value={st.id}>
-                  {st.name} ({st.status})
-                </option>
-              ))}
-            </select>
+                  : 'Select Subtopic (Optional)'
+              }
+              disabled={!selectedTopicId}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -271,15 +265,11 @@ export default function TaskCreatorModal({
               <label className="block text-xs font-medium text-zinc-300 mb-1">
                 Priority
               </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-              >
-                <option value={1}>Priority 1 (High - 1.5x)</option>
-                <option value={2}>Priority 2 (Normal - 1.0x)</option>
-                <option value={3}>Priority 3 (Low - 0.5x)</option>
-              </select>
+              <CustomSelect
+                options={priorityOptions}
+                value={String(priority)}
+                onChange={(val) => setPriority(Number(val))}
+              />
             </div>
 
             <div>
