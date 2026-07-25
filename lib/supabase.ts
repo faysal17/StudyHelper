@@ -218,6 +218,18 @@ export async function createSubject(name: string): Promise<Subject> {
   return newSubject;
 }
 
+export async function deleteSubject(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('subjects').delete().eq('id', id);
+    return;
+  }
+
+  const db = getLocalDB();
+  db.subjects = db.subjects.filter((s) => s.id !== id);
+  db.topics = db.topics.filter((t) => t.subject_id !== id);
+  saveLocalDB(db);
+}
+
 export async function createTopic(name: string, subjectId: string): Promise<Topic> {
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
@@ -243,6 +255,17 @@ export async function createTopic(name: string, subjectId: string): Promise<Topi
   db.topics.push(newTopic);
   saveLocalDB(db);
   return newTopic;
+}
+
+export async function deleteTopic(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('topics').delete().eq('id', id);
+    return;
+  }
+
+  const db = getLocalDB();
+  db.topics = db.topics.filter((t) => t.id !== id);
+  saveLocalDB(db);
 }
 
 export async function fetchTasks(): Promise<Task[]> {

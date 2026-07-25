@@ -1,16 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Subject, Topic } from '@/lib/types';
-import {
-  fetchSubjects,
-  fetchTopics,
-  createSubject,
-  createTopic,
-  createTask,
-} from '@/lib/supabase';
+import { fetchSubjects, fetchTopics, createTask } from '@/lib/supabase';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { X, Plus, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, ExternalLink } from 'lucide-react';
 
 interface TaskCreatorModalProps {
   isOpen: boolean;
@@ -33,12 +28,6 @@ export default function TaskCreatorModal({
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
 
-  const [newSubjectName, setNewSubjectName] = useState('');
-  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
-
-  const [newTopicName, setNewTopicName] = useState('');
-  const [isCreatingTopic, setIsCreatingTopic] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -58,32 +47,6 @@ export default function TaskCreatorModal({
       }
     } catch (err) {
       console.error('Error loading subjects/topics:', err);
-    }
-  };
-
-  const handleCreateSubject = async () => {
-    if (!newSubjectName.trim()) return;
-    try {
-      const created = await createSubject(newSubjectName.trim());
-      setSubjects((prev) => [...prev, created]);
-      setSelectedSubjectId(created.id);
-      setNewSubjectName('');
-      setIsCreatingSubject(false);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Subject creation failed');
-    }
-  };
-
-  const handleCreateTopic = async () => {
-    if (!newTopicName.trim() || !selectedSubjectId) return;
-    try {
-      const created = await createTopic(newTopicName.trim(), selectedSubjectId);
-      setTopics((prev) => [...prev, created]);
-      setSelectedTopicId(created.id);
-      setNewTopicName('');
-      setIsCreatingTopic(false);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Topic creation failed');
     }
   };
 
@@ -149,42 +112,32 @@ export default function TaskCreatorModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter task name or topic formula..."
+              placeholder="Enter task name or study details..."
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
               required
             />
           </div>
 
-          {/* Subject */}
+          {/* Subject Dropdown (Read-only selection from /topics) */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-medium text-zinc-300">Subject</label>
-              <button
-                type="button"
-                onClick={() => setIsCreatingSubject(!isCreatingSubject)}
+              <Link
+                href="/topics"
+                onClick={onClose}
                 className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center space-x-1"
               >
-                <Plus className="w-3 h-3" />
-                <span>New Subject</span>
-              </button>
+                <span>Manage Topics</span>
+                <ExternalLink className="w-3 h-3" />
+              </Link>
             </div>
 
-            {isCreatingSubject ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="Subject name..."
-                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-                />
-                <button
-                  type="button"
-                  onClick={handleCreateSubject}
-                  className="px-3 py-1.5 bg-zinc-100 text-zinc-950 text-xs font-semibold rounded-lg hover:bg-zinc-200"
-                >
-                  Add
-                </button>
+            {subjects.length === 0 ? (
+              <div className="p-2.5 bg-zinc-950 rounded-lg border border-zinc-800 text-xs text-zinc-400">
+                No subjects found. Create subjects in the{' '}
+                <Link href="/topics" onClick={onClose} className="text-zinc-200 underline font-medium">
+                  Topics tab
+                </Link>.
               </div>
             ) : (
               <select
@@ -205,52 +158,24 @@ export default function TaskCreatorModal({
             )}
           </div>
 
-          {/* Topic */}
+          {/* Topic Dropdown (Read-only selection from /topics) */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-zinc-300">Topic</label>
-              <button
-                type="button"
-                onClick={() => setIsCreatingTopic(!isCreatingTopic)}
-                className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center space-x-1"
-                disabled={!selectedSubjectId}
-              >
-                <Plus className="w-3 h-3" />
-                <span>New Topic</span>
-              </button>
-            </div>
-
-            {isCreatingTopic ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newTopicName}
-                  onChange={(e) => setNewTopicName(e.target.value)}
-                  placeholder="Topic name..."
-                  className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-                />
-                <button
-                  type="button"
-                  onClick={handleCreateTopic}
-                  className="px-3 py-1.5 bg-zinc-100 text-zinc-950 text-xs font-semibold rounded-lg hover:bg-zinc-200"
-                >
-                  Add
-                </button>
-              </div>
-            ) : (
-              <select
-                value={selectedTopicId}
-                onChange={(e) => setSelectedTopicId(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
-              >
-                <option value="">Select Topic</option>
-                {filteredTopics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            <label className="block text-xs font-medium text-zinc-300 mb-1">Topic</label>
+            <select
+              value={selectedTopicId}
+              onChange={(e) => setSelectedTopicId(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
+              disabled={!selectedSubjectId || filteredTopics.length === 0}
+            >
+              <option value="">
+                {filteredTopics.length === 0 ? 'No topics available for subject' : 'Select Topic'}
+              </option>
+              {filteredTopics.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -275,6 +200,8 @@ export default function TaskCreatorModal({
               </label>
               <input
                 type="date"
+                min="2026-01-01"
+                max="2099-12-31"
                 value={initialDate}
                 onChange={(e) => setInitialDate(e.target.value)}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
