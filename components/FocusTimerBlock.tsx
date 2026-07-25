@@ -74,13 +74,14 @@ export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockPr
         </span>
       </div>
 
-      <div className="flex items-center justify-center space-x-2 pt-2 border-t border-zinc-800/80 shrink-0">
+      {/* Pixel-Perfect Centered Start/Pause Button with Far-Right Reset Button */}
+      <div className="relative flex items-center justify-center pt-2 border-t border-zinc-800/80 shrink-0 w-full">
         <button
           onClick={toggleTimer}
-          className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-all ${
+          className={`px-4 py-1 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all mx-auto ${
             isActive
               ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200'
+              : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200 shadow-sm'
           }`}
         >
           {isActive ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
@@ -89,7 +90,7 @@ export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockPr
 
         <button
           onClick={() => resetTimer()}
-          className="p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
           title="Reset Timer"
         >
           <RotateCcw className="w-3.5 h-3.5" />

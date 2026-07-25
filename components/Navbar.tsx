@@ -55,22 +55,26 @@ export default function Navbar() {
     <>
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
         <div className="w-full px-4 sm:px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/" className="flex items-center space-x-2.5 group">
-              <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
-                <Layers className="w-4.5 h-4.5 stroke-[2.5]" />
-              </div>
-              <span className="font-semibold text-sm tracking-tight text-zinc-100 group-hover:text-zinc-300 transition-colors">
-                StudyHub
-              </span>
-            </Link>
+          <div className="flex items-center justify-between h-16 relative">
+            {/* Left Brand Logo */}
+            <div className="flex items-center">
+              <Link href="/" className="flex items-center space-x-2.5 group">
+                <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
+                  <Layers className="w-4.5 h-4.5 stroke-[2.5]" />
+                </div>
+                <span className="font-semibold text-sm tracking-tight text-zinc-100 group-hover:text-zinc-300 transition-colors">
+                  StudyHub
+                </span>
+              </Link>
+            </div>
 
-            <nav className="flex items-center space-x-1">
+            {/* Pixel-Perfect Centered Navigation Tabs */}
+            <nav className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-1">
               <Link
                 href="/"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                   pathname === '/'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
               >
@@ -80,9 +84,9 @@ export default function Navbar() {
 
               <Link
                 href="/tasks"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                   pathname === '/tasks'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
               >
@@ -92,9 +96,9 @@ export default function Navbar() {
 
               <Link
                 href="/syllabus"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                   pathname === '/syllabus' || pathname === '/topics'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                 }`}
               >
@@ -103,9 +107,10 @@ export default function Navbar() {
               </Link>
             </nav>
 
+            {/* Right Action Buttons & Profile */}
             <div className="flex items-center space-x-3">
               {userEmail && (
-                <span className="hidden md:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+                <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
                   <User className="w-3 h-3 text-zinc-500" />
                   <span className="truncate max-w-[140px]">{userEmail}</span>
                 </span>
