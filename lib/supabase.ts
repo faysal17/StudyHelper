@@ -41,6 +41,7 @@ const CLEAN_EMPTY_DB: LocalDB = {
     user_id: DEFAULT_USER_ID,
     target_date: null,
     target_title: null,
+    day_end_time: '00:00',
     focus_seconds_today: 0,
     focus_seconds_week: 0,
     current_rank: 'Unranked',
@@ -58,6 +59,8 @@ function getLocalDB(): LocalDB {
   try {
     const parsed = JSON.parse(stored);
     if (!parsed.subtopics) parsed.subtopics = [];
+    if (!parsed.settings) parsed.settings = CLEAN_EMPTY_DB.settings;
+    if (!parsed.settings.day_end_time) parsed.settings.day_end_time = '00:00';
     return parsed;
   } catch {
     return CLEAN_EMPTY_DB;
@@ -90,7 +93,7 @@ function populateTaskRelations(task: Task, db: LocalDB): Task {
   };
 }
 
-// USER SETTINGS & ONLINE D-DAY SYNC
+// USER SETTINGS & ONLINE SYNC
 
 export async function fetchUserSettings(): Promise<UserSettings> {
   if (isSupabaseConfigured && supabase) {
@@ -103,12 +106,18 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         .eq('user_id', userId)
         .single();
 
-      if (!error && data) return data;
+      if (!error && data) {
+        return {
+          day_end_time: '00:00',
+          ...data,
+        };
+      }
 
       const defaultSettings: UserSettings = {
         user_id: userId,
         target_date: null,
         target_title: null,
+        day_end_time: '00:00',
         focus_seconds_today: 0,
         focus_seconds_week: 0,
         current_rank: 'Unranked',
@@ -141,6 +150,25 @@ export async function updateDDayConfig(targetDate: string, targetTitle: string):
   const db = getLocalDB();
   db.settings.target_date = targetDate;
   db.settings.target_title = targetTitle;
+  saveLocalDB(db);
+}
+
+export async function updateDayEndTimeConfig(dayEndTime: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        day_end_time: dayEndTime,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.day_end_time = dayEndTime;
   saveLocalDB(db);
 }
 

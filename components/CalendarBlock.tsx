@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Task } from '@/lib/types';
-import { getTodayDateString } from '@/lib/spacedRepetition';
+import { getTodayDateString, getLogicalTodayDate } from '@/lib/spacedRepetition';
+import { fetchUserSettings } from '@/lib/supabase';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import Link from 'next/link';
 
@@ -19,10 +20,18 @@ function getISOWeekNumber(d: Date): number {
 }
 
 export default function CalendarBlock({ tasks }: CalendarBlockProps) {
-  const todayStr = getTodayDateString();
+  const [dayEndTime, setDayEndTime] = useState('00:00');
+
+  useEffect(() => {
+    fetchUserSettings().then((s) => {
+      if (s?.day_end_time) setDayEndTime(s.day_end_time);
+    });
+  }, []);
+
+  const todayStr = getTodayDateString(dayEndTime);
+  const todayObj = getLogicalTodayDate(dayEndTime);
 
   // Find start of current week (Monday)
-  const todayObj = new Date();
   const currentDayOfWeek = todayObj.getDay();
   const distanceToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
 
@@ -63,146 +72,147 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
     });
   }
 
-  const [selectedDayStr, setSelectedDayStr] = useState<string>(todayStr);
-
-  const week1Number = twoWeeksDays[0].weekNumber;
-  const week2Number = twoWeeksDays[7].weekNumber;
+  const week1Number = twoWeeksDays[0]?.weekNumber || 1;
+  const week2Number = twoWeeksDays[7]?.weekNumber || 2;
 
   return (
-    <div className="glass-panel rounded-xl p-6 border border-zinc-800/80 shadow-sm space-y-5">
+    <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
       {/* Calendar Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
-            <CalendarIcon className="w-4.5 h-4.5 stroke-[1.75]" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+        <div className="flex items-center space-x-2">
+          <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
+            <CalendarIcon className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
-              <span>2-Week Focus Calendar View</span>
-            </h2>
-            <p className="text-xs text-zinc-400">
-              Monday week start &bull; {twoWeeksDays[0].monthName} {twoWeeksDays[0].dayNum} &ndash; {twoWeeksDays[13].monthName} {twoWeeksDays[13].dayNum}
+            <h2 className="text-sm font-semibold text-zinc-100">Focus Calendar</h2>
+            <p className="text-[11px] text-zinc-400">
+              Monday &ndash; Sunday grid &bull; 2-Week Schedule Overview
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setWeekOffset(0)}
-            className="px-2.5 py-1 text-xs font-medium bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-lg transition-colors"
-          >
-            Current 2-Weeks
-          </button>
-          <button
             onClick={() => setWeekOffset((prev) => prev - 1)}
-            className="p-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors"
-            title="Previous 2 Weeks"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            title="Previous 2 weeks"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
+            onClick={() => setWeekOffset(0)}
+            className="px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-mono hover:bg-zinc-800 transition-colors"
+          >
+            Current Focus
+          </button>
+          <button
             onClick={() => setWeekOffset((prev) => prev + 1)}
-            className="p-1.5 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded-lg transition-colors"
-            title="Next 2 Weeks"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            title="Next 2 weeks"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Monday-Start Calendar Grid */}
-      <div className="w-full space-y-4">
-        {/* Day Header Row */}
-        <div className="grid grid-cols-7 gap-2.5 text-center mb-1">
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-            <div key={day} className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              {day}
-            </div>
-          ))}
-        </div>
-
-        {/* Week 1 Row */}
-        <div>
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="text-[10px] font-mono font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
-              Week {week1Number}
+      {/* 2-Week Monday-Sunday Focus Grid */}
+      <div className="space-y-4">
+        {/* Week 1 */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <strong className="text-zinc-200">Week {week1Number}</strong> &bull; {twoWeeksDays[0]?.monthName} {twoWeeksDays[0]?.dayNum} &ndash; {twoWeeksDays[6]?.monthName} {twoWeeksDays[6]?.dayNum}
             </span>
-            <div className="h-px bg-zinc-800/80 flex-1" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-2.5">
+          <div className="grid grid-cols-7 gap-2">
             {twoWeeksDays.slice(0, 7).map((day) => {
               const dayTasks = tasks.filter((t) => t.next_revision_date === day.dateStr);
-              const isSelected = selectedDayStr === day.dateStr;
 
               return (
                 <div
                   key={day.dateStr}
-                  onClick={() => setSelectedDayStr(day.dateStr)}
-                  className={`min-h-[240px] p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[240px] transition-all relative ${
                     day.isToday
-                      ? 'bg-zinc-900 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
-                      : isSelected
-                      ? 'bg-zinc-900/90 border-zinc-600'
-                      : 'bg-zinc-950/90 border-zinc-800 hover:border-zinc-700'
+                      ? 'bg-zinc-900/90 border-zinc-500 ring-1 ring-zinc-500/20 shadow-md'
+                      : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-700'
                   }`}
                 >
-                  {/* Date Header */}
-                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2 mb-2 shrink-0">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5 mb-1.5">
                     <div className="flex items-baseline space-x-1">
-                      <span className="text-xs font-bold text-zinc-300">{day.dayName}</span>
+                      <span className="text-[10px] font-mono text-zinc-400 uppercase">
+                        {day.dayName}
+                      </span>
                       <span
-                        className={`text-sm font-bold font-mono px-1.5 py-0.2 rounded ${
-                          day.isToday ? 'bg-zinc-100 text-zinc-950 font-extrabold' : 'text-zinc-200'
+                        className={`text-xs font-bold font-mono ${
+                          day.isToday ? 'text-zinc-100 font-extrabold' : 'text-zinc-300'
                         }`}
                       >
                         {day.dayNum}
                       </span>
                     </div>
-                    {dayTasks.length > 0 && (
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
-                        {dayTasks.length} task(s)
+
+                    {day.isToday && (
+                      <span className="text-[9px] font-mono uppercase bg-zinc-100 text-zinc-950 px-1.5 py-0.5 rounded font-extrabold shadow-sm">
+                        Today
                       </span>
                     )}
                   </div>
 
-                  {/* Task List (Expanded Height) */}
-                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[185px] pr-1 scrollbar-thin">
+                  {/* Task Items List Inside Day Block */}
+                  <div className="flex-1 overflow-y-auto max-h-[185px] space-y-1.5 pr-0.5 custom-scrollbar">
                     {dayTasks.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 italic py-4 text-center">No tasks</p>
+                      <div className="h-full flex items-center justify-center">
+                        <span className="text-[10px] text-zinc-600 italic">No tasks</span>
+                      </div>
                     ) : (
                       dayTasks.map((t) => {
-                        const isNew = !t.last_reviewed_date;
-                        const hasNote = t.notes && t.notes.length > 0;
-                        const firstNote = hasNote ? t.notes![0] : null;
+                        const firstNote = t.notes && t.notes.length > 0 ? t.notes[0] : null;
+                        const overlayCount = firstNote?.overlays?.length || 0;
 
                         return (
                           <div
                             key={t.id}
-                            className={`p-2 rounded-lg border text-[11px] space-y-1 transition-all ${
-                              isNew
-                                ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
-                                : t.status_color === 'red'
-                                ? 'bg-red-500/10 border-red-500/20 text-red-300'
-                                : t.status_color === 'yellow'
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                            }`}
+                            className="bg-zinc-900 border border-zinc-800/90 rounded-lg p-1.5 text-left transition-all hover:border-zinc-700 space-y-1 group"
                           >
-                            <div className="font-semibold line-clamp-2 leading-tight">{t.title}</div>
-                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-1 border-t border-zinc-800/40">
-                              <span className="truncate max-w-[85px]">{t.subject?.name || 'Subject'}</span>
-                              {firstNote && firstNote.overlays && firstNote.overlays.length > 0 ? (
+                            <div className="flex items-center justify-between gap-1">
+                              <span
+                                className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
+                                  t.status_color === 'red'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : t.status_color === 'yellow'
+                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    : t.status_color === 'green'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                }`}
+                              >
+                                P{t.priority}
+                              </span>
+                              <span className="text-[9px] font-mono text-zinc-500 truncate max-w-[60px]">
+                                {t.topic?.name || 'Topic'}
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] font-semibold text-zinc-200 line-clamp-2 leading-tight">
+                              {t.title}
+                            </p>
+
+                            <div className="pt-1 flex items-center justify-between border-t border-zinc-800/60">
+                              <span className="text-[8px] font-mono text-zinc-500">
+                                Int: {t.current_interval}d
+                              </span>
+                              {overlayCount > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
-                                  className="px-1.5 py-0.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 rounded font-medium flex items-center space-x-0.5 shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-[9px] font-bold text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors"
                                 >
-                                  <Eye className="w-2.5 h-2.5 text-zinc-300" />
+                                  <Eye className="w-2.5 h-2.5" />
                                   <span>Study</span>
                                 </Link>
                               ) : (
-                                <span className="text-[9px] text-zinc-500">No note</span>
+                                <span className="text-[8px] text-zinc-600 italic">No note</span>
                               )}
                             </div>
                           </div>
@@ -216,86 +226,102 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
           </div>
         </div>
 
-        {/* Week 2 Row */}
-        <div>
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="text-[10px] font-mono font-semibold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
-              Week {week2Number}
+        {/* Week 2 */}
+        <div className="space-y-1.5 pt-2">
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <strong className="text-zinc-200">Week {week2Number}</strong> &bull; {twoWeeksDays[7]?.monthName} {twoWeeksDays[7]?.dayNum} &ndash; {twoWeeksDays[13]?.monthName} {twoWeeksDays[13]?.dayNum}
             </span>
-            <div className="h-px bg-zinc-800/80 flex-1" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-2.5">
+          <div className="grid grid-cols-7 gap-2">
             {twoWeeksDays.slice(7, 14).map((day) => {
               const dayTasks = tasks.filter((t) => t.next_revision_date === day.dateStr);
-              const isSelected = selectedDayStr === day.dateStr;
 
               return (
                 <div
                   key={day.dateStr}
-                  onClick={() => setSelectedDayStr(day.dateStr)}
-                  className={`min-h-[240px] p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[240px] transition-all relative ${
                     day.isToday
-                      ? 'bg-zinc-900 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
-                      : isSelected
-                      ? 'bg-zinc-900/90 border-zinc-600'
-                      : 'bg-zinc-950/90 border-zinc-800 hover:border-zinc-700'
+                      ? 'bg-zinc-900/90 border-zinc-500 ring-1 ring-zinc-500/20 shadow-md'
+                      : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-2 mb-2 shrink-0">
+                  <div className="flex items-center justify-between border-b border-zinc-800/60 pb-1.5 mb-1.5">
                     <div className="flex items-baseline space-x-1">
-                      <span className="text-xs font-bold text-zinc-300">{day.dayName}</span>
+                      <span className="text-[10px] font-mono text-zinc-400 uppercase">
+                        {day.dayName}
+                      </span>
                       <span
-                        className={`text-sm font-bold font-mono px-1.5 py-0.2 rounded ${
-                          day.isToday ? 'bg-zinc-100 text-zinc-950 font-extrabold' : 'text-zinc-200'
+                        className={`text-xs font-bold font-mono ${
+                          day.isToday ? 'text-zinc-100 font-extrabold' : 'text-zinc-300'
                         }`}
                       >
                         {day.dayNum}
                       </span>
                     </div>
-                    {dayTasks.length > 0 && (
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">
-                        {dayTasks.length} task(s)
+
+                    {day.isToday && (
+                      <span className="text-[9px] font-mono uppercase bg-zinc-100 text-zinc-950 px-1.5 py-0.5 rounded font-extrabold shadow-sm">
+                        Today
                       </span>
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-2 overflow-y-auto max-h-[185px] pr-1 scrollbar-thin">
+                  {/* Task Items List Inside Day Block */}
+                  <div className="flex-1 overflow-y-auto max-h-[185px] space-y-1.5 pr-0.5 custom-scrollbar">
                     {dayTasks.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 italic py-4 text-center">No tasks</p>
+                      <div className="h-full flex items-center justify-center">
+                        <span className="text-[10px] text-zinc-600 italic">No tasks</span>
+                      </div>
                     ) : (
                       dayTasks.map((t) => {
-                        const isNew = !t.last_reviewed_date;
-                        const hasNote = t.notes && t.notes.length > 0;
-                        const firstNote = hasNote ? t.notes![0] : null;
+                        const firstNote = t.notes && t.notes.length > 0 ? t.notes[0] : null;
+                        const overlayCount = firstNote?.overlays?.length || 0;
 
                         return (
                           <div
                             key={t.id}
-                            className={`p-2 rounded-lg border text-[11px] space-y-1 transition-all ${
-                              isNew
-                                ? 'bg-blue-500/10 border-blue-500/20 text-blue-300'
-                                : t.status_color === 'red'
-                                ? 'bg-red-500/10 border-red-500/20 text-red-300'
-                                : t.status_color === 'yellow'
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
-                            }`}
+                            className="bg-zinc-900 border border-zinc-800/90 rounded-lg p-1.5 text-left transition-all hover:border-zinc-700 space-y-1 group"
                           >
-                            <div className="font-semibold line-clamp-2 leading-tight">{t.title}</div>
-                            <div className="flex items-center justify-between text-[10px] opacity-80 pt-1 border-t border-zinc-800/40">
-                              <span className="truncate max-w-[85px]">{t.subject?.name || 'Subject'}</span>
-                              {firstNote && firstNote.overlays && firstNote.overlays.length > 0 ? (
+                            <div className="flex items-center justify-between gap-1">
+                              <span
+                                className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
+                                  t.status_color === 'red'
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                    : t.status_color === 'yellow'
+                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                    : t.status_color === 'green'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                }`}
+                              >
+                                P{t.priority}
+                              </span>
+                              <span className="text-[9px] font-mono text-zinc-500 truncate max-w-[60px]">
+                                {t.topic?.name || 'Topic'}
+                              </span>
+                            </div>
+
+                            <p className="text-[10px] font-semibold text-zinc-200 line-clamp-2 leading-tight">
+                              {t.title}
+                            </p>
+
+                            <div className="pt-1 flex items-center justify-between border-t border-zinc-800/60">
+                              <span className="text-[8px] font-mono text-zinc-500">
+                                Int: {t.current_interval}d
+                              </span>
+                              {overlayCount > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
-                                  className="px-1.5 py-0.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 rounded font-medium flex items-center space-x-0.5 shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-[9px] font-bold text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors"
                                 >
-                                  <Eye className="w-2.5 h-2.5 text-zinc-300" />
+                                  <Eye className="w-2.5 h-2.5" />
                                   <span>Study</span>
                                 </Link>
                               ) : (
-                                <span className="text-[9px] text-zinc-500">No note</span>
+                                <span className="text-[8px] text-zinc-600 italic">No note</span>
                               )}
                             </div>
                           </div>

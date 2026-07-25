@@ -89,17 +89,21 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- User Settings Table (Stores User-Specific D-Day Target & Real Focus Stats)
+-- User Settings Table (Stores User-Specific D-Day Target, Focus Stats & Day End Cutoff Time)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     target_date DATE DEFAULT NULL,
     target_title TEXT DEFAULT NULL,
+    day_end_time TEXT DEFAULT '00:00',
     focus_seconds_today INTEGER DEFAULT 0,
     focus_seconds_week INTEGER DEFAULT 0,
     current_rank TEXT DEFAULT 'Unranked',
     current_title TEXT DEFAULT 'Learner',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure day_end_time column exists for existing deployments
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS day_end_time TEXT DEFAULT '00:00';
 
 -- 3. Enable Row Level Security (RLS) on All Tables
 

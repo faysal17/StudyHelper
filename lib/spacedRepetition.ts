@@ -1,136 +1,128 @@
-import { Task, Priority, StatusColor } from './types';
+import { Task, StatusColor } from './types';
 
-/**
- * Returns today's date formatted as YYYY-MM-DD.
- */
-export function getTodayDateString(): string {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
+export function getLogicalTodayDate(dayEndTime: string = '00:00'): Date {
+  const now = new Date();
+  const [cutoffHour] = (dayEndTime || '00:00').split(':').map(Number);
+
+  if (cutoffHour > 0 && now.getHours() < cutoffHour) {
+    const logicalDate = new Date(now);
+    logicalDate.setDate(logicalDate.getDate() - 1);
+    return logicalDate;
+  }
+  return now;
+}
+
+export function getTodayDateString(dayEndTime: string = '00:00'): string {
+  const d = getLogicalTodayDate(dayEndTime);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Adds a specified number of days to a YYYY-MM-DD string date.
- */
-export function addDaysToDateString(dateStr: string, days: number): string {
-  const [year, month, day] = dateStr.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+export function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + days);
-  
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const resYear = date.getFullYear();
+  const resMonth = String(date.getMonth() + 1).padStart(2, '0');
+  const resDay = String(date.getDate()).padStart(2, '0');
+  return `${resYear}-${resMonth}-${resDay}`;
 }
 
-/**
- * Returns the priority multiplier for error rate calculations:
- * Priority 1 (High): 1.5x
- * Priority 2 (Normal): 1.0x
- * Priority 3 (Low): 0.5x
- */
-export function getPriorityMultiplier(priority: Priority): number {
-  switch (priority) {
-    case 1:
-      return 1.5;
-    case 2:
-      return 1.0;
-    case 3:
-      return 0.5;
-    default:
-      return 1.0;
-  }
-}
+export function diffInDays(dateStr1: string, dateStr2: string): number {
+  const [y1, m1, d1] = dateStr1.split('-').map(Number);
+  const [y2, m2, d2] = dateStr2.split('-').map(Number);
 
-/**
- * Calculates the final weighted error percentage capped at 100.
- */
-export function calculateWeightedErrorRate(
-  totalOverlays: number,
-  failedOverlays: number,
-  priority: Priority
-): number {
-  if (totalOverlays === 0) return 0;
-  const baseErrorRate = failedOverlays / totalOverlays;
-  const multiplier = getPriorityMultiplier(priority);
-  const weighted = baseErrorRate * multiplier * 100;
-  return Math.min(100, Math.max(0, Math.round(weighted * 10) / 10));
+  const t1 = Date.UTC(y1, m1 - 1, d1);
+  const t2 = Date.UTC(y2, m2 - 1, d2);
+
+  const diffMs = t1 - t2;
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
 export interface SpacedRepetitionResult {
-  isLockedToday: boolean;
   weightedErrorPercent: number;
   newInterval: number;
+  newEaseFactor: number;
   newStatusColor: StatusColor;
   newNextRevisionDate: string;
-  newEaseFactor: number;
   updatedLastReviewedDate: string;
+  isLockedToday: boolean;
 }
 
-/**
- * Processes revision math based on once-daily lock, weighted error, and priority.
- */
 export function evaluateSpacedRepetition(
   task: Task,
   totalOverlays: number,
-  failedOverlays: number
+  failedOverlays: number,
+  dayEndTime: string = '00:00'
 ): SpacedRepetitionResult {
-  const today = getTodayDateString();
-  const isLockedToday = task.last_reviewed_date === today;
+  const todayStr = getTodayDateString(dayEndTime);
 
-  const weightedError = calculateWeightedErrorRate(totalOverlays, failedOverlays, task.priority);
-
-  // If reviewed already today, DO NOT update current_interval or next_revision_date
-  if (isLockedToday) {
+  if (task.last_reviewed_date === todayStr) {
     return {
-      isLockedToday: true,
-      weightedErrorPercent: weightedError,
+      weightedErrorPercent: Math.round(((failedOverlays * 2) / Math.max(totalOverlays, 1)) * 100),
       newInterval: task.current_interval,
+      newEaseFactor: task.ease_factor,
       newStatusColor: task.status_color,
       newNextRevisionDate: task.next_revision_date,
-      newEaseFactor: task.ease_factor,
-      updatedLastReviewedDate: task.last_reviewed_date || today,
+      updatedLastReviewedDate: task.last_reviewed_date,
+      isLockedToday: true,
     };
   }
 
-  let newInterval = task.current_interval || 1;
-  let newEaseFactor = task.ease_factor || 2.5;
-  let newStatusColor: StatusColor = 'green';
-  let daysToAdd = 1;
+  const priorityWeight = task.priority === 1 ? 1.5 : task.priority === 2 ? 1.0 : 0.5;
 
-  if (weightedError >= 50) {
-    // High Error: Assign Red, reset to 1 day
+  const rawError = totalOverlays > 0 ? (failedOverlays * 2) / totalOverlays : 0;
+  const weightedErrorPercent = Math.min(100, Math.round(rawError * 100 * (1 / priorityWeight)));
+
+  let newStatusColor: StatusColor = 'blue';
+  if (weightedErrorPercent > 40) {
     newStatusColor = 'red';
-    newInterval = 1;
-    daysToAdd = 1;
-    // Slightly decrease ease factor for difficult items
-    newEaseFactor = Math.max(1.3, Math.round((newEaseFactor - 0.2) * 100) / 100);
-  } else if (weightedError >= 20) {
-    // Moderate Error: Assign Yellow, maintain small interval
+  } else if (weightedErrorPercent > 20) {
     newStatusColor = 'yellow';
-    newInterval = Math.max(2, Math.round(newInterval * 1.2));
-    daysToAdd = newInterval;
+  } else if (weightedErrorPercent > 5) {
+    newStatusColor = 'blue';
   } else {
-    // Low / Zero Error: Assign Green, increase interval using ease factor
     newStatusColor = 'green';
-    const currentInt = newInterval < 1 ? 1 : newInterval;
-    newInterval = Math.max(3, Math.round(currentInt * newEaseFactor));
-    daysToAdd = newInterval;
-    // Slightly increase ease factor for mastered items
-    newEaseFactor = Math.min(3.0, Math.round((newEaseFactor + 0.1) * 100) / 100);
   }
 
-  const newNextRevisionDate = addDaysToDateString(today, daysToAdd);
+  let deltaEF = 0;
+  if (weightedErrorPercent === 0) deltaEF = 0.1;
+  else if (weightedErrorPercent <= 20) deltaEF = 0.0;
+  else if (weightedErrorPercent <= 40) deltaEF = -0.15;
+  else deltaEF = -0.3;
+
+  const newEaseFactor = Math.max(1.3, Math.round((task.ease_factor + deltaEF) * 100) / 100);
+
+  let newInterval = 1;
+  if (weightedErrorPercent > 40) {
+    newInterval = 1;
+  } else if (task.current_interval === 1) {
+    newInterval = 6;
+  } else {
+    newInterval = Math.round(task.current_interval * newEaseFactor);
+  }
+
+  const newNextRevisionDate = addDays(todayStr, newInterval);
 
   return {
-    isLockedToday: false,
-    weightedErrorPercent: weightedError,
+    weightedErrorPercent,
     newInterval,
+    newEaseFactor,
     newStatusColor,
     newNextRevisionDate,
-    newEaseFactor,
-    updatedLastReviewedDate: today,
+    updatedLastReviewedDate: todayStr,
+    isLockedToday: false,
   };
+}
+
+export function isTaskDueToday(task: Task, dayEndTime: string = '00:00'): boolean {
+  const todayStr = getTodayDateString(dayEndTime);
+  return task.next_revision_date <= todayStr;
+}
+
+export function getDaysRemaining(targetDateStr: string, dayEndTime: string = '00:00'): number {
+  const todayStr = getTodayDateString(dayEndTime);
+  return diffInDays(targetDateStr, todayStr);
 }

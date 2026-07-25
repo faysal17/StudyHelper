@@ -1,7 +1,9 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
+import { fetchUserSettings } from '@/lib/supabase';
 import { BookOpen, RotateCcw } from 'lucide-react';
 
 interface TaskCountersBlockProps {
@@ -9,7 +11,15 @@ interface TaskCountersBlockProps {
 }
 
 export default function TaskCountersBlock({ tasks }: TaskCountersBlockProps) {
-  const today = getTodayDateString();
+  const [dayEndTime, setDayEndTime] = useState('00:00');
+
+  useEffect(() => {
+    fetchUserSettings().then((s) => {
+      if (s?.day_end_time) setDayEndTime(s.day_end_time);
+    });
+  }, []);
+
+  const today = getTodayDateString(dayEndTime);
 
   const newStudyCount = tasks.filter((t) => !t.last_reviewed_date).length;
   const revisionCount = tasks.filter(

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User } from 'lucide-react';
+import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 
@@ -107,14 +107,27 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {/* Right Action Buttons & Profile */}
-            <div className="flex items-center space-x-3">
+            {/* Right Action Buttons & Profile & Settings */}
+            <div className="flex items-center space-x-2 sm:space-x-3">
               {userEmail && (
                 <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
                   <User className="w-3 h-3 text-zinc-500" />
                   <span className="truncate max-w-[140px]">{userEmail}</span>
                 </span>
               )}
+
+              {/* Settings Icon Link beside username */}
+              <Link
+                href="/settings"
+                className={`p-2 rounded-lg border transition-colors ${
+                  pathname === '/settings'
+                    ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                }`}
+                title="User Settings"
+              >
+                <SettingsIcon className="w-4 h-4" />
+              </Link>
 
               <button
                 onClick={() => setIsTaskModalOpen(true)}
