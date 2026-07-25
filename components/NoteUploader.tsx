@@ -44,7 +44,6 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
 
       const originalSize = (selectedFile.size / (1024 * 1024)).toFixed(2);
 
-      // 1. Compress Image using browser-image-compression with required settings
       const compressedFile = await compressHandwrittenNote(selectedFile, {
         maxSizeMB: 0.3,
         maxWidthOrHeight: 1920,
@@ -61,10 +60,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
       setIsCompressing(false);
       setIsUploading(true);
 
-      // 2. Upload to Supabase Storage bucket 'scanned-notes'
       const publicUrl = await uploadNoteImage(compressedFile);
-
-      // 3. Save Note row in DB
       const note = await createNote(taskId, publicUrl);
 
       setIsUploading(false);
@@ -76,34 +72,33 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
       }
     } catch (err: any) {
       console.error('Note upload failed:', err);
-      setErrorMsg(err.message || 'নোট আপলোড বা কম্প্রেশনে ব্যর্থ হয়েছে।');
+      setErrorMsg(err.message || 'Note compression or upload failed.');
       setIsCompressing(false);
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 shadow-2xl max-w-lg w-full mx-auto">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl max-w-lg w-full mx-auto">
       <div className="flex items-center space-x-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400">
-          <UploadCloud className="w-5 h-5" />
+        <div className="w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-300">
+          <UploadCloud className="w-4.5 h-4.5" />
         </div>
         <div>
-          <h3 className="text-base font-bold text-slate-100">হ্যান্ডরাইটিং নোট আপলোড</h3>
-          <p className="text-xs text-slate-400 line-clamp-1">{taskTitle}</p>
+          <h3 className="text-sm font-semibold text-zinc-100">Upload Handwritten Note</h3>
+          <p className="text-xs text-zinc-400 line-clamp-1">{taskTitle}</p>
         </div>
       </div>
 
       {errorMsg && (
-        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-400 flex items-center space-x-2">
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* File Dropzone */}
       <div className="mb-4">
-        <label className="border-2 border-dashed border-slate-700 hover:border-emerald-500/60 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-950/60 group">
+        <label className="border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950/60 group">
           <input
             type="file"
             accept="image/*"
@@ -115,68 +110,65 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
               <img
                 src={previewUrl}
                 alt="Scan preview"
-                className="max-h-48 max-w-full rounded-lg object-contain border border-slate-800 shadow-md mx-auto"
+                className="max-h-48 max-w-full rounded-lg object-contain border border-zinc-800 shadow-md mx-auto"
               />
-              <span className="text-xs text-emerald-400 font-medium block">
-                ছবি সিলেক্ট হয়েছে ({selectedFile?.name})
+              <span className="text-xs text-zinc-300 font-medium block">
+                Selected: {selectedFile?.name}
               </span>
             </div>
           ) : (
             <div className="text-center space-y-2">
-              <ImageIcon className="w-10 h-10 text-slate-500 group-hover:text-emerald-400 transition-colors mx-auto" />
-              <p className="text-sm font-semibold text-slate-200">
-                স্ক্যানকৃত নোট নির্বাচন করতে ক্লিক করুন
+              <ImageIcon className="w-8 h-8 text-zinc-500 group-hover:text-zinc-300 transition-colors mx-auto" />
+              <p className="text-xs font-medium text-zinc-200">
+                Click to select handwritten note image
               </p>
-              <p className="text-xs text-slate-400">
-                JPEG, PNG, বা WebP (স্বয়ংক্রিয়ভাবে &lt;300KB WebP ফরম্যাটে কম্প্রেস হবে)
+              <p className="text-[11px] text-zinc-500">
+                JPEG, PNG, or WebP (compressed to &lt;300KB WebP automatically)
               </p>
             </div>
           )}
         </label>
       </div>
 
-      {/* Compression Stats Badge */}
       {compressionStats && (
-        <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-400 flex items-center justify-between">
+        <div className="mb-4 p-3 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-300 flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
-            <FileCheck className="w-4 h-4" />
-            <span>সফলভাবে কম্প্রেস সম্পন্ন</span>
+            <FileCheck className="w-4 h-4 text-emerald-400" />
+            <span>Compressed</span>
           </div>
-          <div className="font-mono">
+          <div className="font-mono text-[11px]">
             {compressionStats.originalSizeMB} MB &rarr; <strong>{compressionStats.compressedSizeMB} MB</strong> (WebP)
           </div>
         </div>
       )}
 
-      {/* Status / Loading details */}
       {(isCompressing || isUploading) && (
-        <div className="mb-4 p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs text-slate-300 flex items-center space-x-3">
-          <Loader2 className="w-4 h-4 animate-spin text-emerald-400 shrink-0" />
+        <div className="mb-4 p-3 bg-zinc-950 rounded-lg border border-zinc-800 text-xs text-zinc-300 flex items-center space-x-3">
+          <Loader2 className="w-4 h-4 animate-spin text-zinc-400 shrink-0" />
           <span>
             {isCompressing
-              ? 'WebP কম্প্রেশন চলছে (max 0.3MB, 1920px)...'
-              : 'Supabase Storage (scanned-notes) এ আপলোড হচ্ছে...'}
+              ? 'Compressing handwritten note to WebP...'
+              : 'Uploading to Supabase Storage bucket (scanned-notes)...'}
           </span>
         </div>
       )}
 
-      {/* Buttons */}
       <div className="flex justify-end space-x-3 pt-2">
         {onClose && (
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-colors"
+            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-medium transition-colors"
           >
-            বাতিল
+            Cancel
           </button>
         )}
         <button
           onClick={handleUpload}
           disabled={!selectedFile || isCompressing || isUploading}
-          className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold rounded-xl text-xs hover:from-emerald-400 hover:to-teal-400 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-40 flex items-center space-x-2"
+          className="px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-40 flex items-center space-x-2"
         >
-          <UploadCloud className="w-4 h-4" />
-          <span>কম্প্রেস ও আপলোড করুন</span>
+          <UploadCloud className="w-3.5 h-3.5" />
+          <span>Compress & Upload</span>
         </button>
       </div>
     </div>

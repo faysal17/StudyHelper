@@ -1,14 +1,7 @@
 import type { Metadata } from 'next';
-import { Hind_Siliguri, Inter } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
-
-const hindSiliguri = Hind_Siliguri({
-  weight: ['300', '400', '500', '600', '700'],
-  subsets: ['bengali', 'latin'],
-  variable: '--font-hind-siliguri',
-  display: 'swap',
-});
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,9 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'BCS StudyHelper - Spaced Repetition & Image Occlusion Hub',
-  description:
-    'Personalized learning hub and spaced-repetition task manager for BCS handwritten note study with image occlusion.',
+  title: 'Learning Hub & Spaced Repetition Manager',
+  description: 'Minimal personalized learning hub and image occlusion task manager.',
 };
 
 export default function RootLayout({
@@ -28,14 +20,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${hindSiliguri.variable} ${inter.variable}`}>
-      <body className="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+    <html lang="en" className={`${inter.variable} dark`}>
+      <body className="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col font-sans antialiased selection:bg-zinc-800 selection:text-zinc-100">
         <Navbar />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8">
           {children}
         </main>
-        <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500 glass-panel mt-12">
-          <p>BCS StudyHelper &copy; {new Date().getFullYear()} — Spaced Repetition & Image Occlusion Manager</p>
+        <footer className="border-t border-zinc-800/60 py-6 text-center text-xs text-zinc-500 mt-16">
+          <p>Learning Hub &bull; Spaced Repetition Task Manager</p>
         </footer>
       </body>
     </html>

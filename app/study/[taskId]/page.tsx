@@ -37,24 +37,24 @@ export default function StudyTaskPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-        <p className="text-sm">স্টাডি মোড লোড হচ্ছে...</p>
+      <div className="flex flex-col items-center justify-center py-20 text-zinc-500 space-y-3">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+        <p className="text-xs">Loading study session...</p>
       </div>
     );
   }
 
   if (!task) {
     return (
-      <div className="text-center py-16 bg-slate-900/50 rounded-2xl border border-slate-800 space-y-4">
-        <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
-        <h2 className="text-lg font-bold text-slate-100">টাস্ক পাওয়া যায়নি</h2>
+      <div className="text-center py-16 bg-zinc-950/50 rounded-xl border border-zinc-800 space-y-4">
+        <AlertCircle className="w-8 h-8 text-zinc-500 mx-auto" />
+        <h2 className="text-sm font-semibold text-zinc-100">Task Not Found</h2>
         <Link
           href="/"
-          className="inline-flex items-center space-x-2 text-xs font-semibold bg-slate-800 text-slate-200 px-4 py-2 rounded-xl"
+          className="inline-flex items-center space-x-2 text-xs font-semibold bg-zinc-800 text-zinc-200 px-4 py-2 rounded-lg"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>ড্যাশবোর্ডে ফিরুন</span>
+          <span>Back to Dashboard</span>
         </Link>
       </div>
     );
@@ -66,22 +66,22 @@ export default function StudyTaskPage() {
   if (!note) {
     return (
       <div className="max-w-lg mx-auto py-12 text-center space-y-6">
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <FileImage className="w-12 h-12 text-blue-400 mx-auto" />
-          <h2 className="text-lg font-bold text-slate-100">{task.title}</h2>
-          <p className="text-xs text-slate-400">
-            এই টাস্কের জন্য এখনো কোন স্ক্যানকৃত নোট আপলোড করা হয়নি।
+        <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+          <FileImage className="w-10 h-10 text-zinc-400 mx-auto" />
+          <h2 className="text-base font-semibold text-zinc-100">{task.title}</h2>
+          <p className="text-xs text-zinc-400">
+            No scanned handwritten note image has been uploaded for this task yet.
           </p>
           <button
             onClick={() => setShowUploader(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs rounded-xl shadow-md"
+            className="px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg shadow-sm hover:bg-zinc-200 transition-all"
           >
-            নোট ছবি আপলোড করুন
+            Upload Handwritten Note
           </button>
         </div>
 
         {showUploader && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
             <NoteUploader
               taskId={task.id}
               taskTitle={task.title}
@@ -100,17 +100,17 @@ export default function StudyTaskPage() {
   if (overlays.length === 0) {
     return (
       <div className="max-w-lg mx-auto py-12 text-center space-y-6">
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <FileImage className="w-12 h-12 text-indigo-400 mx-auto" />
-          <h2 className="text-lg font-bold text-slate-100">{task.title}</h2>
-          <p className="text-xs text-slate-400">
-            নোট আপলোড করা হয়েছে, কিন্তু কোন অক্লুশন বক্স (Overlays) আঁকা হয়নি।
+        <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+          <FileImage className="w-10 h-10 text-zinc-400 mx-auto" />
+          <h2 className="text-base font-semibold text-zinc-100">{task.title}</h2>
+          <p className="text-xs text-zinc-400">
+            Note uploaded, but no occlusion overlays have been drawn.
           </p>
           <Link
             href={`/notes/${note.id}/occlude`}
-            className="inline-block px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-slate-950 font-bold text-xs rounded-xl shadow-md"
+            className="inline-block px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg shadow-sm hover:bg-zinc-200 transition-all"
           >
-            অক্লুশন আঁকতে ক্লিক করুন
+            Draw Occlusion Boxes
           </Link>
         </div>
       </div>

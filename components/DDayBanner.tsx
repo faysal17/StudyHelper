@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Target, Calendar as CalendarIcon, Edit3, Save, X, Flame } from 'lucide-react';
+import { Edit2, Check, X, Calendar as CalendarIcon } from 'lucide-react';
 import { getDDayConfig, saveDDayConfig } from '@/lib/supabase';
 
 export default function DDayBanner() {
-  const [targetTitle, setTargetTitle] = useState('47th BCS Preliminary Exam');
-  const [targetDate, setTargetDate] = useState('2026-11-15');
+  const [targetTitle, setTargetTitle] = useState('Target Goal Date');
+  const [targetDate, setTargetDate] = useState('2026-12-31');
   const [isEditing, setIsEditing] = useState(false);
 
   const [editTitle, setEditTitle] = useState('');
@@ -54,122 +54,108 @@ export default function DDayBanner() {
 
   const handleSave = () => {
     if (!editDate) return;
-    saveDDayConfig(editDate, editTitle || 'Target Exam Date');
+    saveDDayConfig(editDate, editTitle || 'Target Goal Date');
     setTargetDate(editDate);
-    setTargetTitle(editTitle || 'Target Exam Date');
+    setTargetTitle(editTitle || 'Target Goal Date');
     setIsEditing(false);
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950/60 via-slate-900/90 to-teal-950/60 border border-emerald-500/30 p-6 shadow-xl shadow-emerald-950/20 backdrop-blur-md mb-8">
-      {/* Background glow effects */}
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-        {/* Left: Title & D-Day Big Display */}
-        <div className="flex items-center space-x-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/30 shrink-0">
-            <Flame className="w-8 h-8 fill-slate-950 stroke-none" />
-          </div>
-
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-                Target Countdown
-              </span>
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="text-slate-400 hover:text-emerald-400 transition-colors p-1"
-                title="Edit Target Date"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-100 mt-1 flex items-center gap-2">
-              <span>{targetTitle}</span>
-              <span className="text-emerald-400 text-sm font-semibold">
-                (D-{timeLeft.isPast ? '0' : timeLeft.days})
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              টার্গেট তারিখ: {new Date(targetDate).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
+    <div className="glass-panel rounded-xl p-5 border border-zinc-800/80 mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* Target Title & Date info */}
+      <div className="flex items-center space-x-3 w-full md:w-auto">
+        <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 shrink-0">
+          <CalendarIcon className="w-5 h-5 stroke-[1.75]" />
         </div>
 
-        {/* Right: Counter Grid */}
-        {!isEditing ? (
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="flex flex-col items-center justify-center bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 min-w-[70px] sm:min-w-[80px] shadow-inner">
-              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono leading-none">
-                {timeLeft.days}
-              </span>
-              <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider mt-1">দিন (Days)</span>
-            </div>
-
-            <span className="text-xl font-bold text-slate-600">:</span>
-
-            <div className="flex flex-col items-center justify-center bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 min-w-[65px] sm:min-w-[75px] shadow-inner">
-              <span className="text-2xl sm:text-3xl font-extrabold text-slate-200 font-mono leading-none">
-                {String(timeLeft.hours).padStart(2, '0')}
-              </span>
-              <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider mt-1">ঘণ্টা (Hrs)</span>
-            </div>
-
-            <span className="text-xl font-bold text-slate-600">:</span>
-
-            <div className="flex flex-col items-center justify-center bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 min-w-[65px] sm:min-w-[75px] shadow-inner">
-              <span className="text-2xl sm:text-3xl font-extrabold text-slate-200 font-mono leading-none">
-                {String(timeLeft.minutes).padStart(2, '0')}
-              </span>
-              <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider mt-1">মি (Mins)</span>
-            </div>
-
-            <span className="text-xl font-bold text-slate-600">:</span>
-
-            <div className="flex flex-col items-center justify-center bg-slate-950/70 border border-slate-800 rounded-xl px-4 py-3 min-w-[65px] sm:min-w-[75px] shadow-inner">
-              <span className="text-2xl sm:text-3xl font-extrabold text-teal-400 font-mono leading-none">
-                {String(timeLeft.seconds).padStart(2, '0')}
-              </span>
-              <span className="text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider mt-1">সে (Secs)</span>
-            </div>
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-400">
+              D-Day Countdown
+            </span>
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className="text-zinc-500 hover:text-zinc-300 transition-colors p-0.5"
+              title="Edit Target Date"
+            >
+              <Edit2 className="w-3 h-3" />
+            </button>
           </div>
-        ) : (
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 w-full md:w-auto space-y-3">
-            <div className="text-xs font-semibold text-emerald-400">Edit Countdown Target</div>
-            <div className="flex flex-col sm:flex-row gap-2">
+
+          {!isEditing ? (
+            <h1 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+              <span>{targetTitle}</span>
+              <span className="text-zinc-400 font-normal text-xs">
+                ({targetDate})
+              </span>
+            </h1>
+          ) : (
+            <div className="flex items-center space-x-2 mt-1">
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                placeholder="Target Exam Title"
-                className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
+                placeholder="Target Name"
               />
               <input
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
-                className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none focus:border-zinc-600"
               />
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200"
-              >
-                Cancel
-              </button>
               <button
                 onClick={handleSave}
-                className="px-3 py-1 bg-emerald-500 text-slate-950 font-semibold rounded-lg text-xs hover:bg-emerald-400 flex items-center space-x-1"
+                className="p-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded"
               >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save</span>
+                <Check className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="p-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 rounded"
+              >
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Countdown Grid */}
+      <div className="flex items-center space-x-3 text-center">
+        <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg px-3.5 py-2 min-w-[64px]">
+          <span className="text-xl font-bold font-mono text-zinc-100 block leading-tight">
+            {timeLeft.days}
+          </span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Days</span>
+        </div>
+
+        <span className="text-zinc-700 font-bold text-sm">:</span>
+
+        <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg px-3.5 py-2 min-w-[56px]">
+          <span className="text-xl font-bold font-mono text-zinc-200 block leading-tight">
+            {String(timeLeft.hours).padStart(2, '0')}
+          </span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Hours</span>
+        </div>
+
+        <span className="text-zinc-700 font-bold text-sm">:</span>
+
+        <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg px-3.5 py-2 min-w-[56px]">
+          <span className="text-xl font-bold font-mono text-zinc-200 block leading-tight">
+            {String(timeLeft.minutes).padStart(2, '0')}
+          </span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Mins</span>
+        </div>
+
+        <span className="text-zinc-700 font-bold text-sm">:</span>
+
+        <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg px-3.5 py-2 min-w-[56px]">
+          <span className="text-xl font-bold font-mono text-zinc-400 block leading-tight">
+            {String(timeLeft.seconds).padStart(2, '0')}
+          </span>
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Secs</span>
+        </div>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Task, Note, Overlay } from '@/lib/types';
 import { updateOverlayFailingStatus, updateTask, logRevisionScore } from '@/lib/supabase';
 import { evaluateSpacedRepetition } from '@/lib/spacedRepetition';
-import { Check, X, Eye, EyeOff, RotateCw, Trophy, ArrowLeft, Award, Lock } from 'lucide-react';
+import { Check, X, Eye, EyeOff, Trophy, ArrowLeft, Award, Lock } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 
@@ -56,15 +56,12 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
     const totalOverlays = overlays.length;
     const failedOverlays = overlays.filter((o) => o.is_currently_failing).length;
 
-    // Run Spaced Repetition Logic Engine
     const srResult = evaluateSpacedRepetition(task, totalOverlays, failedOverlays);
 
     try {
-      // 1. Log score in Revision_Logs table
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
       await logRevisionScore(task.id, score);
 
-      // 2. Update Task if not once-daily locked
       if (!srResult.isLockedToday) {
         await updateTask(task.id, {
           last_reviewed_date: srResult.updatedLastReviewedDate,
@@ -82,11 +79,10 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         score,
       });
 
-      // Fire festive celebration confetti
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 60,
+          spread: 60,
           origin: { y: 0.6 },
         });
       } catch {}
@@ -102,44 +98,43 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+      <div className="glass-panel p-4 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <Link
             href="/"
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-slate-100 transition-colors"
+            className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded border bg-blue-500/10 text-blue-400 border-blue-500/30">
-                Active Recall Mode
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border bg-zinc-800 text-zinc-300 border-zinc-700">
+                Active Recall Study
               </span>
-              <span className="text-xs text-slate-400">P{task.priority} Priority</span>
+              <span className="text-xs text-zinc-500 font-mono">P{task.priority} Priority</span>
             </div>
-            <h2 className="text-lg font-bold text-slate-100 mt-0.5">{task.title}</h2>
+            <h2 className="text-base font-semibold text-zinc-100 mt-0.5">{task.title}</h2>
           </div>
         </div>
 
-        {/* Live Session Counter */}
         <div className="flex items-center space-x-3">
-          <div className="bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl text-xs flex items-center space-x-3">
-            <span className="text-slate-400"> Overlays: <strong className="text-slate-100">{overlays.length}</strong></span>
-            <span className="text-slate-400"> Failed: <strong className="text-red-400">{failedCount}</strong></span>
+          <div className="bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg text-xs font-mono flex items-center space-x-3">
+            <span className="text-zinc-400">Total: <strong className="text-zinc-200">{overlays.length}</strong></span>
+            <span className="text-zinc-400">Failed: <strong className="text-red-400">{failedCount}</strong></span>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={revealAllOverlays}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-              title="সব রিভিল করুন"
+              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              title="Reveal all"
             >
               <Eye className="w-4 h-4" />
             </button>
             <button
               onClick={hideAllOverlays}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-              title="সব হাইড করুন"
+              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              title="Hide all"
             >
               <EyeOff className="w-4 h-4" />
             </button>
@@ -147,26 +142,24 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
             <button
               onClick={handleFinishSession}
               disabled={isFinishing}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs hover:from-emerald-400 hover:to-teal-400 shadow-md shadow-emerald-500/20 transition-all flex items-center space-x-2"
+              className="px-4 py-1.5 rounded-lg bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
             >
-              <Trophy className="w-4 h-4 stroke-[2.5]" />
-              <span>রিভিশন সম্পন্ন করুন</span>
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Complete Session</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Note Image Canvas Container with Interactive Overlays */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 relative">
-        <div className="relative inline-block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 select-none">
-          {/* Handwritten Note Image */}
+      {/* Note Image & Overlays */}
+      <div className="glass-panel p-4 rounded-xl border border-zinc-800 relative">
+        <div className="relative inline-block w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 select-none">
           <img
             src={note.image_url}
             alt="Scanned note"
             className="w-full h-auto object-contain block pointer-events-none"
           />
 
-          {/* Render Overlays */}
           {overlays.map((overlay, idx) => {
             const isRevealed = Boolean(revealedIds[overlay.id]);
             const isFailing = overlay.is_currently_failing;
@@ -180,37 +173,34 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                   width: `${overlay.width}%`,
                   height: `${overlay.height}%`,
                 }}
-                className={`absolute transition-all rounded duration-150 ${
+                className={`absolute transition-all rounded ${
                   isRevealed
-                    ? 'bg-transparent border-2 border-dashed border-emerald-400/80 shadow-lg'
+                    ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow'
                     : isFailing
-                    ? 'bg-red-600/40 border-2 border-red-500 shadow-md cursor-pointer hover:bg-red-600/50'
-                    : 'bg-slate-900/95 border border-slate-700 shadow-md cursor-pointer hover:border-emerald-400 hover:scale-[1.01]'
+                    ? 'bg-red-500/40 border border-red-500/80 shadow cursor-pointer hover:bg-red-500/50'
+                    : 'bg-zinc-900/95 border border-zinc-700 shadow cursor-pointer hover:border-zinc-500'
                 }`}
                 onClick={() => toggleReveal(overlay.id)}
               >
-                {/* Number tag */}
                 {!isRevealed && (
-                  <div className="absolute top-0.5 left-1 text-[9px] font-mono font-bold text-slate-400 opacity-60">
+                  <div className="absolute top-0.5 left-1 text-[9px] font-mono text-zinc-400 opacity-60">
                     #{idx + 1}
                   </div>
                 )}
 
-                {/* Yes / No Rating Control Bar when Revealed */}
                 {isRevealed && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 bg-slate-950 border border-slate-700 rounded-lg p-1 flex items-center space-x-1 shadow-2xl animate-in fade-in zoom-in-90 duration-150"
+                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-20 bg-zinc-950 border border-zinc-700 rounded-lg p-1 flex items-center space-x-1 shadow-xl"
                   >
-                    <span className="text-[10px] text-slate-400 px-1 font-medium">Recalled?</span>
+                    <span className="text-[10px] text-zinc-400 px-1 font-medium">Recalled?</span>
                     <button
                       onClick={() => handleGradeOverlay(overlay.id, true)}
                       className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors ${
                         !isFailing
-                          ? 'bg-emerald-500 text-slate-950 font-extrabold'
-                          : 'bg-slate-800 text-emerald-400 hover:bg-emerald-500/20'
+                          ? 'bg-zinc-100 text-zinc-950 font-extrabold'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                       }`}
-                      title="Correct (Yes)"
                     >
                       <Check className="w-3 h-3" />
                       <span>Yes</span>
@@ -220,9 +210,8 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                       className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors ${
                         isFailing
                           ? 'bg-red-500 text-white font-extrabold'
-                          : 'bg-slate-800 text-red-400 hover:bg-red-500/20'
+                          : 'bg-zinc-800 text-red-400 hover:bg-red-500/20'
                       }`}
-                      title="Failed (No)"
                     >
                       <X className="w-3 h-3" />
                       <span>No</span>
@@ -235,56 +224,47 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         </div>
       </div>
 
-      {/* Revision Results Summary Modal */}
+      {/* Results Summary Modal */}
       {summaryResult && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-2xl p-6 max-w-md w-full shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 mx-auto shadow-lg shadow-emerald-500/30">
-              <Award className="w-8 h-8 stroke-[2.5]" />
+        <div className="fixed inset-0 z-50 bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl text-center space-y-5">
+            <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-100 mx-auto">
+              <Award className="w-6 h-6" />
             </div>
 
             <div>
-              <h3 className="text-xl font-bold text-slate-100">রিভিশন সেশন ফলাফল (Session Complete)</h3>
-              <p className="text-xs text-slate-400 mt-1">স্পেসড রিপিটিশন অ্যালগরিদম দ্বারা শিডিউল আপডেট করা হয়েছে</p>
+              <h3 className="text-base font-semibold text-zinc-100">Session Complete</h3>
+              <p className="text-xs text-zinc-400 mt-0.5">Spaced repetition schedule updated</p>
             </div>
 
-            {/* Score & Lock Info */}
-            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800 space-y-3">
-              <div className="flex justify-between items-center text-xs text-slate-300">
-                <span>মোট ওভারলে (Total):</span>
-                <strong className="text-slate-100 font-mono">{summaryResult.totalOverlays}</strong>
+            <div className="bg-zinc-950 rounded-lg p-4 border border-zinc-800 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Total Overlays:</span>
+                <strong className="text-zinc-100 font-mono">{summaryResult.totalOverlays}</strong>
               </div>
-              <div className="flex justify-between items-center text-xs text-slate-300">
-                <span>ফেইলড ওভারলে (Failed):</span>
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Failed Overlays:</span>
                 <strong className="text-red-400 font-mono">{summaryResult.failedOverlays}</strong>
               </div>
-              <div className="flex justify-between items-center text-xs text-slate-300">
-                <span>ওয়েটেড এরর রেট (Weighted Error):</span>
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Weighted Error:</span>
                 <strong className="text-amber-400 font-mono">{summaryResult.weightedErrorPercent}%</strong>
               </div>
-              <div className="flex justify-between items-center text-xs text-slate-300">
-                <span>নতুন স্ট্যাটাস কালার (Status Color):</span>
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                    summaryResult.newStatusColor === 'red'
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : summaryResult.newStatusColor === 'yellow'
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  }`}
-                >
+              <div className="flex justify-between items-center text-zinc-400">
+                <span>Status Color:</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-zinc-800 text-zinc-200 border border-zinc-700">
                   {summaryResult.newStatusColor}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-xs text-slate-300 border-t border-slate-800 pt-2">
-                <span>পরবর্তী রিভিশন (Next Revision):</span>
-                <strong className="text-emerald-400 font-mono">{summaryResult.newNextRevisionDate}</strong>
+              <div className="flex justify-between items-center text-zinc-400 border-t border-zinc-800 pt-2">
+                <span>Next Revision Date:</span>
+                <strong className="text-zinc-100 font-mono">{summaryResult.newNextRevisionDate}</strong>
               </div>
 
               {summaryResult.isLockedToday && (
-                <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg text-[11px] text-amber-300 flex items-center justify-center space-x-1.5">
-                  <Lock className="w-3.5 h-3.5 shrink-0" />
-                  <span>Once-Daily Lock Active: আজকে ইতোমধ্যেই একবার রিভিশন দেওয়া হয়েছে।</span>
+                <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-[11px] text-amber-300 flex items-center justify-center space-x-1">
+                  <Lock className="w-3 h-3 shrink-0" />
+                  <span>Once-Daily Lock Active (Reviewed today)</span>
                 </div>
               )}
             </div>
@@ -292,9 +272,9 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
             <div className="flex justify-center pt-2">
               <Link
                 href="/"
-                className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all"
+                className="px-5 py-2 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg shadow-sm hover:bg-zinc-200 transition-all"
               >
-                ড্যাশবোর্ডে ফিরে যান
+                Back to Dashboard
               </Link>
             </div>
           </div>

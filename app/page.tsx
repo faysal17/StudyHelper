@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DDayBanner from '@/components/DDayBanner';
+import FocusTimerBlock from '@/components/FocusTimerBlock';
+import TaskCountersBlock from '@/components/TaskCountersBlock';
+import FocusStatsBlock from '@/components/FocusStatsBlock';
+import DDayBlock from '@/components/DDayBlock';
 import NewStudyBlock from '@/components/NewStudyBlock';
 import RevisionBlock from '@/components/RevisionBlock';
 import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
 import { Task } from '@/lib/types';
 import { fetchTasks } from '@/lib/supabase';
-import { Loader2, Plus, Sparkles, BookOpen, Layers } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 
 export default function DashboardPage() {
@@ -35,40 +38,52 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Top Banner: Target Exam D-Day Counter */}
-      <DDayBanner />
+    <div className="space-y-8 w-full">
+      {/* 4-Block Header Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* Block 1: Focus Study Timer */}
+        <FocusTimerBlock />
+
+        {/* Block 2: Study & Revision Counters */}
+        <TaskCountersBlock tasks={tasks} />
+
+        {/* Block 3: Focus Hours & Rank / Title Placeholders */}
+        <FocusStatsBlock />
+
+        {/* Block 4: D-Day Countdown */}
+        <DDayBlock />
+      </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-          <p className="text-sm font-medium">BCS StudyHelper লোড হচ্ছে...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-zinc-500 space-y-3">
+          <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+          <p className="text-xs">Loading study tasks...</p>
         </div>
       ) : (
         <>
-          {/* Blocks Grid */}
-          <div className="grid grid-cols-1 gap-8">
-            {/* New Study Block (Blue) */}
+          {/* Side-by-Side Fixed-Height Blocks Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+            {/* New Study Block (Fixed Height + Internal Scrollbar) */}
             <NewStudyBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
             />
 
-            {/* Revision Block (Red / Yellow / Green) */}
+            {/* Revision Block (Fixed Height + Internal Scrollbar) */}
             <RevisionBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
             />
-
-            {/* 3-Week Forward Calendar Block */}
-            <CalendarBlock tasks={tasks} />
           </div>
+
+          {/* Enlarged 2-Week Calendar Block */}
+          <CalendarBlock tasks={tasks} />
         </>
       )}
 
       {/* Note Uploader Modal */}
       {noteTaskTarget && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <NoteUploader
             taskId={noteTaskTarget.id}
             taskTitle={noteTaskTarget.title}

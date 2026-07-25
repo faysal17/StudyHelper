@@ -3,16 +3,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Overlay } from '@/lib/types';
 import { saveOverlays } from '@/lib/supabase';
-import { Save, Trash2, Layers, ArrowLeft, RefreshCw, CheckCircle, HelpCircle } from 'lucide-react';
+import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface DottedBox {
   id: string;
-  x: number; // Percentage (0 - 100)
-  y: number; // Percentage (0 - 100)
-  width: number; // Percentage (0 - 100)
-  height: number; // Percentage (0 - 100)
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 interface ImageOcclusionCreatorProps {
@@ -132,7 +132,7 @@ export default function ImageOcclusionCreator({
 
       setTimeout(() => {
         router.push(`/study/${taskId}`);
-      }, 800);
+      }, 600);
     } catch (err) {
       console.error('Error saving overlays:', err);
       setIsSaving(false);
@@ -142,21 +142,21 @@ export default function ImageOcclusionCreator({
   return (
     <div className="space-y-6">
       {/* Header Toolbar */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+      <div className="glass-panel p-4 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <Link
             href={`/tasks`}
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-slate-100 transition-colors"
+            className="p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-400" />
-              <span>ইমেজ অক্লুশন ক্রিয়েটর (Creator Mode)</span>
+            <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
+              <Layers className="w-4.5 h-4.5 text-zinc-400" />
+              <span>Image Occlusion Editor</span>
             </h2>
-            <p className="text-xs text-slate-400">
-              ছবির উপর ক্লিক করে টেনে বক্স (Occlusion Overlay) আঁকুন | মোট বক্স: <strong className="text-indigo-400 font-mono">{boxes.length}</strong>
+            <p className="text-xs text-zinc-400">
+              Click & drag over text to create occlusion boxes &bull; Overlays: <strong className="text-zinc-200 font-mono">{boxes.length}</strong>
             </p>
           </div>
         </div>
@@ -165,54 +165,47 @@ export default function ImageOcclusionCreator({
           <button
             onClick={handleClearAll}
             disabled={boxes.length === 0}
-            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-red-400 text-xs font-semibold disabled:opacity-40 transition-colors flex items-center space-x-1"
+            className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 text-xs font-medium disabled:opacity-40 transition-colors flex items-center space-x-1"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>সব ক্লিয়ার</span>
+            <span>Clear All</span>
           </button>
 
           <button
             onClick={handleSaveOverlays}
             disabled={isSaving}
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-slate-950 font-bold text-xs hover:from-indigo-400 hover:to-purple-400 shadow-md shadow-indigo-500/20 transition-all flex items-center space-x-2 disabled:opacity-50"
+            className="px-4 py-1.5 rounded-lg bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-zinc-200 shadow-sm transition-all flex items-center space-x-1.5 disabled:opacity-50"
           >
             {saveSuccess ? (
               <>
-                <CheckCircle className="w-4 h-4 text-slate-950" />
-                <span>সংরক্ষণ হয়েছে!</span>
+                <CheckCircle className="w-3.5 h-3.5 text-zinc-950" />
+                <span>Saved!</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
-                <span>অক্লুশন ওভারলে সংরক্ষণ করুন ({boxes.length})</span>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Overlays ({boxes.length})</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {/* Interactive Drawing Container */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 relative">
-        <div className="text-xs text-slate-400 mb-2 flex items-center space-x-1">
-          <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-          <span>নির্দেশনা: মাউস চেপে ধরে ড্র্যাগ (Click & Drag) করে আঁকুন।</span>
-        </div>
-
+      {/* Interactive Drawing Box Container */}
+      <div className="glass-panel p-4 rounded-xl border border-zinc-800 relative">
         <div
           ref={containerRef}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
-          className="relative inline-block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 select-none cursor-crosshair"
+          className="relative inline-block w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 select-none cursor-crosshair"
         >
-          {/* Note Scanned Image */}
           <img
             src={imageUrl}
             alt="Scanned note"
             className="w-full h-auto object-contain pointer-events-none block"
           />
 
-          {/* Existing Saved/Drawn Overlays */}
           {boxes.map((box, index) => (
             <div
               key={box.id}
@@ -222,9 +215,9 @@ export default function ImageOcclusionCreator({
                 width: `${box.width}%`,
                 height: `${box.height}%`,
               }}
-              className="absolute bg-slate-900/90 border-2 border-indigo-400 rounded shadow-lg flex items-center justify-between px-1 overflow-hidden group hover:border-red-400 transition-colors"
+              className="absolute bg-zinc-900/90 border border-zinc-500 rounded shadow flex items-center justify-between px-1 overflow-hidden group hover:border-red-400 transition-colors"
             >
-              <span className="text-[10px] font-mono text-indigo-300 font-bold opacity-80 pointer-events-none">
+              <span className="text-[9px] font-mono text-zinc-400 font-bold opacity-80 pointer-events-none">
                 #{index + 1}
               </span>
               <button
@@ -232,15 +225,14 @@ export default function ImageOcclusionCreator({
                   e.stopPropagation();
                   handleDeleteBox(box.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-slate-950/80 rounded"
-                title="মুছে ফেলুন"
+                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-950/80 rounded"
+                title="Delete box"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
           ))}
 
-          {/* Active Drawing Box Feedback */}
           {isDrawing && currentDrawBox && (
             <div
               style={{
@@ -249,7 +241,7 @@ export default function ImageOcclusionCreator({
                 width: `${currentDrawBox.width}%`,
                 height: `${currentDrawBox.height}%`,
               }}
-              className="absolute bg-indigo-500/30 border-2 border-dashed border-indigo-300 rounded pointer-events-none"
+              className="absolute bg-zinc-700/30 border border-dashed border-zinc-300 rounded pointer-events-none"
             />
           )}
         </div>

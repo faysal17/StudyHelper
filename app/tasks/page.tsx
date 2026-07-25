@@ -6,7 +6,7 @@ import { fetchTasks, fetchSubjects, deleteTask } from '@/lib/supabase';
 import {
   CheckSquare,
   Search,
-  PlusCircle,
+  Plus,
   Eye,
   Layers,
   FileImage,
@@ -48,7 +48,7 @@ export default function TasksPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('আপনি কি নিশ্চিত যে এই টাস্কটি মুছে ফেলতে চান?')) {
+    if (confirm('Are you sure you want to delete this task?')) {
       await deleteTask(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
     }
@@ -72,49 +72,47 @@ export default function TasksPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800/80 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-            <CheckSquare className="w-6 h-6 text-emerald-400" />
-            <span>টাস্ক ও নোট লাইব্রেরি (Task Library)</span>
+          <h1 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+            <CheckSquare className="w-5 h-5 text-zinc-400" />
+            <span>Task Library</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            আপনার সকল রিভিশন টাস্ক এবং হ্যান্ডরাইটিং নোট এক নজরে দেখুন
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Manage your study subjects, topics, and revision tasks
           </p>
         </div>
 
         <button
           onClick={() => setIsTaskModalOpen(true)}
-          className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-400 flex items-center space-x-2"
+          className="px-3.5 py-1.5 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg shadow-sm hover:bg-zinc-200 transition-all flex items-center space-x-1.5"
         >
-          <PlusCircle className="w-4 h-4" />
-          <span>নতুন টাস্ক যোগ করুন</span>
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Add Task</span>
         </button>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="glass-panel p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="glass-panel p-3.5 rounded-xl border border-zinc-800/80 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="খুঁজুন (বাংলা বা ইংরেজি শিরোনাম)..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            placeholder="Search tasks, topics, or subjects..."
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-4 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
           />
         </div>
 
-        {/* Subject Filter */}
         <div className="flex items-center space-x-2">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
+          <Filter className="w-3.5 h-3.5 text-zinc-500" />
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+            className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-700"
           >
-            <option value="all">সকল বিষয় (All Subjects)</option>
+            <option value="all">All Subjects</option>
             {subjects.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -123,13 +121,12 @@ export default function TasksPage() {
           </select>
         </div>
 
-        {/* Priority Filter */}
         <select
           value={selectedPriority}
           onChange={(e) => setSelectedPriority(e.target.value)}
-          className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+          className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-zinc-700"
         >
-          <option value="all">সকল প্রায়োরিটি (All Priority)</option>
+          <option value="all">All Priorities</option>
           <option value="1">Priority 1 (High)</option>
           <option value="2">Priority 2 (Normal)</option>
           <option value="3">Priority 3 (Low)</option>
@@ -138,13 +135,13 @@ export default function TasksPage() {
 
       {/* Task Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
-          <p className="text-sm">টাস্ক লোড হচ্ছে...</p>
+        <div className="flex flex-col items-center justify-center py-20 text-zinc-500 space-y-3">
+          <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+          <p className="text-xs">Loading tasks...</p>
         </div>
       ) : filteredTasks.length === 0 ? (
-        <div className="text-center py-16 bg-slate-900/40 rounded-2xl border border-slate-800">
-          <p className="text-sm text-slate-400">কোন টাস্ক পাওয়া যায়নি।</p>
+        <div className="text-center py-16 bg-zinc-950/40 rounded-xl border border-zinc-800">
+          <p className="text-xs text-zinc-500">No tasks found. Create a new task to get started!</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -156,42 +153,42 @@ export default function TasksPage() {
             return (
               <div
                 key={t.id}
-                className="glass-card p-4 rounded-xl border border-slate-800 hover:border-slate-600 flex flex-col justify-between transition-all"
+                className="glass-card p-4 rounded-xl border border-zinc-800 hover:border-zinc-700 flex flex-col justify-between transition-all"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md truncate max-w-[180px]">
-                      {t.subject?.name || 'বিষয়'} &bull; {t.topic?.name || 'টপিক'}
+                    <span className="text-[11px] font-medium text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded truncate max-w-[180px]">
+                      {t.subject?.name || 'Subject'} &bull; {t.topic?.name || 'Topic'}
                     </span>
                     <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                      className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border ${
                         t.status_color === 'red'
-                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                          ? 'bg-red-500/10 text-red-400 border-red-500/20'
                           : t.status_color === 'yellow'
-                          ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           : t.status_color === 'green'
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                       }`}
                     >
                       P{t.priority} &bull; {t.status_color}
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-slate-100 line-clamp-2 mb-2">
+                  <h3 className="text-sm font-semibold text-zinc-100 line-clamp-2 mb-2">
                     {t.title}
                   </h3>
 
-                  <div className="text-[11px] text-slate-400 space-y-0.5 mb-4">
-                    <p>পরবর্তী রিভিশন: <strong className="text-slate-200">{t.next_revision_date}</strong></p>
-                    <p>ইন্টারভাল: {t.current_interval} days | Ease Factor: {t.ease_factor}</p>
+                  <div className="text-[11px] text-zinc-500 space-y-0.5 mb-4 font-mono">
+                    <p>Next revision: <strong className="text-zinc-300">{t.next_revision_date}</strong></p>
+                    <p>Interval: {t.current_interval}d | Ease: {t.ease_factor}</p>
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2">
                   <button
                     onClick={() => handleDelete(t.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 transition-colors"
+                    className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
                     title="Delete task"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -201,26 +198,26 @@ export default function TasksPage() {
                     {!hasNote ? (
                       <button
                         onClick={() => setNoteTaskTarget(t)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition-colors flex items-center space-x-1"
+                        className="px-3 py-1 rounded-md text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors flex items-center space-x-1"
                       >
                         <FileImage className="w-3.5 h-3.5" />
-                        <span>নোট যোগ</span>
+                        <span>Upload Note</span>
                       </button>
                     ) : overlayCount === 0 ? (
                       <Link
                         href={`/notes/${firstNote!.id}/occlude`}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors flex items-center space-x-1"
+                        className="px-3 py-1 rounded-md text-xs font-medium bg-zinc-800 text-zinc-200 border border-zinc-700 hover:bg-zinc-700 transition-colors flex items-center space-x-1"
                       >
                         <Layers className="w-3.5 h-3.5" />
-                        <span>অক্লুশন আঁকুন</span>
+                        <span>Overlays</span>
                       </Link>
                     ) : (
                       <Link
                         href={`/study/${t.id}`}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition-all flex items-center space-x-1"
+                        className="px-3 py-1 rounded-md text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all flex items-center space-x-1 shadow-sm"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>স্টাডি ({overlayCount})</span>
+                        <span>Study ({overlayCount})</span>
                       </Link>
                     )}
                   </div>
@@ -231,9 +228,8 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Note Uploader Modal */}
       {noteTaskTarget && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <NoteUploader
             taskId={noteTaskTarget.id}
             taskTitle={noteTaskTarget.title}
@@ -242,7 +238,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Task Creator Modal */}
       <TaskCreatorModal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}

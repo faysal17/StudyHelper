@@ -1,0 +1,49 @@
+'use client';
+
+import { Task } from '@/lib/types';
+import { getTodayDateString } from '@/lib/spacedRepetition';
+import { BookOpen, RotateCcw } from 'lucide-react';
+
+interface TaskCountersBlockProps {
+  tasks: Task[];
+}
+
+export default function TaskCountersBlock({ tasks }: TaskCountersBlockProps) {
+  const today = getTodayDateString();
+
+  const newStudyCount = tasks.filter((t) => !t.last_reviewed_date).length;
+  const revisionCount = tasks.filter(
+    (t) => t.last_reviewed_date && t.next_revision_date <= today
+  ).length;
+
+  return (
+    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-full">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-zinc-200">Daily Task Counters</span>
+        <span className="text-[10px] text-zinc-500 font-mono">Today</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 my-1">
+        <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-2.5 flex flex-col items-center justify-center">
+          <div className="flex items-center space-x-1 text-blue-400 mb-0.5">
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-medium">New Study</span>
+          </div>
+          <span className="text-2xl font-bold font-mono text-zinc-100">{newStudyCount}</span>
+        </div>
+
+        <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-lg p-2.5 flex flex-col items-center justify-center">
+          <div className="flex items-center space-x-1 text-emerald-400 mb-0.5">
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-medium">Revision</span>
+          </div>
+          <span className="text-2xl font-bold font-mono text-zinc-100">{revisionCount}</span>
+        </div>
+      </div>
+
+      <div className="text-[10px] text-zinc-500 text-center border-t border-zinc-800/80 pt-2">
+        Scheduled task overview
+      </div>
+    </div>
+  );
+}
