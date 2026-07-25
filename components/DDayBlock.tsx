@@ -2,9 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { Edit2, Check, X, Calendar as CalendarIcon } from 'lucide-react';
-import { getDDayConfig, saveDDayConfig } from '@/lib/supabase';
+import { fetchUserSettings, updateDDayConfig } from '@/lib/supabase';
+import { UserSettings } from '@/lib/types';
 
-export default function DDayBlock() {
+interface DDayBlockProps {
+  settings?: UserSettings | null;
+  onSettingsUpdate?: () => void;
+}
+
+export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps) {
   const [targetTitle, setTargetTitle] = useState('Target Goal Date');
   const [targetDate, setTargetDate] = useState('2026-12-31');
   const [isEditing, setIsEditing] = useState(false);
@@ -21,12 +27,13 @@ export default function DDayBlock() {
   }>({ days: 0, hours: 0, minutes: 0, seconds: 0, isPast: false });
 
   useEffect(() => {
-    const cfg = getDDayConfig();
-    setTargetTitle(cfg.targetTitle);
-    setTargetDate(cfg.targetDate);
-    setEditTitle(cfg.targetTitle);
-    setEditDate(cfg.targetDate);
-  }, []);
+    if (settings) {
+      setTargetTitle(settings.target_title || 'Target Goal Date');
+      setTargetDate(settings.target_date || '2026-12-31');
+      setEditTitle(settings.target_title || 'Target Goal Date');
+      setEditDate(settings.target_date || '2026-12-31');
+    }
+  }, [settings]);
 
   useEffect(() => {
     function calculateCountdown() {
@@ -52,12 +59,14 @@ export default function DDayBlock() {
     return () => clearInterval(interval);
   }, [targetDate]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editDate) return;
-    saveDDayConfig(editDate, editTitle || 'Target Goal Date');
+    const newTitle = editTitle || 'Target Goal Date';
+    await updateDDayConfig(editDate, newTitle);
     setTargetDate(editDate);
-    setTargetTitle(editTitle || 'Target Goal Date');
+    setTargetTitle(newTitle);
     setIsEditing(false);
+    if (onSettingsUpdate) onSettingsUpdate();
   };
 
   return (

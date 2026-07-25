@@ -42,12 +42,12 @@ export interface Task {
   id: string;
   title: string;
   topic_id: string | null;
-  priority: Priority; // 1 = High, 2 = Normal, 3 = Low
-  last_reviewed_date: string | null; // ISO YYYY-MM-DD
-  current_interval: number; // In days
-  ease_factor: number; // e.g. 2.5
-  status_color: StatusColor; // 'blue' | 'red' | 'yellow' | 'green'
-  next_revision_date: string; // ISO YYYY-MM-DD
+  priority: Priority;
+  last_reviewed_date: string | null;
+  current_interval: number;
+  ease_factor: number;
+  status_color: StatusColor;
+  next_revision_date: string;
   user_id: string;
   created_at?: string;
   topic?: Topic;
@@ -61,4 +61,15 @@ export interface RevisionLog {
   score: number;
   created_at: string;
   user_id: string;
+}
+
+export interface UserSettings {
+  user_id: string;
+  target_date: string;
+  target_title: string;
+  focus_seconds_today: number;
+  focus_seconds_week: number;
+  current_rank: string;
+  current_title: string;
+  updated_at?: string;
 }

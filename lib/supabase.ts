@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Subject, Topic, Task, Note, Overlay, RevisionLog } from './types';
+import { Subject, Topic, Task, Note, Overlay, RevisionLog, UserSettings } from './types';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,8 +15,7 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
 
-// LOCAL STORAGE PERSISTENCE ENGINE (CLEAN EMPTY INITIAL STATE)
-const STORAGE_KEY = 'learning_hub_db_v3';
+const STORAGE_KEY = 'learning_hub_db_v4';
 const DEFAULT_USER_ID = 'user-owner';
 
 interface LocalDB {
@@ -26,19 +25,25 @@ interface LocalDB {
   notes: Note[];
   overlays: Overlay[];
   revisionLogs: RevisionLog[];
-  targetDate: string;
-  targetTitle: string;
+  settings: UserSettings;
 }
 
 const CLEAN_EMPTY_DB: LocalDB = {
-  targetDate: '2026-12-31',
-  targetTitle: 'Target Goal Date',
   subjects: [],
   topics: [],
   tasks: [],
   notes: [],
   overlays: [],
   revisionLogs: [],
+  settings: {
+    user_id: DEFAULT_USER_ID,
+    target_date: '2026-12-31',
+    target_title: 'Target Goal Date',
+    focus_seconds_today: 0,
+    focus_seconds_week: 0,
+    current_rank: 'Unranked',
+    current_title: 'Learner',
+  },
 };
 
 function getLocalDB(): LocalDB {
@@ -79,7 +84,92 @@ function populateTaskRelations(task: Task, db: LocalDB): Task {
   };
 }
 
-// API FUNCTIONS (SUPABASE WITH TRANSPARENT LOCAL STORAGE CLIENT)
+// USER SETTINGS & ONLINE D-DAY SYNC
+
+export async function fetchUserSettings(): Promise<UserSettings> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (!error && data) return data;
+
+      // If row doesn't exist yet, insert default for user
+      const defaultSettings: UserSettings = {
+        user_id: userId,
+        target_date: '2026-12-31',
+        target_title: 'Target Goal Date',
+        focus_seconds_today: 0,
+        focus_seconds_week: 0,
+        current_rank: 'Unranked',
+        current_title: 'Learner',
+      };
+
+      await supabase.from('user_settings').upsert(defaultSettings);
+      return defaultSettings;
+    }
+  }
+
+  return getLocalDB().settings;
+}
+
+export async function updateDDayConfig(targetDate: string, targetTitle: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        target_date: targetDate,
+        target_title: targetTitle,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.target_date = targetDate;
+  db.settings.target_title = targetTitle;
+  saveLocalDB(db);
+}
+
+export async function recordFocusSession(minutes: number): Promise<UserSettings> {
+  const addedSeconds = Math.round(minutes * 60);
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      const current = await fetchUserSettings();
+      const newToday = (current.focus_seconds_today || 0) + addedSeconds;
+      const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
+
+      const updated: Partial<UserSettings> = {
+        user_id: userId,
+        focus_seconds_today: newToday,
+        focus_seconds_week: newWeek,
+        updated_at: new Date().toISOString(),
+      };
+
+      await supabase.from('user_settings').upsert(updated);
+      return { ...current, ...updated };
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.focus_seconds_today = (db.settings.focus_seconds_today || 0) + addedSeconds;
+  db.settings.focus_seconds_week = (db.settings.focus_seconds_week || 0) + addedSeconds;
+  saveLocalDB(db);
+  return db.settings;
+}
+
+// SUBJECT, TOPIC, TASK DATA API
 
 export async function fetchSubjects(): Promise<Subject[]> {
   if (isSupabaseConfigured && supabase) {
@@ -405,20 +495,5 @@ export async function logRevisionScore(taskId: string, score: number): Promise<v
     created_at: new Date().toISOString(),
     user_id: DEFAULT_USER_ID,
   });
-  saveLocalDB(db);
-}
-
-export function getDDayConfig(): { targetDate: string; targetTitle: string } {
-  const db = getLocalDB();
-  return {
-    targetDate: db.targetDate || '2026-12-31',
-    targetTitle: db.targetTitle || 'Target Goal Date',
-  };
-}
-
-export function saveDDayConfig(targetDate: string, targetTitle: string): void {
-  const db = getLocalDB();
-  db.targetDate = targetDate;
-  db.targetTitle = targetTitle;
   saveLocalDB(db);
 }

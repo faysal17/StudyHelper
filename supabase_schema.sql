@@ -1,5 +1,5 @@
 -- =========================================================
--- BCS StudyHelper Supabase Database Schema & Storage Setup
+-- BCS / Learning Hub Supabase Database Schema & Storage Setup
 -- =========================================================
 
 -- 1. Enable UUID Extension
@@ -70,6 +70,18 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- User Settings Table (Stores User-Specific D-Day Target & Real Focus Stats)
+CREATE TABLE IF NOT EXISTS public.user_settings (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    target_date DATE DEFAULT '2026-12-31',
+    target_title TEXT DEFAULT 'Target Goal Date',
+    focus_seconds_today INTEGER DEFAULT 0,
+    focus_seconds_week INTEGER DEFAULT 0,
+    current_rank TEXT DEFAULT 'Unranked',
+    current_title TEXT DEFAULT 'Learner',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- 3. Enable Row Level Security (RLS) on All Tables
 
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
@@ -78,32 +90,36 @@ ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.overlays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.revision_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 
 -- 4. Create RLS Policies for Owner Access
 
--- Subjects Policies
 CREATE POLICY "Users can access their own subjects" ON public.subjects
     FOR ALL USING (auth.uid() = user_id);
 
--- Topics Policies
 CREATE POLICY "Users can access their own topics" ON public.topics
     FOR ALL USING (auth.uid() = user_id);
 
--- Tasks Policies
 CREATE POLICY "Users can access their own tasks" ON public.tasks
     FOR ALL USING (auth.uid() = user_id);
 
--- Notes Policies
 CREATE POLICY "Users can access their own notes" ON public.notes
     FOR ALL USING (auth.uid() = user_id);
 
--- Overlays Policies
 CREATE POLICY "Users can access their own overlays" ON public.overlays
     FOR ALL USING (auth.uid() = user_id);
 
--- Revision Logs Policies
 CREATE POLICY "Users can access their own revision logs" ON public.revision_logs
     FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view their own settings" ON public.user_settings
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own settings" ON public.user_settings
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own settings" ON public.user_settings
+    FOR UPDATE USING (auth.uid() = user_id);
 
 -- 5. Supabase Storage Bucket Policies for 'scanned-notes'
 INSERT INTO storage.buckets (id, name, public) 

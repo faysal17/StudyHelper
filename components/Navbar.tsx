@@ -1,22 +1,61 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, Plus, Database } from 'lucide-react';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { usePathname, useRouter } from 'next/navigation';
+import { Layers, Calendar, CheckSquare, Plus, Database, LogOut, User } from 'lucide-react';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    if (isSupabaseConfigured && supabase) {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user?.email) {
+        setUserEmail(data.user.email);
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('studyhub_user_session');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            setUserEmail(parsed.email || 'user@studyhub.app');
+          } catch {}
+        }
+      }
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (isSupabaseConfigured && supabase) {
+      await supabase.auth.signOut();
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('studyhub_user_session');
+    }
+    setUserEmail(null);
+    router.push('/login');
+  };
+
+  if (pathname === '/login') {
+    return null; // Clean layout on login page
+  }
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
         <div className="w-full px-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16">
-            {/* Minimal Logo */}
             <Link href="/" className="flex items-center space-x-2.5 group">
               <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
                 <Layers className="w-4.5 h-4.5 stroke-[2.5]" />
@@ -26,7 +65,6 @@ export default function Navbar() {
               </span>
             </Link>
 
-            {/* Navigation Tabs */}
             <nav className="flex items-center space-x-1">
               <Link
                 href="/"
@@ -53,19 +91,13 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {/* Actions */}
             <div className="flex items-center space-x-3">
-              <span
-                className={`hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono border ${
-                  isSupabaseConfigured
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                    : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-                }`}
-                title={isSupabaseConfigured ? 'Connected to Supabase' : 'Local Storage Mode'}
-              >
-                <Database className="w-3 h-3" />
-                <span>{isSupabaseConfigured ? 'Supabase' : 'Local'}</span>
-              </span>
+              {userEmail && (
+                <span className="hidden md:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+                  <User className="w-3 h-3 text-zinc-500" />
+                  <span className="truncate max-w-[140px]">{userEmail}</span>
+                </span>
+              )}
 
               <button
                 onClick={() => setIsTaskModalOpen(true)}
@@ -74,12 +106,19 @@ export default function Navbar() {
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Add Task</span>
               </button>
+
+              <button
+                onClick={handleSignOut}
+                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 rounded-lg transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Task Creator Modal */}
       <TaskCreatorModal
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}

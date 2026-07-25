@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Clock } from 'lucide-react';
+import { recordFocusSession } from '@/lib/supabase';
 
 interface FocusTimerBlockProps {
-  onSessionComplete?: (minutes: number) => void;
+  onSessionComplete?: () => void;
 }
 
 export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockProps) {
@@ -20,10 +21,15 @@ export default function FocusTimerBlock({ onSessionComplete }: FocusTimerBlockPr
       }, 1000);
     } else if (secondsLeft === 0 && isActive) {
       setIsActive(false);
-      if (onSessionComplete) onSessionComplete(targetMinutes);
+      handleFinish();
     }
     return () => clearInterval(interval);
-  }, [isActive, secondsLeft, targetMinutes, onSessionComplete]);
+  }, [isActive, secondsLeft]);
+
+  const handleFinish = async () => {
+    await recordFocusSession(targetMinutes);
+    if (onSessionComplete) onSessionComplete();
+  };
 
   const toggleTimer = () => {
     setIsActive(!isActive);

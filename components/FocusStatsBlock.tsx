@@ -1,20 +1,22 @@
 'use client';
 
+import { UserSettings } from '@/lib/types';
 import { Flame, Award } from 'lucide-react';
 
 interface FocusStatsBlockProps {
-  todayHours?: number;
-  weekHours?: number;
-  rankText?: string;
-  titleText?: string;
+  settings?: UserSettings | null;
 }
 
-export default function FocusStatsBlock({
-  todayHours = 2.5,
-  weekHours = 14.8,
-  rankText = '#12 Top Scholar',
-  titleText = 'BCS Aspirant',
-}: FocusStatsBlockProps) {
+export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
+  const todaySecs = settings?.focus_seconds_today || 0;
+  const weekSecs = settings?.focus_seconds_week || 0;
+
+  const todayHours = (todaySecs / 3600).toFixed(1);
+  const weekHours = (weekSecs / 3600).toFixed(1);
+
+  const rankText = settings?.current_rank || 'Unranked';
+  const titleText = settings?.current_title || 'Learner';
+
   return (
     <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-full">
       <div className="flex items-center justify-between mb-1">

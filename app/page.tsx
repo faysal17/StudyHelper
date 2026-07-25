@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import FocusTimerBlock from '@/components/FocusTimerBlock';
 import TaskCountersBlock from '@/components/TaskCountersBlock';
 import FocusStatsBlock from '@/components/FocusStatsBlock';
@@ -9,32 +10,62 @@ import NewStudyBlock from '@/components/NewStudyBlock';
 import RevisionBlock from '@/components/RevisionBlock';
 import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
-import { Task } from '@/lib/types';
-import { fetchTasks } from '@/lib/supabase';
+import { Task, UserSettings } from '@/lib/types';
+import { fetchTasks, fetchUserSettings, isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [noteTaskTarget, setNoteTaskTarget] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   useEffect(() => {
-    loadTasks();
+    checkAuthAndLoad();
   }, []);
 
-  const loadTasks = async () => {
+  const checkAuthAndLoad = async () => {
     setLoading(true);
+
+    // Auth gate check
+    if (isSupabaseConfigured && supabase) {
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session) {
+        router.push('/login');
+        return;
+      }
+    } else {
+      // Local check
+      if (typeof window !== 'undefined') {
+        const storedSession = localStorage.getItem('studyhub_user_session');
+        if (!storedSession) {
+          router.push('/login');
+          return;
+        }
+      }
+    }
+
     try {
-      const data = await fetchTasks();
-      setTasks(data);
+      const [taskData, settingsData] = await Promise.all([
+        fetchTasks(),
+        fetchUserSettings(),
+      ]);
+      setTasks(taskData);
+      setUserSettings(settingsData);
     } catch (err) {
-      console.error('Error fetching tasks:', err);
+      console.error('Error loading dashboard data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const reloadSettings = async () => {
+    const updated = await fetchUserSettings();
+    setUserSettings(updated);
   };
 
   return (
@@ -42,16 +73,16 @@ export default function DashboardPage() {
       {/* 4-Block Header Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Block 1: Focus Study Timer */}
-        <FocusTimerBlock />
+        <FocusTimerBlock onSessionComplete={reloadSettings} />
 
         {/* Block 2: Study & Revision Counters */}
         <TaskCountersBlock tasks={tasks} />
 
-        {/* Block 3: Focus Hours & Rank / Title Placeholders */}
-        <FocusStatsBlock />
+        {/* Block 3: Real Focus Hours & Rank/Title */}
+        <FocusStatsBlock settings={userSettings} />
 
-        {/* Block 4: D-Day Countdown */}
-        <DDayBlock />
+        {/* Block 4: User-Specific Online D-Day Counter */}
+        <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
       </div>
 
       {loading ? (
@@ -63,13 +94,11 @@ export default function DashboardPage() {
         <>
           {/* Side-by-Side Fixed-Height Blocks Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-            {/* New Study Block (Fixed Height + Internal Scrollbar) */}
             <NewStudyBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
             />
 
-            {/* Revision Block (Fixed Height + Internal Scrollbar) */}
             <RevisionBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
@@ -98,7 +127,7 @@ export default function DashboardPage() {
         onClose={() => setIsTaskModalOpen(false)}
         onTaskCreated={() => {
           setIsTaskModalOpen(false);
-          loadTasks();
+          checkAuthAndLoad();
         }}
       />
     </div>
