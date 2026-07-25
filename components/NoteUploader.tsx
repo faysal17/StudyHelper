@@ -17,6 +17,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isConvertingHeic, setIsConvertingHeic] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [compressionStats, setCompressionStats] = useState<{
@@ -25,13 +26,43 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+      let file = e.target.files[0];
+      setErrorMsg('');
+      setCompressionStats(null);
+
+      const isHeic =
+        file.name.toLowerCase().endsWith('.heic') ||
+        file.name.toLowerCase().endsWith('.heif') ||
+        file.type === 'image/heic' ||
+        file.type === 'image/heif';
+
+      if (isHeic) {
+        try {
+          setIsConvertingHeic(true);
+          const heic2any = (await import('heic2any')).default;
+          const resultBlob = await heic2any({
+            blob: file,
+            toType: 'image/jpeg',
+            quality: 0.85,
+          });
+
+          const convertedBlob = Array.isArray(resultBlob) ? resultBlob[0] : resultBlob;
+          const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+          file = new File([convertedBlob], newName, { type: 'image/jpeg' });
+        } catch (err: any) {
+          console.error('HEIC conversion failed:', err);
+          setErrorMsg('HEIC conversion failed. Please try a JPEG or PNG file.');
+          setIsConvertingHeic(false);
+          return;
+        } finally {
+          setIsConvertingHeic(false);
+        }
+      }
+
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
-      setCompressionStats(null);
-      setErrorMsg('');
     }
   };
 
@@ -101,11 +132,16 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         <label className="border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950/60 group">
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif,image/heic,image/heif"
             onChange={handleFileChange}
             className="hidden"
           />
-          {previewUrl ? (
+          {isConvertingHeic ? (
+            <div className="text-center space-y-2 py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-zinc-400 mx-auto" />
+              <p className="text-xs text-zinc-300">Converting Apple HEIC image to JPEG...</p>
+            </div>
+          ) : previewUrl ? (
             <div className="text-center space-y-2">
               <img
                 src={previewUrl}
@@ -123,7 +159,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
                 Click to select handwritten note image
               </p>
               <p className="text-[11px] text-zinc-500">
-                JPEG, PNG, or WebP (compressed to &lt;300KB WebP automatically)
+                HEIC, JPEG, PNG, or WebP (auto-compressed to &lt;300KB WebP)
               </p>
             </div>
           )}
@@ -164,7 +200,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         )}
         <button
           onClick={handleUpload}
-          disabled={!selectedFile || isCompressing || isUploading}
+          disabled={!selectedFile || isConvertingHeic || isCompressing || isUploading}
           className="px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-40 flex items-center space-x-2"
         >
           <UploadCloud className="w-3.5 h-3.5" />
