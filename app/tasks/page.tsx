@@ -61,7 +61,9 @@ export default function TasksPage() {
       t.subject?.name.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesSubject =
-      selectedSubject === 'all' || t.subject?.id === selectedSubject;
+      selectedSubject === 'all' ||
+      t.subject?.id === selectedSubject ||
+      t.topic?.subject_id === selectedSubject;
 
     const matchesPriority =
       selectedPriority === 'all' || String(t.priority) === selectedPriority;
@@ -150,6 +152,9 @@ export default function TasksPage() {
             const firstNote = hasNote ? t.notes![0] : null;
             const overlayCount = firstNote?.overlays?.length || 0;
 
+            const subjectName = t.subject?.name || t.topic?.subject?.name || 'Subject';
+            const topicName = t.topic?.name || 'Topic';
+
             return (
               <div
                 key={t.id}
@@ -158,7 +163,7 @@ export default function TasksPage() {
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-[11px] font-medium text-zinc-300 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded truncate max-w-[180px]">
-                      {t.subject?.name || 'Subject'} &bull; {t.topic?.name || 'Topic'}
+                      {subjectName} &bull; {topicName}
                     </span>
                     <span
                       className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border ${

@@ -279,7 +279,12 @@ export async function fetchTasks(): Promise<Task[]> {
       `)
       .order('created_at', { ascending: false });
 
-    if (!error && data) return data;
+    if (!error && data) {
+      return data.map((t: any) => ({
+        ...t,
+        subject: t.topic?.subject || undefined,
+      }));
+    }
   }
 
   const db = getLocalDB();
@@ -298,7 +303,12 @@ export async function fetchTaskById(id: string): Promise<Task | null> {
       .eq('id', id)
       .single();
 
-    if (!error && data) return data;
+    if (!error && data) {
+      return {
+        ...data,
+        subject: data.topic?.subject || undefined,
+      };
+    }
   }
 
   const db = getLocalDB();
@@ -334,7 +344,10 @@ export async function createTask(taskData: {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      subject: data.topic?.subject || undefined,
+    };
   }
 
   const db = getLocalDB();
