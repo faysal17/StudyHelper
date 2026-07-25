@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Overlay } from '@/lib/types';
 import { saveOverlays } from '@/lib/supabase';
-import { Save, Trash2, Layers, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -13,6 +13,7 @@ interface DottedBox {
   y: number;
   width: number;
   height: number;
+  label?: string;
 }
 
 interface ImageOcclusionCreatorProps {
@@ -41,6 +42,8 @@ export default function ImageOcclusionCreator({
     height: number;
   } | null>(null);
 
+  const [activeLabelId, setActiveLabelId] = useState<string | null>(null);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -53,6 +56,7 @@ export default function ImageOcclusionCreator({
           y: o.y_coord,
           width: o.width,
           height: o.height,
+          label: o.label || '',
         }))
       );
     }
@@ -71,10 +75,14 @@ export default function ImageOcclusionCreator({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') {
+      return;
+    }
     const { xPercent, yPercent } = getContainerCoords(e);
     setIsDrawing(true);
     setStartPos({ x: xPercent, y: yPercent });
     setCurrentDrawBox({ x: xPercent, y: yPercent, width: 0, height: 0 });
+    setActiveLabelId(null);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -91,28 +99,37 @@ export default function ImageOcclusionCreator({
 
   const handleMouseUp = () => {
     if (isDrawing && currentDrawBox && currentDrawBox.width > 1 && currentDrawBox.height > 1) {
+      const newId = `box-${Date.now()}-${Math.random()}`;
       setBoxes((prev) => [
         ...prev,
         {
-          id: `box-${Date.now()}-${Math.random()}`,
+          id: newId,
           x: Math.round(currentDrawBox.x * 100) / 100,
           y: Math.round(currentDrawBox.y * 100) / 100,
           width: Math.round(currentDrawBox.width * 100) / 100,
           height: Math.round(currentDrawBox.height * 100) / 100,
+          label: '',
         },
       ]);
+      setActiveLabelId(newId);
     }
     setIsDrawing(false);
     setStartPos(null);
     setCurrentDrawBox(null);
   };
 
+  const handleLabelChange = (id: string, text: string) => {
+    setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, label: text } : b)));
+  };
+
   const handleDeleteBox = (id: string) => {
     setBoxes((prev) => prev.filter((b) => b.id !== id));
+    if (activeLabelId === id) setActiveLabelId(null);
   };
 
   const handleClearAll = () => {
     setBoxes([]);
+    setActiveLabelId(null);
   };
 
   const handleSaveOverlays = async () => {
@@ -125,6 +142,7 @@ export default function ImageOcclusionCreator({
           y_coord: b.y,
           width: b.width,
           height: b.height,
+          label: b.label?.trim() || null,
         }))
       );
       setIsSaving(false);
@@ -156,7 +174,7 @@ export default function ImageOcclusionCreator({
               <span>Image Occlusion Editor</span>
             </h2>
             <p className="text-xs text-zinc-400">
-              Click & drag over text to create 100% opaque occlusion boxes &bull; Overlays: <strong className="text-zinc-200 font-mono">{boxes.length}</strong>
+              Drag over text to draw boxes &bull; Type optional question prompts directly on boxes &bull; Overlays: <strong className="text-zinc-200 font-mono">{boxes.length}</strong>
             </p>
           </div>
         </div>
@@ -206,32 +224,67 @@ export default function ImageOcclusionCreator({
             className="w-full h-auto object-contain pointer-events-none block"
           />
 
-          {boxes.map((box, index) => (
-            <div
-              key={box.id}
-              style={{
-                left: `${box.x}%`,
-                top: `${box.y}%`,
-                width: `${box.width}%`,
-                height: `${box.height}%`,
-              }}
-              className="absolute bg-zinc-950 border-2 border-zinc-500 rounded shadow-md flex items-center justify-between px-1 overflow-hidden group hover:border-red-400 transition-colors z-10"
-            >
-              <span className="text-[9px] font-mono text-zinc-300 font-bold opacity-90 pointer-events-none">
-                #{index + 1}
-              </span>
-              <button
+          {boxes.map((box, index) => {
+            const isEditingThisLabel = activeLabelId === box.id;
+
+            return (
+              <div
+                key={box.id}
+                style={{
+                  left: `${box.x}%`,
+                  top: `${box.y}%`,
+                  width: `${box.width}%`,
+                  height: `${box.height}%`,
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDeleteBox(box.id);
+                  setActiveLabelId(box.id);
                 }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-900 rounded"
-                title="Delete box"
+                className="absolute bg-zinc-950 border-2 border-zinc-500 rounded shadow-md flex flex-col justify-between p-1 overflow-hidden group hover:border-zinc-300 transition-colors z-10 cursor-pointer"
               >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center justify-between w-full shrink-0">
+                  <span className="text-[9px] font-mono text-zinc-400 font-bold">
+                    #{index + 1}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteBox(box.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-900 rounded"
+                    title="Delete box"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Question Prompt Text Input / Label Display */}
+                <div className="w-full my-auto flex items-center justify-center">
+                  {isEditingThisLabel ? (
+                    <input
+                      type="text"
+                      autoFocus
+                      value={box.label || ''}
+                      onChange={(e) => handleLabelChange(box.id, e.target.value)}
+                      onBlur={() => setActiveLabelId(null)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Type question prompt..."
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 text-center font-medium"
+                    />
+                  ) : box.label ? (
+                    <span className="text-[10px] font-medium text-zinc-200 truncate px-1 text-center block w-full leading-tight">
+                      {box.label}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-zinc-600 italic group-hover:text-zinc-400 transition-colors flex items-center gap-0.5">
+                      <HelpCircle className="w-2.5 h-2.5" />
+                      <span>Click to add question</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
 
           {isDrawing && currentDrawBox && (
             <div

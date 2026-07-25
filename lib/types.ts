@@ -24,6 +24,7 @@ export interface Overlay {
   y_coord: number;
   width: number;
   height: number;
+  label?: string | null;
   is_currently_failing: boolean;
   user_id: string;
   created_at?: string;

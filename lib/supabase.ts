@@ -437,7 +437,7 @@ export async function createNote(taskId: string, imageUrl: string): Promise<Note
 
 export async function saveOverlays(
   noteId: string,
-  overlays: { x_coord: number; y_coord: number; width: number; height: number }[]
+  overlays: { x_coord: number; y_coord: number; width: number; height: number; label?: string | null }[]
 ): Promise<Overlay[]> {
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
@@ -451,6 +451,7 @@ export async function saveOverlays(
       y_coord: ov.y_coord,
       width: ov.width,
       height: ov.height,
+      label: ov.label || null,
       is_currently_failing: false,
       user_id: userId,
     }));
@@ -470,6 +471,7 @@ export async function saveOverlays(
     y_coord: ov.y_coord,
     width: ov.width,
     height: ov.height,
+    label: ov.label || null,
     is_currently_failing: false,
     user_id: DEFAULT_USER_ID,
   }));

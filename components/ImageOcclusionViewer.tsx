@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Task, Note, Overlay } from '@/lib/types';
 import { updateOverlayFailingStatus, updateTask, logRevisionScore } from '@/lib/supabase';
 import { evaluateSpacedRepetition } from '@/lib/spacedRepetition';
-import { Check, X, Eye, EyeOff, Trophy, ArrowLeft, Award, Lock } from 'lucide-react';
+import { Check, X, Eye, EyeOff, Trophy, ArrowLeft, Award, Lock, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 
@@ -163,6 +163,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
           {overlays.map((overlay, idx) => {
             const isRevealed = Boolean(revealedIds[overlay.id]);
             const isFailing = overlay.is_currently_failing;
+            const hasLabel = Boolean(overlay.label && overlay.label.trim());
 
             return (
               <div
@@ -173,7 +174,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                   width: `${overlay.width}%`,
                   height: `${overlay.height}%`,
                 }}
-                className={`absolute transition-all rounded z-10 ${
+                className={`absolute transition-all rounded z-10 flex flex-col justify-between p-1 select-none ${
                   isRevealed
                     ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow-lg'
                     : isFailing
@@ -183,9 +184,24 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                 onClick={() => toggleReveal(overlay.id)}
               >
                 {!isRevealed && (
-                  <div className="absolute top-0.5 left-1 text-[9px] font-mono text-zinc-400 font-bold opacity-80">
-                    #{idx + 1}
-                  </div>
+                  <>
+                    <div className="flex items-center justify-between w-full shrink-0">
+                      <span className="text-[9px] font-mono text-zinc-400 font-bold opacity-80">
+                        #{idx + 1}
+                      </span>
+                      {hasLabel && <HelpCircle className="w-2.5 h-2.5 text-zinc-400 shrink-0" />}
+                    </div>
+
+                    <div className="w-full my-auto text-center px-1">
+                      {hasLabel ? (
+                        <span className="text-[10px] font-medium text-zinc-100 line-clamp-2 leading-tight block">
+                          {overlay.label}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] text-zinc-500 font-mono">Tap to reveal</span>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 {isRevealed && (

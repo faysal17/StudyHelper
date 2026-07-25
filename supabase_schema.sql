@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.notes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Overlays Table
+-- Overlays Table (Includes custom Question Label)
 CREATE TABLE IF NOT EXISTS public.overlays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     note_id UUID NOT NULL REFERENCES public.notes(id) ON DELETE CASCADE,
@@ -56,10 +56,14 @@ CREATE TABLE IF NOT EXISTS public.overlays (
     y_coord FLOAT NOT NULL,
     width FLOAT NOT NULL,
     height FLOAT NOT NULL,
+    label TEXT DEFAULT NULL,
     is_currently_failing BOOLEAN DEFAULT FALSE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure label column exists for existing deployments
+ALTER TABLE public.overlays ADD COLUMN IF NOT EXISTS label TEXT DEFAULT NULL;
 
 -- Revision Logs Table
 CREATE TABLE IF NOT EXISTS public.revision_logs (
