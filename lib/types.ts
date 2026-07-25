@@ -65,8 +65,8 @@ export interface RevisionLog {
 
 export interface UserSettings {
   user_id: string;
-  target_date: string;
-  target_title: string;
+  target_date: string | null;
+  target_title: string | null;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

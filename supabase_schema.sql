@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
 -- User Settings Table (Stores User-Specific D-Day Target & Real Focus Stats)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    target_date DATE DEFAULT '2026-12-31',
-    target_title TEXT DEFAULT 'Target Goal Date',
+    target_date DATE DEFAULT NULL,
+    target_title TEXT DEFAULT NULL,
     focus_seconds_today INTEGER DEFAULT 0,
     focus_seconds_week INTEGER DEFAULT 0,
     current_rank TEXT DEFAULT 'Unranked',

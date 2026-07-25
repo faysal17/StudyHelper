@@ -15,7 +15,7 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
 
-const STORAGE_KEY = 'learning_hub_db_v4';
+const STORAGE_KEY = 'learning_hub_db_v5';
 const DEFAULT_USER_ID = 'user-owner';
 
 interface LocalDB {
@@ -37,8 +37,8 @@ const CLEAN_EMPTY_DB: LocalDB = {
   revisionLogs: [],
   settings: {
     user_id: DEFAULT_USER_ID,
-    target_date: '2026-12-31',
-    target_title: 'Target Goal Date',
+    target_date: null,
+    target_title: null,
     focus_seconds_today: 0,
     focus_seconds_week: 0,
     current_rank: 'Unranked',
@@ -99,11 +99,10 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
       if (!error && data) return data;
 
-      // If row doesn't exist yet, insert default for user
       const defaultSettings: UserSettings = {
         user_id: userId,
-        target_date: '2026-12-31',
-        target_title: 'Target Goal Date',
+        target_date: null,
+        target_title: null,
         focus_seconds_today: 0,
         focus_seconds_week: 0,
         current_rank: 'Unranked',
