@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { UserSettings } from '@/lib/types';
 import { calculateLevelAndProgress } from '@/lib/gamification';
-import { Shield, Zap, Flame, Award } from 'lucide-react';
+import { Shield, Zap, Flame, Award, ChevronRight } from 'lucide-react';
 
 interface FocusStatsBlockProps {
   settings: UserSettings | null;
@@ -16,17 +17,25 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
     calculateLevelAndProgress(totalXP);
 
   return (
-    <div className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[190px] min-h-[190px] max-h-[190px] overflow-hidden w-full relative group">
+    <Link
+      href="/rank"
+      className="glass-panel rounded-xl p-4 border border-zinc-800 flex flex-col justify-between h-[190px] min-h-[190px] max-h-[190px] overflow-hidden w-full relative group hover:border-zinc-700 transition-all cursor-pointer block"
+    >
       {/* Top Header: Rank & Streak */}
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center space-x-1.5">
           <Shield className={`w-4 h-4 ${rankInfo.badgeText}`} />
-          <span className="text-xs font-semibold text-zinc-200">Hunter Rank</span>
+          <span className="text-xs font-semibold text-zinc-200 group-hover:text-white transition-colors">
+            Hunter Rank
+          </span>
         </div>
 
-        <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-amber-400 font-mono text-[10px] font-bold">
-          <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
-          <span>{streakDays}d Streak</span>
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-amber-400 font-mono text-[10px] font-bold">
+            <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
+            <span>{streakDays}d Streak</span>
+          </div>
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
         </div>
       </div>
 
@@ -69,6 +78,6 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
           />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -20,15 +20,15 @@ export function getRankAndTitle(level: number): RankInfo {
   } else if (level <= 15) {
     return {
       rank: 'D-Rank',
-      title: 'Forgetful Slacker',
-      badgeBg: 'bg-amber-500/10',
-      badgeText: 'text-amber-400',
-      badgeBorder: 'border-amber-500/20',
+      title: 'Delusional Pretender',
+      badgeBg: 'bg-orange-500/10',
+      badgeText: 'text-orange-400',
+      badgeBorder: 'border-orange-500/20',
     };
   } else if (level <= 30) {
     return {
       rank: 'C-Rank',
-      title: 'Part-Time Reader',
+      title: 'Barely Functioning Amateur',
       badgeBg: 'bg-yellow-500/10',
       badgeText: 'text-yellow-400',
       badgeBorder: 'border-yellow-500/20',
@@ -36,7 +36,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else if (level <= 50) {
     return {
       rank: 'B-Rank',
-      title: 'Consistent Scholar',
+      title: 'Dedicated Practitioner',
       badgeBg: 'bg-blue-500/10',
       badgeText: 'text-blue-400',
       badgeBorder: 'border-blue-500/20',
@@ -44,7 +44,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else if (level <= 75) {
     return {
       rank: 'A-Rank',
-      title: 'Master Strategist',
+      title: 'Apex Strategist',
       badgeBg: 'bg-purple-500/10',
       badgeText: 'text-purple-400',
       badgeBorder: 'border-purple-500/20',
@@ -52,7 +52,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else {
     return {
       rank: 'S-Rank',
-      title: 'Sovereign Academic',
+      title: 'Sovereign Mind',
       badgeBg: 'bg-amber-500/20',
       badgeText: 'text-amber-300 font-bold',
       badgeBorder: 'border-amber-500/40 shadow-sm',

@@ -1,0 +1,286 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { UserSettings } from '@/lib/types';
+import { fetchUserSettings } from '@/lib/supabase';
+import { calculateLevelAndProgress, getRankAndTitle } from '@/lib/gamification';
+import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
+
+export default function HunterRankPage() {
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchUserSettings();
+      setSettings(data);
+    } catch (err) {
+      console.error('Error loading settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalXP = settings?.xp || 0;
+  const streakDays = settings?.streak_days || 0;
+  const focusSecondsToday = settings?.focus_seconds_today || 0;
+
+  const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
+    calculateLevelAndProgress(totalXP);
+
+  const rankRoadmap = [
+    {
+      rank: 'E-Rank',
+      title: 'Procrastinating Worm',
+      levelRange: 'Lvl 1 – 5',
+      minLevel: 1,
+      maxLevel: 5,
+      color: 'text-red-400',
+      bgStyle: 'bg-red-500/10',
+      borderStyle: 'border-red-500/30',
+      desc: 'Lowest rank for casual slackers. Requires consistency to escape the mud.',
+    },
+    {
+      rank: 'D-Rank',
+      title: 'Delusional Pretender',
+      levelRange: 'Lvl 6 – 15',
+      minLevel: 6,
+      maxLevel: 15,
+      color: 'text-orange-400',
+      bgStyle: 'bg-orange-500/10',
+      borderStyle: 'border-orange-500/30',
+      desc: 'Thinking you are studying when you are just staring at screens.',
+    },
+    {
+      rank: 'C-Rank',
+      title: 'Barely Functioning Amateur',
+      levelRange: 'Lvl 16 – 30',
+      minLevel: 16,
+      maxLevel: 30,
+      color: 'text-yellow-400',
+      bgStyle: 'bg-yellow-500/10',
+      borderStyle: 'border-yellow-500/30',
+      desc: 'Half-hearted attempt at study. Needs serious discipline to rank up.',
+    },
+    {
+      rank: 'B-Rank',
+      title: 'Dedicated Practitioner',
+      levelRange: 'Lvl 31 – 50',
+      minLevel: 31,
+      maxLevel: 50,
+      color: 'text-blue-400',
+      bgStyle: 'bg-blue-500/10',
+      borderStyle: 'border-blue-500/30',
+      desc: 'Respectable focus and regular active recall habits forming.',
+    },
+    {
+      rank: 'A-Rank',
+      title: 'Apex Strategist',
+      levelRange: 'Lvl 51 – 75',
+      minLevel: 51,
+      maxLevel: 75,
+      color: 'text-purple-400',
+      bgStyle: 'bg-purple-500/10',
+      borderStyle: 'border-purple-500/30',
+      desc: 'Dominating your syllabus with high recall precision and unwavering focus.',
+    },
+    {
+      rank: 'S-Rank',
+      title: 'Sovereign Mind',
+      levelRange: 'Lvl 76+',
+      minLevel: 76,
+      maxLevel: 999,
+      color: 'text-amber-300',
+      bgStyle: 'bg-amber-500/20',
+      borderStyle: 'border-amber-500/40 shadow-lg shadow-amber-500/10',
+      desc: 'The ultimate academic aura. Total mastery over memory and study discipline.',
+    },
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      {/* Top Header & Navigation */}
+      <div className="flex items-center justify-between">
+        <Link
+          href="/"
+          className="px-3.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-all text-xs font-medium flex items-center space-x-1.5"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Dashboard</span>
+        </Link>
+        <span className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
+          StudyHub Hunter Profile
+        </span>
+      </div>
+
+      {/* Hunter Profile Card */}
+      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-zinc-800 space-y-6 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="flex items-center space-x-4">
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border ${rankInfo.badgeBg} ${rankInfo.badgeBorder} flex items-center justify-center shadow-2xl`}>
+              <Shield className={`w-8 h-8 sm:w-10 sm:h-10 ${rankInfo.badgeText}`} />
+            </div>
+
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className={`text-xs font-mono font-extrabold uppercase px-2.5 py-0.5 rounded-md border ${rankInfo.badgeBg} ${rankInfo.badgeText} ${rankInfo.badgeBorder}`}>
+                  {rankInfo.rank}
+                </span>
+                <span className="text-xs font-mono font-bold text-zinc-400">
+                  Level {level}
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-100 mt-1 flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-400 shrink-0" />
+                <span>{rankInfo.title}</span>
+              </h1>
+              <p className="text-xs text-zinc-400 mt-0.5">Accumulated {totalXP.toLocaleString()} Total Experience Points</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3 self-stretch sm:self-auto justify-between sm:justify-end">
+            <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-center min-w-[90px]">
+              <Flame className="w-4 h-4 text-amber-400 mx-auto mb-0.5 fill-amber-400" />
+              <span className="text-sm font-bold font-mono text-zinc-100">{streakDays}d</span>
+              <p className="text-[10px] text-zinc-500 font-mono">Streak</p>
+            </div>
+
+            <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-center min-w-[90px]">
+              <Clock className="w-4 h-4 text-blue-400 mx-auto mb-0.5" />
+              <span className="text-sm font-bold font-mono text-zinc-100">{Math.floor(focusSecondsToday / 60)}m</span>
+              <p className="text-[10px] text-zinc-500 font-mono">Focus Today</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Level Progress Bar */}
+        <div className="space-y-2 pt-4 border-t border-zinc-800/80">
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-zinc-400 flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>XP to Level {level + 1}</span>
+            </span>
+            <span className="text-zinc-200 font-semibold">
+              {xpInCurrentLevel} / {xpRequiredForNextLevel} XP ({progressPercent}%)
+            </span>
+          </div>
+
+          <div className="w-full bg-zinc-950 rounded-full h-3 overflow-hidden border border-zinc-800">
+            <div
+              className="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all duration-500"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Rank Roadmap Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-100">Hunter Rank Roadmap</h2>
+            <p className="text-xs text-zinc-400">Progression ladder from E-Rank slacker to S-Rank Sovereign</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {rankRoadmap.map((item) => {
+            const isUnlocked = level >= item.minLevel;
+            const isCurrent = level >= item.minLevel && level <= item.maxLevel;
+
+            return (
+              <div
+                key={item.rank}
+                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                  isCurrent
+                    ? `${item.bgStyle} ${item.borderStyle} ring-1 ring-amber-500/20 shadow-md`
+                    : isUnlocked
+                    ? 'bg-zinc-950/60 border-zinc-800'
+                    : 'bg-zinc-950/30 border-zinc-800/60 opacity-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`text-xs font-mono font-bold uppercase px-2 py-0.5 rounded border ${item.bgStyle} ${item.color} ${item.borderStyle}`}
+                    >
+                      {item.rank}
+                    </span>
+                    <span className="text-xs font-mono text-zinc-400">{item.levelRange}</span>
+                  </div>
+
+                  {isCurrent ? (
+                    <span className="text-[10px] font-mono uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Current
+                    </span>
+                  ) : isUnlocked ? (
+                    <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Unlocked
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono text-zinc-500 flex items-center gap-1">
+                      <Lock className="w-3 h-3" /> Locked
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className={`text-sm font-bold ${isUnlocked ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* How to Earn XP Section */}
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+        <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>How to Earn XP & Level Up</span>
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1">
+            <div className="flex items-center space-x-1.5 text-blue-400 font-semibold">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Focus Timer</span>
+            </div>
+            <p className="text-zinc-400 leading-normal">
+              <strong>+15 XP</strong> for every 25m Focus Session (+5 XP per extra 10m).
+            </p>
+          </div>
+
+          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1">
+            <div className="flex items-center space-x-1.5 text-emerald-400 font-semibold">
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Active Recall</span>
+            </div>
+            <p className="text-zinc-400 leading-normal">
+              <strong>+25 XP</strong> for 100% test recall score (+15 XP for 80%+).
+            </p>
+          </div>
+
+          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1">
+            <div className="flex items-center space-x-1.5 text-purple-400 font-semibold">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Syllabus Master</span>
+            </div>
+            <p className="text-zinc-400 leading-normal">
+              <strong>+30 XP</strong> for completing a subtopic in the Syllabus Hub.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
