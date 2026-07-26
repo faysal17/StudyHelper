@@ -59,7 +59,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         prev.map((o) => (o.id === overlayId ? { ...o, is_currently_failing: isCurrentlyFailing } : o))
       );
     } catch (err) {
-      console.error('Error updating overlay failing status:', err);
+      console.error('Error updating overlay status:', err);
     }
   };
 
@@ -191,7 +191,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         <div className="flex items-center space-x-3">
           <div className="bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg text-xs font-mono flex items-center space-x-3">
             <span className="text-zinc-400">Total: <strong className="text-zinc-200">{overlays.length}</strong></span>
-            <span className="text-zinc-400">Failed: <strong className="text-red-400">{failedCount}</strong></span>
+            <span className="text-zinc-400">Incorrect: <strong className="text-red-400">{failedCount}</strong></span>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -246,7 +246,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                   width: `${overlay.width}%`,
                   height: `${overlay.height}%`,
                 }}
-                className={`absolute transition-all rounded z-10 flex flex-col justify-between p-1 select-none cursor-pointer ${
+                className={`absolute transition-all rounded z-10 flex flex-col justify-between p-1.5 select-none cursor-pointer ${
                   isRevealed
                     ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow-lg'
                     : isFailing
@@ -261,30 +261,37 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                     {hasLabel ? overlay.label : `#${idx + 1}`}
                   </span>
                   <div className="p-0.5 rounded hover:bg-zinc-800 transition-colors">
-                    {isRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3 text-zinc-400" />}
+                    {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5 text-zinc-400" />}
                   </div>
                 </div>
 
-                {/* Grading Action Buttons when revealed */}
+                {/* Bigger & Prominent Grading Action Buttons when revealed */}
                 {isRevealed && (
-                  <div className="flex items-center justify-center space-x-1 pt-1">
+                  <div className="flex items-center justify-center space-x-1.5 pt-1">
                     <button
                       onClick={(e) => handleGradeOverlay(e, overlay.id, true)}
-                      className={`p-1 rounded transition-colors ${
-                        !isFailing ? 'bg-emerald-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-emerald-400'
+                      className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
+                        !isFailing
+                          ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20'
+                          : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-emerald-400 hover:border-emerald-500/40'
                       }`}
-                      title="Mark correct"
+                      title="Mark Correct"
                     >
-                      <Check className="w-3 h-3" />
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Correct</span>
                     </button>
+
                     <button
                       onClick={(e) => handleGradeOverlay(e, overlay.id, false)}
-                      className={`p-1 rounded transition-colors ${
-                        isFailing ? 'bg-red-500 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-red-400'
+                      className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
+                        isFailing
+                          ? 'bg-red-500 text-white shadow-red-500/20'
+                          : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-red-400 hover:border-red-500/40'
                       }`}
-                      title="Mark failing"
+                      title="Mark Incorrect"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5 stroke-[3]" />
+                      <span>Incorrect</span>
                     </button>
                   </div>
                 )}
@@ -313,7 +320,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
               <span className="text-sm font-bold text-zinc-200">{summaryResult.totalOverlays}</span>
             </div>
             <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
-              <span className="text-[10px] text-zinc-500 uppercase block">Failed Items</span>
+              <span className="text-[10px] text-zinc-500 uppercase block">Incorrect Items</span>
               <span className="text-sm font-bold text-red-400">{summaryResult.failedOverlays}</span>
             </div>
             <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
