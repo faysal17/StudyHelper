@@ -50,8 +50,8 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between relative">
-          {/* Left Brand Identifier: StudyHub */}
+        <div className="w-full px-4 sm:px-6 h-14 flex items-center justify-between relative">
+          {/* Left-most: StudyHub Brand */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2.5 group">
               <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
@@ -63,11 +63,12 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Pixel-Perfect Centered Navigation Tabs */}
+          {/* Centered Navigation Tabs (Order: Dashboard -> Tasks -> Syllabus -> Rank Hub) */}
           <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-1">
+            {/* 1. Dashboard */}
             <Link
               href="/"
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                 pathname === '/'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -77,21 +78,10 @@ export default function Navbar() {
               <span>Dashboard</span>
             </Link>
 
-            <Link
-              href="/rank"
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
-                pathname === '/rank'
-                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>Rank Hub</span>
-            </Link>
-
+            {/* 2. Tasks */}
             <Link
               href="/tasks"
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                 pathname === '/tasks'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -101,9 +91,10 @@ export default function Navbar() {
               <span>Tasks</span>
             </Link>
 
+            {/* 3. Syllabus */}
             <Link
               href="/syllabus"
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
                 pathname === '/syllabus' || pathname === '/topics'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
@@ -112,13 +103,26 @@ export default function Navbar() {
               <ListTree className="w-3.5 h-3.5" />
               <span>Syllabus</span>
             </Link>
+
+            {/* 4. Rank Hub */}
+            <Link
+              href="/rank"
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/rank'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <span>Rank Hub</span>
+            </Link>
           </nav>
 
-          {/* Right Action Block */}
-          <div className="flex items-center space-x-2">
+          {/* Right-most Action Controls */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <button
               onClick={() => setIsTaskModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span className="hidden sm:inline">Add Task</span>
