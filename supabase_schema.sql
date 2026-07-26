@@ -200,8 +200,9 @@ VALUES ('scanned-notes', 'scanned-notes', true)
 ON CONFLICT (id) DO NOTHING;
 
 DROP POLICY IF EXISTS "Allow public select on scanned-notes" ON storage.objects;
-CREATE POLICY "Allow public select on scanned-notes" ON storage.objects
-    FOR SELECT USING (bucket_id = 'scanned-notes');
+DROP POLICY IF EXISTS "Allow authenticated read own scanned-notes" ON storage.objects;
+CREATE POLICY "Allow authenticated read own scanned-notes" ON storage.objects
+    FOR SELECT USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
 
 DROP POLICY IF EXISTS "Allow authenticated insert on scanned-notes" ON storage.objects;
 CREATE POLICY "Allow authenticated insert on scanned-notes" ON storage.objects
