@@ -189,14 +189,14 @@ export default function HunterRankPage() {
         </div>
       </div>
 
-      {/* Global Leaderboard Status Card: Streak, Focus Today & Provisional Rank */}
+      {/* Live Hunter Metrics Card: Streak, Focus Today & Provisional Rank */}
       <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-semibold text-zinc-100">Global Leaderboard Status</h2>
+            <h2 className="text-sm font-semibold text-zinc-100">Live Hunter Metrics</h2>
           </div>
-          <span className="text-[10px] font-mono text-zinc-500 uppercase">Live Hunter Metrics</span>
+          <span className="text-[10px] font-mono text-zinc-500 uppercase">Real-Time Overview</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
