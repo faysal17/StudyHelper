@@ -50,7 +50,8 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
     }));
   };
 
-  const handleGradeOverlay = async (overlayId: string, isCorrect: boolean) => {
+  const handleGradeOverlay = async (e: React.MouseEvent, overlayId: string, isCorrect: boolean) => {
+    e.stopPropagation(); // Don't re-toggle reveal state when grading
     const isCurrentlyFailing = !isCorrect;
     try {
       await updateOverlayFailingStatus(overlayId, isCurrentlyFailing);
@@ -238,38 +239,37 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
             return (
               <div
                 key={overlay.id}
+                onClick={() => toggleReveal(overlay.id)}
                 style={{
                   left: `${overlay.x_coord}%`,
                   top: `${overlay.y_coord}%`,
                   width: `${overlay.width}%`,
                   height: `${overlay.height}%`,
                 }}
-                className={`absolute transition-all rounded z-10 flex flex-col justify-between p-1 select-none ${
+                className={`absolute transition-all rounded z-10 flex flex-col justify-between p-1 select-none cursor-pointer ${
                   isRevealed
                     ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow-lg'
                     : isFailing
-                    ? 'bg-red-950/90 border-2 border-red-500 text-red-200'
-                    : 'bg-zinc-900 border border-zinc-700 text-zinc-200 shadow-md'
+                    ? 'bg-red-950/90 border-2 border-red-500 text-red-200 hover:bg-red-900/90'
+                    : 'bg-zinc-900 border border-zinc-700 text-zinc-200 shadow-md hover:bg-zinc-800'
                 }`}
+                title={isRevealed ? 'Click to hide answer' : 'Click anywhere on box to reveal answer!'}
               >
                 {/* Header label & eye toggle */}
                 <div className="flex items-center justify-between text-[10px] font-mono leading-none">
                   <span className="font-bold truncate bg-zinc-950/80 px-1 py-0.5 rounded text-zinc-300">
                     {hasLabel ? overlay.label : `#${idx + 1}`}
                   </span>
-                  <button
-                    onClick={() => toggleReveal(overlay.id)}
-                    className="p-0.5 rounded hover:bg-zinc-800 transition-colors"
-                  >
+                  <div className="p-0.5 rounded hover:bg-zinc-800 transition-colors">
                     {isRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3 text-zinc-400" />}
-                  </button>
+                  </div>
                 </div>
 
                 {/* Grading Action Buttons when revealed */}
                 {isRevealed && (
                   <div className="flex items-center justify-center space-x-1 pt-1">
                     <button
-                      onClick={() => handleGradeOverlay(overlay.id, true)}
+                      onClick={(e) => handleGradeOverlay(e, overlay.id, true)}
                       className={`p-1 rounded transition-colors ${
                         !isFailing ? 'bg-emerald-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-emerald-400'
                       }`}
@@ -278,7 +278,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                       <Check className="w-3 h-3" />
                     </button>
                     <button
-                      onClick={() => handleGradeOverlay(overlay.id, false)}
+                      onClick={(e) => handleGradeOverlay(e, overlay.id, false)}
                       className={`p-1 rounded transition-colors ${
                         isFailing ? 'bg-red-500 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-red-400'
                       }`}
