@@ -50,7 +50,7 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between relative">
           {/* Left Brand Identifier: StudyHub */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2.5 group">
@@ -64,7 +64,7 @@ export default function Navbar() {
           </div>
 
           {/* Pixel-Perfect Centered Navigation Tabs */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-1">
             <Link
               href="/"
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
@@ -73,7 +73,7 @@ export default function Navbar() {
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5" />
               <span>Dashboard</span>
             </Link>
 
@@ -85,7 +85,7 @@ export default function Navbar() {
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
             >
-              <Calendar className="w-3.5 h-3.5" />
+              <Calendar className="w-3.5 h-3.5 text-amber-400" />
               <span>Rank Hub</span>
             </Link>
 
@@ -114,7 +114,7 @@ export default function Navbar() {
             </Link>
           </nav>
 
-          {/* Right Action Block (1. Add Task -> 2. Username -> 3. Tools -> 4. Settings -> 5. Logout) */}
+          {/* Right Action Block */}
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsTaskModalOpen(true)}
