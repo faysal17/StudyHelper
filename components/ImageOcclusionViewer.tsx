@@ -89,7 +89,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
 
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
-      const xpGained = score >= 100 ? 25 : score >= 80 ? 15 : 5;
+      const xpGained = score >= 100 ? 25 : score >= 80 ? 15 : score >= 50 ? 5 : 0;
 
       await logRevisionScore(task.id, score);
       const updatedSettings = await fetchUserSettings();
@@ -137,7 +137,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
 
       // Trigger XP Gain Modal FIRST
       setEarnedXP(xpGained);
-      setXpReason(`Active Recall Test Score: ${score}%`);
+      setXpReason(xpGained === 0 ? `Active Recall Score: ${score}% (No XP awarded for score below 50%)` : `Active Recall Test Score: ${score}%`);
       setXpMultiplier(newMomentum.xpMultiplier);
       setNewTotalXP(updatedSettings.xp || 0);
       setXpModalOpen(true);

@@ -896,9 +896,11 @@ export async function updateOverlayFailingStatus(
 }
 
 export async function logRevisionScore(taskId: string, score: number): Promise<void> {
-  // Grindy Active Recall XP: 25 XP for 100%, 15 XP for 80%+, 5 XP below 80%
-  const earnedXP = score >= 100 ? 25 : score >= 80 ? 15 : 5;
-  await awardXPAndSync(earnedXP);
+  // Grindy Active Recall XP: 25 XP for 100%, 15 XP for 80%+, 5 XP for 50-79%, 0 XP below 50%
+  const earnedXP = score >= 100 ? 25 : score >= 80 ? 15 : score >= 50 ? 5 : 0;
+  if (earnedXP > 0) {
+    await awardXPAndSync(earnedXP);
+  }
 
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
