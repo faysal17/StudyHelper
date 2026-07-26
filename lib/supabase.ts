@@ -332,8 +332,10 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
 export async function recordRatedFocusSession(minutes: number, stars: number): Promise<UserSettings> {
   const addedSeconds = Math.round(minutes * 60);
 
-  // Base XP: 15 XP for 25m (+ 5 XP per extra 10m)
-  const baseXP = 15 + Math.max(0, Math.floor((minutes - 25) / 10) * 5);
+// Base XP: 15 XP for 25m (+ 5 XP per extra 10m). Scaled proportionally for < 25m.
+  const baseXP = minutes >= 25
+    ? 15 + Math.floor((minutes - 25) / 10) * 5
+    : Math.max(3, Math.round(15 * (minutes / 25)));
 
   // Star Rating Multipliers: 5 = 2.0x, 4 = 1.0x, 3 = 0.7x, 2 = 0.3x, 1 = 0.0x
   let multiplier = 1.0;
@@ -614,8 +616,13 @@ export async function createSubtopic(name: string, topicId: string): Promise<Sub
 }
 
 export async function updateSubtopicStatus(id: string, status: SubtopicStatus): Promise<void> {
-  if (status === 'completed') {
+  const subtopics = await fetchSubtopics();
+  const target = subtopics.find((st) => st.id === id);
+
+  if (target && target.status !== 'completed' && status === 'completed') {
     await awardXPAndSync(30); // Subtopic Completed: +30 XP
+  } else if (target && target.status === 'completed' && status !== 'completed') {
+    await awardXPAndSync(-30); // Unchecking Completed Subtopic: -30 XP (prevents XP farming)
   }
 
   if (isSupabaseConfigured && supabase) {
