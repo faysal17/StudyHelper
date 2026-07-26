@@ -85,6 +85,10 @@ export interface UserSettings {
   target_title: string | null;
   day_end_time?: string;
   quotes?: string[];
+  xp?: number;
+  level?: number;
+  streak_days?: number;
+  last_study_date?: string | null;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

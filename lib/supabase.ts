@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus } from './types';
+import { calculateLevelAndProgress, updateStreakOnActivity } from './gamification';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -51,10 +52,14 @@ const CLEAN_EMPTY_DB: LocalDB = {
     target_title: null,
     day_end_time: '00:00',
     quotes: DEFAULT_QUOTES,
+    xp: 0,
+    level: 1,
+    streak_days: 0,
+    last_study_date: null,
     focus_seconds_today: 0,
     focus_seconds_week: 0,
-    current_rank: 'Unranked',
-    current_title: 'Learner',
+    current_rank: 'E-Rank',
+    current_title: 'Procrastinating Worm',
   },
 };
 
@@ -73,6 +78,9 @@ function getLocalDB(): LocalDB {
     if (!parsed.settings.quotes || parsed.settings.quotes.length === 0) {
       parsed.settings.quotes = DEFAULT_QUOTES;
     }
+    if (parsed.settings.xp === undefined) parsed.settings.xp = 0;
+    if (parsed.settings.level === undefined) parsed.settings.level = 1;
+    if (parsed.settings.streak_days === undefined) parsed.settings.streak_days = 0;
     return parsed;
   } catch {
     return CLEAN_EMPTY_DB;
@@ -105,7 +113,7 @@ function populateTaskRelations(task: Task, db: LocalDB): Task {
   };
 }
 
-// USER SETTINGS & ONLINE SYNC
+// USER SETTINGS & GAMIFICATION SYNC
 
 export async function fetchUserSettings(): Promise<UserSettings> {
   if (isSupabaseConfigured && supabase) {
@@ -119,9 +127,15 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         .single();
 
       if (!error && data) {
+        const stats = calculateLevelAndProgress(data.xp || 0);
         return {
           day_end_time: '00:00',
           quotes: DEFAULT_QUOTES,
+          xp: 0,
+          level: stats.level,
+          streak_days: 0,
+          current_rank: stats.rankInfo.rank,
+          current_title: stats.rankInfo.title,
           ...data,
         };
       }
@@ -132,10 +146,14 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         target_title: null,
         day_end_time: '00:00',
         quotes: DEFAULT_QUOTES,
+        xp: 0,
+        level: 1,
+        streak_days: 0,
+        last_study_date: null,
         focus_seconds_today: 0,
         focus_seconds_week: 0,
-        current_rank: 'Unranked',
-        current_title: 'Learner',
+        current_rank: 'E-Rank',
+        current_title: 'Procrastinating Worm',
       };
 
       await supabase.from('user_settings').upsert(defaultSettings);
@@ -143,7 +161,49 @@ export async function fetchUserSettings(): Promise<UserSettings> {
     }
   }
 
-  return getLocalDB().settings;
+  const local = getLocalDB().settings;
+  const stats = calculateLevelAndProgress(local.xp || 0);
+  return {
+    ...local,
+    level: stats.level,
+    current_rank: stats.rankInfo.rank,
+    current_title: stats.rankInfo.title,
+  };
+}
+
+export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
+  const current = await fetchUserSettings();
+  const newXP = (current.xp || 0) + addedXP;
+  const { level, rankInfo } = calculateLevelAndProgress(newXP);
+  const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
+    current.streak_days || 0,
+    current.last_study_date || null,
+    current.day_end_time || '00:00'
+  );
+
+  const updated: Partial<UserSettings> = {
+    user_id: current.user_id,
+    xp: newXP,
+    level,
+    current_rank: rankInfo.rank,
+    current_title: rankInfo.title,
+    streak_days: updatedStreak,
+    last_study_date: updatedLastDate,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
+      return { ...current, ...updated };
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings = { ...db.settings, ...updated };
+  saveLocalDB(db);
+  return db.settings;
 }
 
 export async function updateDDayConfig(targetDate: string, targetTitle: string): Promise<void> {
@@ -207,30 +267,43 @@ export async function updateQuotesConfig(quotes: string[]): Promise<void> {
 
 export async function recordFocusSession(minutes: number): Promise<UserSettings> {
   const addedSeconds = Math.round(minutes * 60);
+  // Grindy Focus XP: 15 XP for 25m session (+ 5 XP for each additional 10 mins)
+  const earnedXP = 15 + Math.max(0, Math.floor((minutes - 25) / 10) * 5);
+
+  const current = await fetchUserSettings();
+  const newToday = (current.focus_seconds_today || 0) + addedSeconds;
+  const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
+  const newXP = (current.xp || 0) + earnedXP;
+  const { level, rankInfo } = calculateLevelAndProgress(newXP);
+  const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
+    current.streak_days || 0,
+    current.last_study_date || null,
+    current.day_end_time || '00:00'
+  );
+
+  const updated: Partial<UserSettings> = {
+    user_id: current.user_id,
+    focus_seconds_today: newToday,
+    focus_seconds_week: newWeek,
+    xp: newXP,
+    level,
+    current_rank: rankInfo.rank,
+    current_title: rankInfo.title,
+    streak_days: updatedStreak,
+    last_study_date: updatedLastDate,
+    updated_at: new Date().toISOString(),
+  };
 
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
-      const userId = userData.user.id;
-      const current = await fetchUserSettings();
-      const newToday = (current.focus_seconds_today || 0) + addedSeconds;
-      const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
-
-      const updated: Partial<UserSettings> = {
-        user_id: userId,
-        focus_seconds_today: newToday,
-        focus_seconds_week: newWeek,
-        updated_at: new Date().toISOString(),
-      };
-
-      await supabase.from('user_settings').upsert(updated);
+      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
       return { ...current, ...updated };
     }
   }
 
   const db = getLocalDB();
-  db.settings.focus_seconds_today = (db.settings.focus_seconds_today || 0) + addedSeconds;
-  db.settings.focus_seconds_week = (db.settings.focus_seconds_week || 0) + addedSeconds;
+  db.settings = { ...db.settings, ...updated };
   saveLocalDB(db);
   return db.settings;
 }
@@ -395,6 +468,10 @@ export async function createSubtopic(name: string, topicId: string): Promise<Sub
 }
 
 export async function updateSubtopicStatus(id: string, status: SubtopicStatus): Promise<void> {
+  if (status === 'completed') {
+    await awardXPAndSync(30); // Subtopic Completed: +30 XP
+  }
+
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subtopics').update({ status }).eq('id', id);
     return;
@@ -673,6 +750,10 @@ export async function updateOverlayFailingStatus(
 }
 
 export async function logRevisionScore(taskId: string, score: number): Promise<void> {
+  // Grindy Active Recall XP: 25 XP for 100%, 15 XP for 80%+, 5 XP below 80%
+  const earnedXP = score >= 100 ? 25 : score >= 80 ? 15 : 5;
+  await awardXPAndSync(earnedXP);
+
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
     const userId = userData?.user?.id || DEFAULT_USER_ID;
