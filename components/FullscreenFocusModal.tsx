@@ -20,6 +20,21 @@ interface FullscreenFocusModalProps {
   dayEndTime: string;
 }
 
+function FlipDigit({ value }: { value: string }) {
+  return (
+    <div className="relative w-16 h-24 sm:w-24 sm:h-32 md:w-32 md:h-44 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden group">
+      {/* Top Half Shading */}
+      <div className="absolute top-0 left-0 right-0 bottom-1/2 bg-zinc-800/40 border-b border-zinc-950/80 pointer-events-none" />
+      {/* Center Flip Divider Line */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-zinc-950/90 z-10 shadow-sm pointer-events-none" />
+      {/* Digit Typography */}
+      <span className="text-5xl sm:text-7xl md:text-8xl font-extrabold font-mono text-zinc-100 tracking-tighter relative z-0 drop-shadow-md select-none">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export default function FullscreenFocusModal({
   isOpen,
   onClose,
@@ -57,7 +72,7 @@ export default function FullscreenFocusModal({
   );
 
   const taskOptions = [
-    { value: '', label: 'Select task for this focus session...' },
+    { value: '', label: 'Select active target task...' },
     ...todayNewTasks.map((t) => ({
       value: t.id,
       label: `[New] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
@@ -73,6 +88,9 @@ export default function FullscreenFocusModal({
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
 
+  const minStr = String(minutes).padStart(2, '0');
+  const secStr = String(seconds).padStart(2, '0');
+
   const handleNextQuote = () => {
     if (quotes.length > 0) {
       setCurrentQuoteIndex((prev) => (prev + 1) % quotes.length);
@@ -85,35 +103,26 @@ export default function FullscreenFocusModal({
       : 'Focus on being productive instead of busy.';
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/95 backdrop-blur-2xl flex flex-col justify-between p-6 sm:p-10 text-zinc-100 animate-in fade-in zoom-in-95 duration-200">
-      {/* Top Bar: Motivational Quote & Exit Fullscreen */}
-      <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto w-full border-b border-zinc-800/80 pb-4">
-        <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <Quote className="w-5 h-5 text-amber-400 shrink-0" />
-          <p className="text-xs sm:text-sm italic font-medium text-zinc-300 truncate">
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-8 text-zinc-100 animate-in fade-in zoom-in-95 duration-200">
+      {/* Top Banner: Motivational Quote Only (Top Exit Button Removed) */}
+      <div className="flex items-center justify-center max-w-3xl mx-auto w-full pt-2">
+        <div className="flex items-center space-x-2 bg-zinc-900/60 border border-zinc-800/80 px-4 py-2 rounded-full shadow-sm">
+          <Quote className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-xs sm:text-sm italic font-medium text-zinc-300 text-center max-w-xl truncate">
             &ldquo;{currentQuote}&rdquo;
           </p>
           <button
             onClick={handleNextQuote}
-            className="p-1 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 transition-colors shrink-0"
+            className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors shrink-0"
             title="Next quote"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5" />
           </button>
         </div>
-
-        <button
-          onClick={onClose}
-          className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-all flex items-center space-x-1.5 shrink-0"
-          title="Exit Fullscreen Mode"
-        >
-          <Minimize2 className="w-4 h-4" />
-          <span className="text-xs font-semibold hidden sm:inline">Exit Fullscreen</span>
-        </button>
       </div>
 
-      {/* Center Stage: Giant Countdown Clock & Controls */}
-      <div className="flex flex-col items-center justify-center my-auto space-y-8 max-w-2xl mx-auto w-full">
+      {/* Center Stage: Giant 3D Flip-Style Timer & Controls */}
+      <div className="flex flex-col items-center justify-center my-auto space-y-6 sm:space-y-8 max-w-3xl mx-auto w-full">
         {/* Preset Minutes Selection */}
         <div className="flex items-center space-x-2 bg-zinc-900/90 border border-zinc-800 p-1.5 rounded-xl">
           {[25, 45, 60].map((m) => (
@@ -126,17 +135,21 @@ export default function FullscreenFocusModal({
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
-              {m}m Focus
+              {m}m
             </button>
           ))}
         </div>
 
-        {/* Giant Timer Typography */}
-        <div className="text-7xl sm:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter select-none drop-shadow-2xl">
-          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+        {/* 3D Flip-Card Digit Display */}
+        <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+          <FlipDigit value={minStr[0]} />
+          <FlipDigit value={minStr[1]} />
+          <span className="text-4xl sm:text-6xl font-bold font-mono text-zinc-500 animate-pulse pb-2">:</span>
+          <FlipDigit value={secStr[0]} />
+          <FlipDigit value={secStr[1]} />
         </div>
 
-        {/* Reordered Action Bar: Left = Reset, Center = Start/Pause, Right = Exit */}
+        {/* Reordered Action Bar: Left = Reset, Center = Start/Pause, Right = Exit Fullscreen */}
         <div className="relative flex items-center justify-center w-full max-w-md border-t border-zinc-800/80 pt-6">
           {/* Left: Reset Button */}
           <button
@@ -171,34 +184,28 @@ export default function FullscreenFocusModal({
         </div>
       </div>
 
-      {/* Bottom Section: Task Selection Dropdown */}
-      <div className="max-w-2xl mx-auto w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 space-y-3">
-        <div className="flex items-center space-x-2 text-xs font-semibold text-zinc-300">
-          <Target className="w-4 h-4 text-blue-400" />
-          <span>Active Task Target</span>
+      {/* Bottom Section: Minimal Active Task Target with Upward Dropdown */}
+      <div className="max-w-xl mx-auto w-full bg-zinc-900/80 border border-zinc-800/90 rounded-xl p-3 space-y-2">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+          <span className="flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-blue-400" />
+            <span>Target Study Task</span>
+          </span>
+          {selectedTask && (
+            <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Locked
+            </span>
+          )}
         </div>
 
+        {/* Upward Opening Custom Select to prevent bottom screen overflow */}
         <CustomSelect
           options={taskOptions}
           value={selectedTaskId}
           onChange={(val) => setSelectedTaskId(val)}
-          placeholder="Select a task to focus on during this session..."
+          placeholder="Select a task to focus on..."
+          openUpward={true}
         />
-
-        {selectedTask && (
-          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between text-xs">
-            <div>
-              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
-                {selectedTask.subject?.name || 'Subject'} &bull; {selectedTask.topic?.name || 'Topic'}
-              </span>
-              <h4 className="text-xs font-bold text-zinc-100 mt-1">{selectedTask.title}</h4>
-            </div>
-            <div className="flex items-center space-x-1 text-emerald-400 text-xs font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Target Locked</span>
-            </div>
-          </div>
-        )}
       </div>
     </div>,
     document.body
