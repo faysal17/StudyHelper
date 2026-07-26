@@ -2,11 +2,15 @@
 
 import { useState } from 'react';
 import { Task, Note, Overlay } from '@/lib/types';
-import { updateOverlayFailingStatus, updateTask, logRevisionScore } from '@/lib/supabase';
+import { updateOverlayFailingStatus, updateTask, logRevisionScore, fetchUserSettings } from '@/lib/supabase';
 import { evaluateSpacedRepetition } from '@/lib/spacedRepetition';
+import { calculateMomentum } from '@/lib/momentum';
+import { calculateGlobalHunterRank } from '@/lib/gamification';
 import { Check, X, Eye, EyeOff, Trophy, ArrowLeft, Award, Lock, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
+import XPChangeModal from './XPChangeModal';
+import HunterEventModal, { EventType } from './HunterEventModal';
 
 interface ImageOcclusionViewerProps {
   task: Task;
@@ -20,6 +24,24 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
 
   const [isFinishing, setIsFinishing] = useState(false);
   const [summaryResult, setSummaryResult] = useState<any | null>(null);
+
+  // XP Modal State
+  const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
+  const [xpReason, setXpReason] = useState('');
+  const [xpMultiplier, setXpMultiplier] = useState(1.0);
+  const [newTotalXP, setNewTotalXP] = useState(0);
+
+  // Level Up / Rank Up Event Modal State
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [activeEventType, setActiveEventType] = useState<EventType>('rank-up');
+  const [pendingEventModal, setPendingEventModal] = useState<EventType | null>(null);
+  const [eventOldPos, setEventOldPos] = useState(500);
+  const [eventNewPos, setEventNewPos] = useState(480);
+  const [eventOldRank, setEventOldRank] = useState('E-Rank');
+  const [eventNewRank, setEventNewRank] = useState('D-Rank');
+  const [eventOldLevel, setEventOldLevel] = useState(5);
+  const [eventNewLevel, setEventNewLevel] = useState(6);
 
   const toggleReveal = (id: string) => {
     setRevealedIds((prev) => ({
@@ -59,8 +81,22 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
     const srResult = evaluateSpacedRepetition(task, totalOverlays, failedOverlays);
 
     try {
+      const oldSettings = await fetchUserSettings();
+      const oldLevel = oldSettings?.level || 1;
+      const oldRank = oldSettings?.current_rank || 'E-Rank';
+      const oldMomentum = calculateMomentum(oldSettings);
+      const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
+      const xpGained = score >= 100 ? 25 : score >= 80 ? 15 : 5;
+
       await logRevisionScore(task.id, score);
+      const updatedSettings = await fetchUserSettings();
+
+      const newLevel = updatedSettings?.level || 1;
+      const newRank = updatedSettings?.current_rank || 'E-Rank';
+      const newMomentum = calculateMomentum(updatedSettings);
+      const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
 
       if (!srResult.isLockedToday) {
         await updateTask(task.id, {
@@ -79,6 +115,32 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         score,
       });
 
+      // Prepare Level Up or Rank Up event if occurred
+      let eventType: EventType | null = null;
+      if (newRank !== oldRank && newLevel > oldLevel) {
+        eventType = 'rank-up';
+      } else if (newLevel > oldLevel) {
+        eventType = 'level-up';
+      }
+
+      if (eventType) {
+        setActiveEventType(eventType);
+        setPendingEventModal(eventType);
+        setEventOldRank(oldRank);
+        setEventNewRank(newRank);
+        setEventOldLevel(oldLevel);
+        setEventNewLevel(newLevel);
+        setEventOldPos(oldGlobalPos);
+        setEventNewPos(newGlobalPos);
+      }
+
+      // Trigger XP Gain Modal FIRST
+      setEarnedXP(xpGained);
+      setXpReason(`Active Recall Test Score: ${score}%`);
+      setXpMultiplier(newMomentum.xpMultiplier);
+      setNewTotalXP(updatedSettings.xp || 0);
+      setXpModalOpen(true);
+
       try {
         confetti({
           particleCount: 60,
@@ -90,6 +152,14 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       console.error('Session completion error:', err);
     } finally {
       setIsFinishing(false);
+    }
+  };
+
+  const handleCloseXPModal = () => {
+    setXpModalOpen(false);
+    if (pendingEventModal) {
+      setEventModalOpen(true);
+      setPendingEventModal(null);
     }
   };
 
@@ -178,59 +248,43 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                   isRevealed
                     ? 'bg-transparent border-2 border-dashed border-zinc-400 shadow-lg'
                     : isFailing
-                    ? 'bg-red-950 border-2 border-red-500 shadow-md cursor-pointer hover:bg-red-900'
-                    : 'bg-zinc-950 border-2 border-zinc-700 shadow-md cursor-pointer hover:border-zinc-400'
+                    ? 'bg-red-950/90 border-2 border-red-500 text-red-200'
+                    : 'bg-zinc-900 border border-zinc-700 text-zinc-200 shadow-md'
                 }`}
-                onClick={() => toggleReveal(overlay.id)}
               >
-                {!isRevealed && (
-                  <>
-                    <div className="flex items-center justify-between w-full shrink-0">
-                      <span className="text-[9px] font-mono text-zinc-400 font-bold opacity-80">
-                        #{idx + 1}
-                      </span>
-                      {hasLabel && <HelpCircle className="w-2.5 h-2.5 text-zinc-400 shrink-0" />}
-                    </div>
-
-                    <div className="w-full my-auto text-center px-1">
-                      {hasLabel ? (
-                        <span className="text-[10px] font-medium text-zinc-100 line-clamp-2 leading-tight block">
-                          {overlay.label}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] text-zinc-500 font-mono">Tap to reveal</span>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {isRevealed && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 z-30 bg-zinc-950 border border-zinc-700 rounded-lg p-1 flex items-center space-x-1 shadow-xl"
+                {/* Header label & eye toggle */}
+                <div className="flex items-center justify-between text-[10px] font-mono leading-none">
+                  <span className="font-bold truncate bg-zinc-950/80 px-1 py-0.5 rounded text-zinc-300">
+                    {hasLabel ? overlay.label : `#${idx + 1}`}
+                  </span>
+                  <button
+                    onClick={() => toggleReveal(overlay.id)}
+                    className="p-0.5 rounded hover:bg-zinc-800 transition-colors"
                   >
-                    <span className="text-[10px] text-zinc-400 px-1 font-medium">Recalled?</span>
+                    {isRevealed ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3 text-zinc-400" />}
+                  </button>
+                </div>
+
+                {/* Grading Action Buttons when revealed */}
+                {isRevealed && (
+                  <div className="flex items-center justify-center space-x-1 pt-1">
                     <button
                       onClick={() => handleGradeOverlay(overlay.id, true)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors ${
-                        !isFailing
-                          ? 'bg-zinc-100 text-zinc-950 font-extrabold'
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      className={`p-1 rounded transition-colors ${
+                        !isFailing ? 'bg-emerald-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-emerald-400'
                       }`}
+                      title="Mark correct"
                     >
                       <Check className="w-3 h-3" />
-                      <span>Yes</span>
                     </button>
                     <button
                       onClick={() => handleGradeOverlay(overlay.id, false)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold flex items-center space-x-1 transition-colors ${
-                        isFailing
-                          ? 'bg-red-500 text-white font-extrabold'
-                          : 'bg-zinc-800 text-red-400 hover:bg-red-500/20'
+                      className={`p-1 rounded transition-colors ${
+                        isFailing ? 'bg-red-500 text-white font-bold' : 'bg-zinc-800 text-zinc-400 hover:text-red-400'
                       }`}
+                      title="Mark failing"
                     >
                       <X className="w-3 h-3" />
-                      <span>No</span>
                     </button>
                   </div>
                 )}
@@ -240,62 +294,58 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         </div>
       </div>
 
-      {/* Results Summary Modal */}
+      {/* Session Summary Card */}
       {summaryResult && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl text-center space-y-5">
-            <div className="w-12 h-12 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-100 mx-auto">
-              <Award className="w-6 h-6" />
+        <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+            <div className="flex items-center space-x-2">
+              <Award className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-semibold text-zinc-100">Session Evaluation</h3>
             </div>
+            <span className="text-xs font-mono font-bold text-amber-400">
+              Score: {summaryResult.score}%
+            </span>
+          </div>
 
-            <div>
-              <h3 className="text-base font-semibold text-zinc-100">Session Complete</h3>
-              <p className="text-xs text-zinc-400 mt-0.5">Spaced repetition schedule updated</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+            <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase block">Total Overlays</span>
+              <span className="text-sm font-bold text-zinc-200">{summaryResult.totalOverlays}</span>
             </div>
-
-            <div className="bg-zinc-950 rounded-lg p-4 border border-zinc-800 space-y-2.5 text-xs">
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Total Overlays:</span>
-                <strong className="text-zinc-100 font-mono">{summaryResult.totalOverlays}</strong>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Failed Overlays:</span>
-                <strong className="text-red-400 font-mono">{summaryResult.failedOverlays}</strong>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Weighted Error:</span>
-                <strong className="text-amber-400 font-mono">{summaryResult.weightedErrorPercent}%</strong>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400">
-                <span>Status Color:</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-zinc-800 text-zinc-200 border border-zinc-700">
-                  {summaryResult.newStatusColor}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-zinc-400 border-t border-zinc-800 pt-2">
-                <span>Next Revision Date:</span>
-                <strong className="text-zinc-100 font-mono">{summaryResult.newNextRevisionDate}</strong>
-              </div>
-
-              {summaryResult.isLockedToday && (
-                <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-[11px] text-amber-300 flex items-center justify-center space-x-1">
-                  <Lock className="w-3 h-3 shrink-0" />
-                  <span>Once-Daily Lock Active (Reviewed today)</span>
-                </div>
-              )}
+            <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase block">Failed Items</span>
+              <span className="text-sm font-bold text-red-400">{summaryResult.failedOverlays}</span>
             </div>
-
-            <div className="flex justify-center pt-2">
-              <Link
-                href="/"
-                className="px-5 py-2 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg shadow-sm hover:bg-zinc-200 transition-all"
-              >
-                Back to Dashboard
-              </Link>
+            <div className="p-3 bg-zinc-950 rounded-lg border border-zinc-800">
+              <span className="text-[10px] text-zinc-500 uppercase block">Next Revision</span>
+              <span className="text-sm font-bold text-cyan-400">{summaryResult.newNextRevisionDate}</span>
             </div>
           </div>
         </div>
       )}
+
+      {/* XP Change Modal Popup */}
+      <XPChangeModal
+        isOpen={xpModalOpen}
+        onClose={handleCloseXPModal}
+        amount={earnedXP}
+        reason={xpReason}
+        multiplier={xpMultiplier}
+        newTotalXP={newTotalXP}
+      />
+
+      {/* Level Up / Rank Up Celebration Modal */}
+      <HunterEventModal
+        isOpen={eventModalOpen}
+        onClose={() => setEventModalOpen(false)}
+        eventType={activeEventType}
+        oldRankStr={eventOldRank}
+        newRankStr={eventNewRank}
+        oldLevel={eventOldLevel}
+        newLevel={eventNewLevel}
+        oldGlobalPosition={eventOldPos}
+        newGlobalPosition={eventNewPos}
+      />
     </div>
   );
 }

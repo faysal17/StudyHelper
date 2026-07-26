@@ -13,7 +13,9 @@ import {
   deleteSubject,
   deleteTopic,
   deleteSubtopic,
+  fetchUserSettings,
 } from '@/lib/supabase';
+import { calculateMomentum } from '@/lib/momentum';
 import {
   BookOpen,
   Layers,
@@ -31,6 +33,7 @@ import {
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import ConfirmModal from '@/components/ConfirmModal';
 import CustomSelect from '@/components/CustomSelect';
+import XPChangeModal from '@/components/XPChangeModal';
 
 export default function SyllabusPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -48,6 +51,13 @@ export default function SyllabusPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // XP Modal State
+  const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [earnedXP, setEarnedXP] = useState(0);
+  const [xpReason, setXpReason] = useState('');
+  const [xpMultiplier, setXpMultiplier] = useState(1.0);
+  const [newTotalXP, setNewTotalXP] = useState(0);
 
   // Task Creator Modal state for "Study Subtopic"
   const [studyTarget, setStudyTarget] = useState<{
@@ -80,7 +90,6 @@ export default function SyllabusPage() {
       setSubjects(sData);
       setTopics(tData);
       setSubtopics(stData);
-
       if (sData.length > 0 && !selectedSubjectIdForTopic) {
         setSelectedSubjectIdForTopic(sData[0].id);
       }
@@ -88,7 +97,7 @@ export default function SyllabusPage() {
         setSelectedTopicIdForSubtopic(tData[0].id);
       }
     } catch (err) {
-      console.error('Error loading syllabus:', err);
+      console.error('Failed to load syllabus data:', err);
     } finally {
       setLoading(false);
     }
@@ -155,7 +164,18 @@ export default function SyllabusPage() {
     setSubtopics((prev) =>
       prev.map((st) => (st.id === id ? { ...st, status: nextStatus } : st))
     );
+
     await updateSubtopicStatus(id, nextStatus);
+
+    if (nextStatus === 'completed') {
+      const updatedSettings = await fetchUserSettings();
+      const momentum = calculateMomentum(updatedSettings);
+      setEarnedXP(30);
+      setXpReason('Syllabus Subtopic Completed!');
+      setXpMultiplier(momentum.xpMultiplier);
+      setNewTotalXP(updatedSettings.xp || 0);
+      setXpModalOpen(true);
+    }
   };
 
   const executeDelete = async () => {
@@ -184,374 +204,337 @@ export default function SyllabusPage() {
     }
   };
 
-  // Syllabus Completion Statistics
   const totalSubtopics = subtopics.length;
   const completedSubtopics = subtopics.filter((st) => st.status === 'completed').length;
-  const inProgressSubtopics = subtopics.filter((st) => st.status === 'in_progress').length;
-  const overallPercent = totalSubtopics > 0 ? Math.round((completedSubtopics / totalSubtopics) * 100) : 0;
-
-  const subjectOptions = subjects.map((s) => ({ value: s.id, label: s.name }));
-  const topicOptions = topics.map((t) => ({
-    value: t.id,
-    label: t.subject?.name ? `${t.subject.name} → ${t.name}` : t.name,
-  }));
+  const overallProgress = totalSubtopics > 0 ? Math.round((completedSubtopics / totalSubtopics) * 100) : 0;
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Header & Overall Syllabus Dashboard */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800/80 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-200">
-              <ListTree className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-                <span>Syllabus Completion Hub</span>
-              </h1>
-              <p className="text-xs text-zinc-400">
-                Track full curriculum breakdown (Subject &rarr; Topic &rarr; Subtopic) and study completion
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-3 bg-zinc-950 border border-zinc-800 px-4 py-2 rounded-xl text-xs font-mono">
-            <BarChart3 className="w-4 h-4 text-emerald-400" />
-            <span>Overall Syllabus: <strong className="text-emerald-400 text-sm">{overallPercent}%</strong> ({completedSubtopics}/{totalSubtopics})</span>
-          </div>
+    <div className="max-w-5xl mx-auto space-y-8 pb-12">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+        <div>
+          <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-purple-400" />
+            <span>Syllabus Management Hub</span>
+          </h1>
+          <p className="text-xs text-zinc-400 mt-1">
+            Build and track your 3-Tier Syllabus hierarchy: Subjects &rarr; Topics &rarr; Subtopics.
+          </p>
         </div>
 
-        {/* Global Progress Bar */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs font-mono text-zinc-400">
-            <span>Progress Breakdown</span>
-            <span>{completedSubtopics} Completed &bull; {inProgressSubtopics} In Progress &bull; {totalSubtopics - completedSubtopics - inProgressSubtopics} Unstudied</span>
+        {/* Global Syllabus Progress Indicator */}
+        <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl min-w-[200px] font-mono text-xs">
+          <div className="flex items-center justify-between text-[11px] mb-1">
+            <span className="text-zinc-400">Mastery Progress</span>
+            <span className="text-purple-400 font-bold">{overallProgress}%</span>
           </div>
-          <div className="w-full bg-zinc-950 rounded-full h-2.5 overflow-hidden border border-zinc-800/80 flex">
+          <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-800">
             <div
-              style={{ width: `${overallPercent}%` }}
-              className="bg-emerald-500 transition-all duration-500"
-              title={`${overallPercent}% Completed`}
-            />
-            <div
-              style={{ width: `${totalSubtopics > 0 ? Math.round((inProgressSubtopics / totalSubtopics) * 100) : 0}%` }}
-              className="bg-blue-500 transition-all duration-500"
-              title="In Progress"
+              className="bg-purple-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${overallProgress}%` }}
             />
           </div>
         </div>
       </div>
 
       {errorMessage && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-center space-x-2">
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMessage}</span>
         </div>
       )}
 
-      {/* 3-Tier Builder Toolbar (Subject, Topic, Subtopic Creation) */}
+      {/* Creation Forms Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* 1. Add Subject */}
-        <div className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
-          <div className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-200">
-            <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-            <span>1. Add Subject</span>
+        {/* Form 1: Subject Creator */}
+        <form onSubmit={handleCreateSubject} className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
+          <div className="flex items-center space-x-2">
+            <BookOpen className="w-4 h-4 text-purple-400" />
+            <h2 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">1. New Subject</h2>
           </div>
-          <form onSubmit={handleCreateSubject} className="flex gap-1.5">
-            <input
-              type="text"
-              value={newSubjectName}
-              onChange={(e) => setNewSubjectName(e.target.value)}
-              placeholder="Subject Name..."
-              className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
-              required
-            />
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-3 py-1.5 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg hover:bg-zinc-200 transition-all disabled:opacity-50"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </form>
-        </div>
+          <input
+            type="text"
+            placeholder="e.g. Bangladesh Affairs"
+            value={newSubjectName}
+            onChange={(e) => setNewSubjectName(e.target.value)}
+            className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-zinc-600"
+          />
+          <button
+            type="submit"
+            disabled={isSubmitting || !newSubjectName.trim()}
+            className="w-full py-2 bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Subject</span>
+          </button>
+        </form>
 
-        {/* 2. Add Topic */}
-        <div className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
-          <div className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-200">
-            <Layers className="w-3.5 h-3.5 text-zinc-400" />
-            <span>2. Add Topic</span>
+        {/* Form 2: Topic Creator */}
+        <form onSubmit={handleCreateTopic} className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
+          <div className="flex items-center space-x-2">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">2. New Topic</h2>
           </div>
-          <form onSubmit={handleCreateTopic} className="space-y-2">
-            <CustomSelect
-              options={subjectOptions}
-              value={selectedSubjectIdForTopic}
-              onChange={(val) => setSelectedSubjectIdForTopic(val)}
-              placeholder="Select Subject"
-            />
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={newTopicName}
-                onChange={(e) => setNewTopicName(e.target.value)}
-                placeholder="Topic Name..."
-                className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
-                disabled={!selectedSubjectIdForTopic}
-                required
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting || !selectedSubjectIdForTopic}
-                className="px-3 py-1 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg hover:bg-zinc-200 transition-all disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </form>
-        </div>
+          <CustomSelect
+            value={selectedSubjectIdForTopic}
+            onChange={(val) => setSelectedSubjectIdForTopic(val)}
+            options={subjects.map((s) => ({ value: s.id, label: s.name }))}
+            placeholder="Select Subject..."
+          />
+          <input
+            type="text"
+            placeholder="e.g. Ancient Bengal History"
+            value={newTopicName}
+            onChange={(e) => setNewTopicName(e.target.value)}
+            className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-zinc-600"
+          />
+          <button
+            type="submit"
+            disabled={isSubmitting || !newTopicName.trim() || !selectedSubjectIdForTopic}
+            className="w-full py-2 bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Topic</span>
+          </button>
+        </form>
 
-        {/* 3. Add Subtopic */}
-        <div className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
-          <div className="flex items-center space-x-1.5 text-xs font-semibold text-zinc-200">
-            <ListTree className="w-3.5 h-3.5 text-zinc-400" />
-            <span>3. Add Subtopic (Syllabus Item)</span>
+        {/* Form 3: Subtopic Creator */}
+        <form onSubmit={handleCreateSubtopic} className="glass-panel p-4 rounded-xl border border-zinc-800 space-y-3">
+          <div className="flex items-center space-x-2">
+            <ListTree className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">3. New Subtopic</h2>
           </div>
-          <form onSubmit={handleCreateSubtopic} className="space-y-2">
-            <CustomSelect
-              options={topicOptions}
-              value={selectedTopicIdForSubtopic}
-              onChange={(val) => setSelectedTopicIdForSubtopic(val)}
-              placeholder="Select Topic"
-            />
-            <div className="flex gap-1.5">
-              <input
-                type="text"
-                value={newSubtopicName}
-                onChange={(e) => setNewSubtopicName(e.target.value)}
-                placeholder="Subtopic Name..."
-                className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
-                disabled={!selectedTopicIdForSubtopic}
-                required
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting || !selectedTopicIdForSubtopic}
-                className="px-3 py-1 bg-zinc-100 text-zinc-950 font-semibold text-xs rounded-lg hover:bg-zinc-200 transition-all disabled:opacity-50"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </form>
-        </div>
+          <CustomSelect
+            value={selectedTopicIdForSubtopic}
+            onChange={(val) => setSelectedTopicIdForSubtopic(val)}
+            options={topics.map((t) => ({
+              value: t.id,
+              label: `${t.name} (${t.subject?.name || 'Subject'})`,
+            }))}
+            placeholder="Select Topic..."
+          />
+          <input
+            type="text"
+            placeholder="e.g. Pala Dynasty Rulers"
+            value={newSubtopicName}
+            onChange={(e) => setNewSubtopicName(e.target.value)}
+            className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-zinc-600"
+          />
+          <button
+            type="submit"
+            disabled={isSubmitting || !newSubtopicName.trim() || !selectedTopicIdForSubtopic}
+            className="w-full py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Subtopic</span>
+          </button>
+        </form>
       </div>
 
-      {/* Syllabus Interactive 3-Tier Hierarchy Tree */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-zinc-500 space-y-3">
-          <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-          <p className="text-xs">Loading syllabus tree...</p>
+      {/* Syllabus Tree Explorer */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+          <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-purple-400" />
+            <span>Interactive Syllabus Hierarchy</span>
+          </h2>
+          <span className="text-xs font-mono text-zinc-500">
+            {subjects.length} Subjects | {topics.length} Topics | {subtopics.length} Subtopics
+          </span>
         </div>
-      ) : subjects.length === 0 ? (
-        <div className="text-center py-16 bg-zinc-950/40 rounded-xl border border-zinc-800">
-          <p className="text-xs text-zinc-500">No subjects in syllabus yet. Use the builder above to add your first subject!</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {subjects.map((subject) => {
-            const subjectTopics = topics.filter((t) => t.subject_id === subject.id);
-            const topicIds = subjectTopics.map((t) => t.id);
-            const subjectSubtopics = subtopics.filter((st) => topicIds.includes(st.topic_id));
 
-            const sTotal = subjectSubtopics.length;
-            const sCompleted = subjectSubtopics.filter((st) => st.status === 'completed').length;
-            const sPercent = sTotal > 0 ? Math.round((sCompleted / sTotal) * 100) : 0;
+        {loading ? (
+          <div className="text-center py-12 text-zinc-500 space-y-2">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-zinc-400" />
+            <p className="text-xs font-mono">Loading syllabus tree...</p>
+          </div>
+        ) : subjects.length === 0 ? (
+          <div className="text-center py-12 glass-panel rounded-xl border border-zinc-800 space-y-2">
+            <BookOpen className="w-8 h-8 text-zinc-600 mx-auto" />
+            <p className="text-xs text-zinc-400">No subjects created yet. Use the form above to add your first subject!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {subjects.map((subj) => {
+              const subjTopics = topics.filter((t) => t.subject_id === subj.id);
 
-            return (
-              <div
-                key={subject.id}
-                className="glass-panel rounded-xl p-5 border border-zinc-800 space-y-4"
-              >
-                {/* Subject Header with Progress Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
-                  <div className="flex items-center space-x-2">
-                    <BookOpen className="w-4 h-4 text-zinc-300" />
-                    <h2 className="text-base font-bold text-zinc-100">{subject.name}</h2>
-                    <span className="text-xs font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">
-                      {sCompleted}/{sTotal} completed ({sPercent}%)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <div className="w-36 bg-zinc-950 rounded-full h-2 overflow-hidden border border-zinc-800">
-                      <div
-                        style={{ width: `${sPercent}%` }}
-                        className="bg-emerald-500 h-full transition-all duration-300"
-                      />
+              return (
+                <div key={subj.id} className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
+                  {/* Level 1: Subject Header */}
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <BookOpen className="w-4 h-4 text-purple-400" />
+                      <h3 className="text-sm font-bold text-zinc-100">{subj.name}</h3>
+                      <span className="text-[10px] font-mono bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                        {subjTopics.length} Topics
+                      </span>
                     </div>
+
                     <button
                       onClick={() =>
                         setConfirmDeleteTarget({
                           type: 'subject',
-                          id: subject.id,
-                          title: 'Delete Subject',
-                          message: `Are you sure you want to delete "${subject.name}"? This will also remove all its topics and subtopics.`,
+                          id: subj.id,
+                          title: `Delete Subject "${subj.name}"?`,
+                          message: 'Deleting this subject will also delete all associated topics and subtopics!',
                         })
                       }
-                      className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                      className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                       title="Delete Subject"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
 
-                {/* Topics & Subtopics List */}
-                {subjectTopics.length === 0 ? (
-                  <p className="text-xs text-zinc-600 italic py-2">No topics added under this subject.</p>
-                ) : (
-                  <div className="space-y-4 pt-1">
-                    {subjectTopics.map((topic) => {
-                      const topicSubtopics = subtopics.filter((st) => st.topic_id === topic.id);
+                  {/* Level 2 & 3: Topics & Subtopics */}
+                  {subjTopics.length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic pl-4">No topics in this subject yet.</p>
+                  ) : (
+                    <div className="space-y-3 pl-2 sm:pl-4">
+                      {subjTopics.map((topic) => {
+                        const topicSubtopics = subtopics.filter((st) => st.topic_id === topic.id);
 
-                      return (
-                        <div
-                          key={topic.id}
-                          className="bg-zinc-950/80 rounded-xl p-4 border border-zinc-800/80 space-y-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <Layers className="w-3.5 h-3.5 text-zinc-400" />
-                              <h3 className="text-xs font-semibold text-zinc-200">{topic.name}</h3>
-                              <span className="text-[10px] text-zinc-500 font-mono">
-                                ({topicSubtopics.filter((st) => st.status === 'completed').length}/{topicSubtopics.length})
-                              </span>
+                        return (
+                          <div key={topic.id} className="p-3 bg-zinc-950/60 rounded-xl border border-zinc-800/80 space-y-2">
+                            {/* Topic Row */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                                <span className="text-xs font-semibold text-zinc-200">{topic.name}</span>
+                                <span className="text-[10px] font-mono text-zinc-500">
+                                  ({topicSubtopics.length} subtopics)
+                                </span>
+                              </div>
+
+                              <button
+                                onClick={() =>
+                                  setConfirmDeleteTarget({
+                                    type: 'topic',
+                                    id: topic.id,
+                                    title: `Delete Topic "${topic.name}"?`,
+                                    message: 'Deleting this topic will also delete all associated subtopics!',
+                                  })
+                                }
+                                className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                title="Delete Topic"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             </div>
-                            <button
-                              onClick={() =>
-                                setConfirmDeleteTarget({
-                                  type: 'topic',
-                                  id: topic.id,
-                                  title: 'Delete Topic',
-                                  message: `Are you sure you want to delete "${topic.name}"? This will also remove all its subtopics.`,
-                                })
-                              }
-                              className="p-0.5 text-zinc-600 hover:text-red-400 transition-colors"
-                              title="Delete Topic"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
 
-                          {/* Subtopics List */}
-                          {topicSubtopics.length === 0 ? (
-                            <p className="text-[11px] text-zinc-600 italic pl-5">
-                              No subtopics created. Add subtopics in box 3 above.
-                            </p>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-2 sm:pl-5">
-                              {topicSubtopics.map((subtopic) => {
-                                return (
+                            {/* Subtopics Chips List */}
+                            {topicSubtopics.length === 0 ? (
+                              <p className="text-[11px] text-zinc-600 italic pl-5">No subtopics yet.</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2 pl-2 pt-1">
+                                {topicSubtopics.map((st) => (
                                   <div
-                                    key={subtopic.id}
-                                    className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-2 transition-all ${
-                                      subtopic.status === 'completed'
+                                    key={st.id}
+                                    className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center space-x-2 transition-all ${
+                                      st.status === 'completed'
                                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                        : subtopic.status === 'in_progress'
-                                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
-                                        : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                                        : st.status === 'in_progress'
+                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                                     }`}
                                   >
-                                    <div className="flex items-center space-x-2 truncate">
-                                      <button
-                                        onClick={() => handleToggleSubtopicStatus(subtopic.id, subtopic.status)}
-                                        className="shrink-0 transition-transform active:scale-90"
-                                        title="Click to toggle status (Unstudied → In Progress → Completed)"
-                                      >
-                                        {subtopic.status === 'completed' ? (
-                                          <CheckCircle2 className="w-4 h-4 text-emerald-400 fill-emerald-500/20" />
-                                        ) : subtopic.status === 'in_progress' ? (
-                                          <Clock className="w-4 h-4 text-blue-400" />
-                                        ) : (
-                                          <Circle className="w-4 h-4 text-zinc-600 hover:text-zinc-400" />
-                                        )}
-                                      </button>
-                                      <span className="font-medium truncate">{subtopic.name}</span>
-                                    </div>
+                                    {/* Status Toggle Button */}
+                                    <button
+                                      onClick={() => handleToggleSubtopicStatus(st.id, st.status)}
+                                      className="flex items-center space-x-1"
+                                      title="Click to toggle status: Unstudied -> In Progress -> Completed"
+                                    >
+                                      {st.status === 'completed' ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                      ) : st.status === 'in_progress' ? (
+                                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                                      ) : (
+                                        <Circle className="w-3.5 h-3.5 text-zinc-500" />
+                                      )}
+                                      <span>{st.name}</span>
+                                    </button>
 
-                                    <div className="flex items-center space-x-1 shrink-0">
-                                      <button
-                                        onClick={() =>
-                                          setStudyTarget({
-                                            subjectId: subject.id,
-                                            topicId: topic.id,
-                                            subtopicId: subtopic.id,
-                                            subtopicName: subtopic.name,
-                                          })
-                                        }
-                                        className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-semibold flex items-center space-x-1 transition-colors"
-                                        title="Create Active Recall Study Task"
-                                      >
-                                        <Zap className="w-3 h-3 text-amber-400" />
-                                        <span>Study</span>
-                                      </button>
-                                      <button
-                                        onClick={() =>
-                                          setConfirmDeleteTarget({
-                                            type: 'subtopic',
-                                            id: subtopic.id,
-                                            title: 'Delete Subtopic',
-                                            message: `Delete subtopic "${subtopic.name}" from your syllabus?`,
-                                          })
-                                        }
-                                        className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
-                                        title="Delete subtopic"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    </div>
+                                    {/* Quick Study Action Button */}
+                                    <button
+                                      onClick={() =>
+                                        setStudyTarget({
+                                          subjectId: subj.id,
+                                          topicId: topic.id,
+                                          subtopicId: st.id,
+                                          subtopicName: st.name,
+                                        })
+                                      }
+                                      className="p-0.5 rounded text-zinc-400 hover:text-amber-400 transition-colors border-l border-zinc-800 pl-1.5 ml-1"
+                                      title="Create Task to Study Subtopic"
+                                    >
+                                      <Zap className="w-3 h-3" />
+                                    </button>
+
+                                    {/* Delete Subtopic Button */}
+                                    <button
+                                      onClick={() =>
+                                        setConfirmDeleteTarget({
+                                          type: 'subtopic',
+                                          id: st.id,
+                                          title: `Delete Subtopic "${st.name}"?`,
+                                          message: 'Are you sure you want to remove this subtopic?',
+                                        })
+                                      }
+                                      className="p-0.5 rounded text-zinc-500 hover:text-red-400 transition-colors"
+                                      title="Delete Subtopic"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
                                   </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Task Creator Modal pre-filled when clicking "⚡ Study" */}
+      {/* Task Creator Modal for Studying Subtopic */}
       {studyTarget && (
         <TaskCreatorModal
           isOpen={Boolean(studyTarget)}
           onClose={() => setStudyTarget(null)}
           onTaskCreated={() => {
             setStudyTarget(null);
-            loadSyllabusData();
           }}
+          initialTitle={`Study Subtopic: ${studyTarget.subtopicName}`}
           initialSubjectId={studyTarget.subjectId}
           initialTopicId={studyTarget.topicId}
           initialSubtopicId={studyTarget.subtopicId}
-          initialTitle={`Study: ${studyTarget.subtopicName}`}
         />
       )}
 
-      {/* Custom Confirmation Popup Modal */}
-      {confirmDeleteTarget && (
-        <ConfirmModal
-          isOpen={Boolean(confirmDeleteTarget)}
-          title={confirmDeleteTarget.title}
-          message={confirmDeleteTarget.message}
-          confirmText="Delete"
-          onConfirm={executeDelete}
-          onCancel={() => setConfirmDeleteTarget(null)}
-        />
-      )}
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={Boolean(confirmDeleteTarget)}
+        onCancel={() => setConfirmDeleteTarget(null)}
+        onConfirm={executeDelete}
+        title={confirmDeleteTarget?.title || 'Confirm Deletion'}
+        message={confirmDeleteTarget?.message || 'Are you sure you want to delete this item?'}
+        confirmText="Yes, Delete"
+      />
+
+      {/* XP Change Modal Popup */}
+      <XPChangeModal
+        isOpen={xpModalOpen}
+        onClose={() => setXpModalOpen(false)}
+        amount={earnedXP}
+        reason={xpReason}
+        multiplier={xpMultiplier}
+        newTotalXP={newTotalXP}
+      />
     </div>
   );
 }

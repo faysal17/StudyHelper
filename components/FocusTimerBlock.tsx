@@ -4,9 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Square, RotateCcw, Clock, Maximize2 } from 'lucide-react';
 import { recordRatedFocusSession, recordSessionStop, fetchUserSettings } from '@/lib/supabase';
 import { Task, UserSettings } from '@/lib/types';
+import { calculateGlobalHunterRank } from '@/lib/gamification';
+import { calculateMomentum } from '@/lib/momentum';
 import FullscreenFocusModal from './FullscreenFocusModal';
 import FocusRatingModal from './FocusRatingModal';
 import QuitTauntModal from './QuitTauntModal';
+import HunterEventModal, { EventType } from './HunterEventModal';
+import XPChangeModal from './XPChangeModal';
 
 interface FocusTimerBlockProps {
   onSessionComplete?: () => void;
@@ -26,6 +30,24 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     isPenalty: false,
     amount: 0,
   });
+
+  // XP Change Notification Modal State
+  const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [xpChangeAmount, setXpChangeAmount] = useState(0);
+  const [xpReason, setXpReason] = useState('');
+  const [xpMultiplier, setXpMultiplier] = useState(1.0);
+  const [xpNewTotal, setXpNewTotal] = useState(0);
+
+  // Level / Rank Up Event Modal State
+  const [eventModalOpen, setEventModalOpen] = useState(false);
+  const [activeEventType, setActiveEventType] = useState<EventType>('rank-up');
+  const [pendingEventModal, setPendingEventModal] = useState<EventType | null>(null);
+  const [eventOldPos, setEventOldPos] = useState(500);
+  const [eventNewPos, setEventNewPos] = useState(480);
+  const [eventOldRank, setEventOldRank] = useState('E-Rank');
+  const [eventNewRank, setEventNewRank] = useState('D-Rank');
+  const [eventOldLevel, setEventOldLevel] = useState(5);
+  const [eventNewLevel, setEventNewLevel] = useState(6);
 
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const pauseStartRef = useRef<number | null>(null);
@@ -49,13 +71,12 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
       setIsActive(false);
       setShowRatingModal(true);
     } else if (!isActive && secondsLeft < targetMinutes * 60 && secondsLeft > 0) {
-      // Timer is PAUSED mid-session: check 10-minute auto-stop timeout (600s)
       if (!pauseStartRef.current) {
         pauseStartRef.current = Date.now();
       } else {
         interval = setInterval(() => {
           const elapsedPausedSec = Math.floor((Date.now() - (pauseStartRef.current || Date.now())) / 1000);
-          if (elapsedPausedSec >= 600) { // 10 minutes exceeded
+          if (elapsedPausedSec >= 600) {
             clearInterval(interval);
             handleStop();
           }
@@ -68,21 +89,115 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
   const handleFinishRating = async (stars: number) => {
     setShowRatingModal(false);
+
+    const oldLevel = userSettings?.level || 1;
+    const oldRank = userSettings?.current_rank || 'E-Rank';
+    const oldXP = userSettings?.xp || 0;
+    const oldMomentum = calculateMomentum(userSettings);
+    const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+
     const updated = await recordRatedFocusSession(targetMinutes, stars);
     setUserSettings(updated);
     resetTimer(targetMinutes);
+
+    const newLevel = updated.level || 1;
+    const newRank = updated.current_rank || 'E-Rank';
+    const newXP = updated.xp || 0;
+    const gainedXP = newXP - oldXP;
+    const newMomentum = calculateMomentum(updated);
+    const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
+
+    // Prepare Level Up or Rank Up event if occurred
+    let eventType: EventType | null = null;
+    if (newRank !== oldRank && newLevel > oldLevel) {
+      eventType = 'rank-up';
+    } else if (newLevel > oldLevel) {
+      eventType = 'level-up';
+    }
+
+    if (eventType) {
+      setActiveEventType(eventType);
+      setPendingEventModal(eventType);
+      setEventOldRank(oldRank);
+      setEventNewRank(newRank);
+      setEventOldLevel(oldLevel);
+      setEventNewLevel(newLevel);
+      setEventOldPos(oldGlobalPos);
+      setEventNewPos(newGlobalPos);
+    }
+
+    // Trigger XP Gain Modal FIRST
+    if (gainedXP > 0) {
+      setXpChangeAmount(gainedXP);
+      setXpReason(`${targetMinutes}m Focus Session Completed (${stars} Stars)`);
+      setXpMultiplier(newMomentum.xpMultiplier);
+      setXpNewTotal(newXP);
+      setXpModalOpen(true);
+    } else if (eventType) {
+      setEventModalOpen(true);
+    }
+
     if (onSessionComplete) onSessionComplete();
   };
 
   const handleStop = async () => {
     setIsActive(false);
     pauseStartRef.current = null;
+
+    const oldLevel = userSettings?.level || 1;
+    const oldRank = userSettings?.current_rank || 'E-Rank';
+    const oldXP = userSettings?.xp || 0;
+    const oldMomentum = calculateMomentum(userSettings);
+    const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+
     const { updatedSettings, isPenaltyApplied, penaltyAmount } = await recordSessionStop();
     setUserSettings(updatedSettings);
+
+    const newLevel = updatedSettings.level || 1;
+    const newRank = updatedSettings.current_rank || 'E-Rank';
+    const newXP = updatedSettings.xp || 0;
+    const newMomentum = calculateMomentum(updatedSettings);
+    const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
+
     setQuitPenaltyInfo({ isPenalty: isPenaltyApplied, amount: penaltyAmount });
     setShowQuitModal(true);
+
+    let eventType: EventType | null = null;
+    if (newRank !== oldRank && newLevel < oldLevel) {
+      eventType = 'rank-down';
+    } else if (newLevel < oldLevel) {
+      eventType = 'level-down';
+    }
+
+    if (eventType) {
+      setActiveEventType(eventType);
+      setPendingEventModal(eventType);
+      setEventOldRank(oldRank);
+      setEventNewRank(newRank);
+      setEventOldLevel(oldLevel);
+      setEventNewLevel(newLevel);
+      setEventOldPos(oldGlobalPos);
+      setEventNewPos(newGlobalPos);
+    }
+
+    if (isPenaltyApplied && penaltyAmount > 0) {
+      setXpChangeAmount(-penaltyAmount);
+      setXpReason('Excess Session Stop Penalty');
+      setXpMultiplier(1.0);
+      setXpNewTotal(newXP);
+      setXpModalOpen(true);
+    }
+
     resetTimer(targetMinutes);
     if (onSessionComplete) onSessionComplete();
+  };
+
+  const handleCloseXPModal = () => {
+    setXpModalOpen(false);
+    if (pendingEventModal) {
+      setEventModalOpen(true);
+      setPendingEventModal(null);
+    }
   };
 
   const toggleTimer = () => {
@@ -130,9 +245,8 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
           </span>
         </div>
 
-        {/* Toolbar: Left = Reset, Center = Start/Pause + Stop, Right = Fullscreen */}
+        {/* Toolbar */}
         <div className="relative flex items-center justify-between pt-2 border-t border-zinc-800/80 shrink-0 w-full">
-          {/* Left: Reset Timer Button */}
           <button
             onClick={() => resetTimer()}
             className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -141,7 +255,6 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
-          {/* Center: Start/Pause & Stop Button */}
           <div className="flex items-center space-x-1.5">
             <button
               onClick={toggleTimer}
@@ -167,7 +280,6 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
             )}
           </div>
 
-          {/* Right: Fullscreen Icon Button */}
           <button
             onClick={() => setIsFullscreen(true)}
             className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -178,7 +290,6 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         </div>
       </div>
 
-      {/* Fullscreen Focus Modal Component */}
       <FullscreenFocusModal
         isOpen={isFullscreen}
         onClose={() => setIsFullscreen(false)}
@@ -195,20 +306,41 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         currentLevel={userSettings?.level || 1}
       />
 
-      {/* Post-Session 5-Star Rating Modal */}
       <FocusRatingModal
         isOpen={showRatingModal}
         targetMinutes={targetMinutes}
         onRate={handleFinishRating}
       />
 
-      {/* Quitter Roast Modal */}
       <QuitTauntModal
         isOpen={showQuitModal}
         onClose={() => setShowQuitModal(false)}
         currentRank={userSettings?.current_rank || 'E-Rank'}
         isPenaltyApplied={quitPenaltyInfo.isPenalty}
         penaltyAmount={quitPenaltyInfo.amount}
+      />
+
+      {/* XP Change Notification Modal */}
+      <XPChangeModal
+        isOpen={xpModalOpen}
+        onClose={handleCloseXPModal}
+        amount={xpChangeAmount}
+        reason={xpReason}
+        multiplier={xpMultiplier}
+        newTotalXP={xpNewTotal}
+      />
+
+      {/* Level Up / Rank Up Celebration Modal */}
+      <HunterEventModal
+        isOpen={eventModalOpen}
+        onClose={() => setEventModalOpen(false)}
+        eventType={activeEventType}
+        oldRankStr={eventOldRank}
+        newRankStr={eventNewRank}
+        oldLevel={eventOldLevel}
+        newLevel={eventNewLevel}
+        oldGlobalPosition={eventOldPos}
+        newGlobalPosition={eventNewPos}
       />
     </>
   );
