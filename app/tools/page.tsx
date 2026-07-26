@@ -1,0 +1,91 @@
+'use client';
+
+import { Wrench, Sparkles, Calculator, FileText, Cpu, Clock, Terminal, ShieldAlert } from 'lucide-react';
+import Link from 'next/link';
+
+export default function ToolsPage() {
+  const toolCategories = [
+    {
+      id: 'calculator',
+      title: 'Study XP & Momentum Calculator',
+      description: 'Calculate your 7-day momentum velocity score and estimate XP required for target Hunter ranks.',
+      icon: <Calculator className="w-5 h-5 text-amber-400" />,
+      status: 'Coming Soon',
+      badgeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+    },
+    {
+      id: 'pdf-extractor',
+      title: 'OCR Text & Occlusion Generator',
+      description: 'Extract handwritten study notes and automatically generate active recall occlusion masks.',
+      icon: <FileText className="w-5 h-5 text-cyan-400" />,
+      status: 'Coming Soon',
+      badgeBg: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
+    },
+    {
+      id: 'preset-config',
+      title: 'Pomodoro Focus Preset Builder',
+      description: 'Build custom focus timer intervals, ambient soundscapes, and rest break sequences.',
+      icon: <Clock className="w-5 h-5 text-emerald-400" />,
+      status: 'Coming Soon',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+    },
+    {
+      id: 'roast-terminal',
+      title: 'System AI Roast Generator',
+      description: 'Generate personalized ego-attack roasts based on your focus streak and stop allowances.',
+      icon: <Terminal className="w-5 h-5 text-red-400" />,
+      status: 'Coming Soon',
+      badgeBg: 'bg-red-500/10 border-red-500/20 text-red-400',
+    },
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      {/* Header Bar */}
+      <div className="flex items-center space-x-3 border-b border-zinc-800 pb-4">
+        <div className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-100 shadow-sm">
+          <Wrench className="w-5 h-5 text-amber-400" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
+            <span>Hunter Tools & Utilities</span>
+            <span className="text-[10px] font-mono font-extrabold uppercase px-2 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-400">
+              v1.0
+            </span>
+          </h1>
+          <p className="text-xs text-zinc-400">
+            Specialized utility programs, calculators, and automation tools for BCS study optimization.
+          </p>
+        </div>
+      </div>
+
+      {/* Tools Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {toolCategories.map((tool) => (
+          <div
+            key={tool.id}
+            className="glass-panel p-5 rounded-xl border border-zinc-800/90 hover:border-zinc-700 transition-all space-y-3 relative group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800">
+                {tool.icon}
+              </div>
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${tool.badgeBg}`}>
+                {tool.status}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-zinc-100 group-hover:text-amber-400 transition-colors">
+                {tool.title}
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                {tool.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

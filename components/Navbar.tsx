@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon } from 'lucide-react';
+import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
+import Tooltip from './Tooltip';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -29,7 +30,7 @@ export default function Navbar() {
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
-            setUserEmail(parsed.email || 'user@studyhub.app');
+            if (parsed?.email) setUserEmail(parsed.email);
           } catch {}
         }
       }
@@ -43,90 +44,89 @@ export default function Navbar() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('studyhub_user_session');
     }
-    setUserEmail(null);
     router.push('/login');
   };
 
-  if (pathname === '/login') {
-    return null;
-  }
+  const navLinks = [
+    { href: '/', label: 'Dashboard', icon: Layers },
+    { href: '/rank', label: 'Rank Hub', icon: Calendar },
+    { href: '/tasks', label: 'Task Library', icon: CheckSquare },
+    { href: '/syllabus', label: 'Syllabus', icon: ListTree },
+  ];
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="w-full px-4 sm:px-6 lg:px-10">
-          <div className="flex items-center justify-between h-16 relative">
-            {/* Left Brand Logo */}
-            <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2.5 group">
-                <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
-                  <Layers className="w-4.5 h-4.5 stroke-[2.5]" />
-                </div>
-                <span className="font-semibold text-sm tracking-tight text-zinc-100 group-hover:text-zinc-300 transition-colors">
-                  StudyHub
-                </span>
-              </Link>
-            </div>
+      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          {/* Left: App Brand & Navigation Links */}
+          <div className="flex items-center space-x-6">
+            <Link href="/" className="flex items-center space-x-2 group">
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center font-bold font-mono text-zinc-950 group-hover:scale-105 transition-transform shadow-sm">
+                BCS
+              </div>
+              <span className="text-sm font-bold text-zinc-100 hidden sm:inline-block tracking-tight">
+                Hunter System
+              </span>
+            </Link>
 
-            {/* Pixel-Perfect Centered Navigation Tabs */}
-            <nav className="absolute left-1/2 -translate-x-1/2 flex items-center space-x-1">
-              <Link
-                href="/"
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                  pathname === '/'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span>Dashboard</span>
-              </Link>
-
-              <Link
-                href="/tasks"
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                  pathname === '/tasks'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                }`}
-              >
-                <CheckSquare className="w-3.5 h-3.5" />
-                <span>Tasks</span>
-              </Link>
-
-              <Link
-                href="/syllabus"
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                  pathname === '/syllabus' || pathname === '/topics'
-                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                }`}
-              >
-                <ListTree className="w-3.5 h-3.5" />
-                <span>Syllabus</span>
-              </Link>
+            <nav className="flex items-center space-x-1">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
+                      isActive
+                        ? 'bg-zinc-800 text-zinc-100 border border-zinc-700 shadow-sm'
+                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
+          </div>
 
-            {/* Right Action Block (Ordered: 1. Add Task -> 2. Username -> 3. Settings -> 4. Logout) */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              {/* 1. Add Task Button */}
-              <button
-                onClick={() => setIsTaskModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
+          {/* Right: Quick Action Controls & User Account */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setIsTaskModalOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5 shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Add Task</span>
+            </button>
+
+            <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+            {/* Username Badge */}
+            {userEmail && (
+              <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
+                <User className="w-3 h-3 text-zinc-500" />
+                <span className="truncate max-w-[140px]">{userEmail}</span>
+              </span>
+            )}
+
+            {/* Tools Icon Link */}
+            <Tooltip content="Hunter Tools Hub">
+              <Link
+                href="/tools"
+                className={`p-2 rounded-lg border transition-colors ${
+                  pathname === '/tools'
+                    ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Add Task</span>
-              </button>
+                <Wrench className="w-4 h-4 text-amber-400" />
+              </Link>
+            </Tooltip>
 
-              {/* 2. Username Badge */}
-              {userEmail && (
-                <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
-                  <User className="w-3 h-3 text-zinc-500" />
-                  <span className="truncate max-w-[140px]">{userEmail}</span>
-                </span>
-              )}
-
-              {/* 3. Settings Icon Link */}
+            {/* Settings Icon Link */}
+            <Tooltip content="User Settings">
               <Link
                 href="/settings"
                 className={`p-2 rounded-lg border transition-colors ${
@@ -134,20 +134,20 @@ export default function Navbar() {
                     ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                 }`}
-                title="User Settings"
               >
                 <SettingsIcon className="w-4 h-4" />
               </Link>
+            </Tooltip>
 
-              {/* 4. Logout / Sign Out Button */}
+            {/* Logout / Sign Out Button */}
+            <Tooltip content="Sign Out">
               <button
                 onClick={handleSignOut}
                 className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 rounded-lg transition-colors"
-                title="Sign Out"
               >
                 <LogOut className="w-4 h-4" />
               </button>
-            </div>
+            </Tooltip>
           </div>
         </div>
       </header>
@@ -156,8 +156,7 @@ export default function Navbar() {
         isOpen={isTaskModalOpen}
         onClose={() => setIsTaskModalOpen(false)}
         onTaskCreated={() => {
-          setIsTaskModalOpen(false);
-          window.location.reload();
+          if (typeof window !== 'undefined') window.location.reload();
         }}
       />
     </>
