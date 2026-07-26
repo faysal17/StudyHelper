@@ -47,6 +47,11 @@ export default function Navbar() {
     router.push('/login');
   };
 
+  // Hide Navbar completely on Login Page
+  if (pathname === '/login') {
+    return null;
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
@@ -136,7 +141,7 @@ export default function Navbar() {
             )}
 
             {/* Tools Icon Link */}
-            <Tooltip content="Hunter Tools Hub">
+            <Tooltip content="Hunter Tools Hub" position="bottom">
               <Link
                 href="/tools"
                 className={`p-2 rounded-lg border transition-colors ${
@@ -150,7 +155,7 @@ export default function Navbar() {
             </Tooltip>
 
             {/* Settings Icon Link */}
-            <Tooltip content="User Settings">
+            <Tooltip content="User Settings" position="bottom">
               <Link
                 href="/settings"
                 className={`p-2 rounded-lg border transition-colors ${
@@ -164,7 +169,7 @@ export default function Navbar() {
             </Tooltip>
 
             {/* Logout / Sign Out Button */}
-            <Tooltip content="Sign Out">
+            <Tooltip content="Sign Out" position="bottom">
               <button
                 onClick={handleSignOut}
                 className="p-2 text-zinc-400 hover:text-red-400 hover:bg-zinc-900 rounded-lg transition-colors"
