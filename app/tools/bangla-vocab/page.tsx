@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV } from '@/lib/banglaVocab';
 import { awardXPAndSync, fetchUserSettings } from '@/lib/supabase';
 import { calculateMomentum } from '@/lib/momentum';
+import { getTodayDateString } from '@/lib/spacedRepetition';
 import { ArrowLeft, BookOpen, Download, Upload, Plus, Trash2, Search, CheckCircle2, Brain, Eye } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import XPChangeModal from '@/components/XPChangeModal';
@@ -30,6 +31,7 @@ export default function BanglaVocabPage() {
   const [isRevealed, setIsRevealed] = useState(false);
   const [sessionCompleted, setSessionCompleted] = useState(false);
   const [sessionReviewedCount, setSessionReviewedCount] = useState(0);
+  const [dailyBonusClaimed, setDailyBonusClaimed] = useState(false);
 
   // XP Change Modal State
   const [xpModalOpen, setXpModalOpen] = useState(false);
@@ -170,13 +172,29 @@ export default function BanglaVocabPage() {
       setIsRevealed(false);
     } else {
       setSessionCompleted(true);
-      const earned = 20;
-      await awardXPAndSync(earned);
+
+      const userSettings = await fetchUserSettings();
+      const todayStr = getTodayDateString(userSettings?.day_end_time || '00:00');
+      const lastClaimedDate = typeof window !== 'undefined' ? localStorage.getItem('bcs_last_bangla_vocab_xp_date') : null;
+
+      let earned = 0;
+      let reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Already Claimed Today`;
+
+      if (lastClaimedDate !== todayStr) {
+        earned = 10; // Cap at +10 XP max per day!
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('bcs_last_bangla_vocab_xp_date', todayStr);
+        }
+        await awardXPAndSync(earned);
+        reasonStr = `Bangla Vocab Daily Review Completed (${nextCount} Words)`;
+        setDailyBonusClaimed(true);
+      }
+
       const updatedSettings = await fetchUserSettings();
       const momentum = calculateMomentum(updatedSettings);
 
       setEarnedXP(earned);
-      setXpReason(`Bangla Vocab Session Completed (${nextCount} Words Reviewed)`);
+      setXpReason(reasonStr);
       setXpMultiplier(momentum.xpMultiplier);
       setNewTotalXP(updatedSettings.xp || 0);
       setXpModalOpen(true);
@@ -210,7 +228,7 @@ export default function BanglaVocabPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-400 font-bold">
-                Database Synced Tool
+                Anti-Farm Capped (+10 XP / Day)
               </span>
             </div>
             <h1 className="text-lg font-bold text-zinc-100 mt-0.5">Bangla Vocab Builder</h1>
@@ -387,7 +405,7 @@ export default function BanglaVocabPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs font-mono text-zinc-400 bg-zinc-950 px-4 py-2 rounded-xl border border-zinc-800">
                 <span>Card {currentIndex + 1} of {dueWords.length}</span>
-                <span>Database Synced Flashcard</span>
+                <span>Database Synced Flashcard (Max 10 XP / Day)</span>
               </div>
 
               <div
