@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { UserSettings } from '@/lib/types';
-import { calculateLevelAndProgress } from '@/lib/gamification';
+import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
 import { Shield, Zap, Flame, Award, ChevronRight } from 'lucide-react';
 
@@ -18,6 +18,7 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
     calculateLevelAndProgress(totalXP);
 
   const momentum = calculateMomentum(settings);
+  const globalRank = calculateGlobalHunterRank(level, momentum.score);
 
   return (
     <Link
@@ -33,7 +34,7 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5">
           {/* Momentum Velocity Badge */}
           <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${momentum.badgeBg} ${momentum.color} ${momentum.badgeBorder} flex items-center gap-0.5`}>
             <span>{momentum.icon}</span>
@@ -52,11 +53,17 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
       {/* Center Rank & Humiliating Title Section */}
       <div className="my-auto space-y-1">
         <div className="flex items-center justify-between gap-2">
-          <span
-            className={`text-xs font-mono uppercase px-2 py-0.5 rounded-md border font-extrabold tracking-wide ${rankInfo.badgeBg} ${rankInfo.badgeText} ${rankInfo.badgeBorder}`}
-          >
-            {rankInfo.rank}
-          </span>
+          <div className="flex items-center space-x-1.5">
+            <span
+              className={`text-xs font-mono uppercase px-2 py-0.5 rounded-md border font-extrabold tracking-wide ${rankInfo.badgeBg} ${rankInfo.badgeText} ${rankInfo.badgeBorder}`}
+            >
+              {rankInfo.rank}
+            </span>
+            <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
+              #{globalRank}
+            </span>
+          </div>
+
           <span className="text-[11px] font-mono text-zinc-400 font-bold">
             Lvl {level}
           </span>

@@ -86,6 +86,7 @@ export interface UserSettings {
   day_end_time?: string;
   quotes?: string[];
   weekend_days?: string[];
+  week_start_day?: string;
   weekday_target_minutes?: number;
   weekend_target_minutes?: number;
   weekly_focus_log?: Record<string, number>;
@@ -99,6 +100,8 @@ export interface UserSettings {
   pause_start_timestamp?: string | null;
   last_active_date?: string | null;
   momentum_score?: number;
+  official_weekly_rank?: number;
+  last_week_start_date?: string | null;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

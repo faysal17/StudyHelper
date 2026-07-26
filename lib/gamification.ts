@@ -61,6 +61,18 @@ export function getRankAndTitle(level: number): RankInfo {
   }
 }
 
+// Global Hunter Rank Position (#500 to #1)
+export function calculateGlobalHunterRank(level: number, momentumScore: number = 50): number {
+  const safeLevel = Math.max(1, Math.min(100, level));
+  const safeMomentum = Math.max(0, Math.min(100, momentumScore));
+
+  const levelFactor = (safeLevel / 75) * 450;
+  const momentumFactor = (safeMomentum / 100) * 30;
+
+  const rawPosition = 500 - levelFactor - momentumFactor;
+  return Math.max(1, Math.min(500, Math.round(rawPosition)));
+}
+
 export function getEgoAttackMessage(rank: string, level: number): string {
   const eMessages = [
     "You're literally an E-Rank Procrastinating Worm. Don't even pretend you'll survive this timer without opening social media.",

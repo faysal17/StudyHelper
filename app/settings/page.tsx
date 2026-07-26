@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
-import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig } from '@/lib/supabase';
-import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target } from 'lucide-react';
+import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target, Shield } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -11,6 +11,7 @@ export default function SettingsPage() {
   const [quotes, setQuotes] = useState<string[]>([]);
   const [newQuote, setNewQuote] = useState<string>('');
   const [weekendDays, setWeekendDays] = useState<string[]>(['Saturday', 'Sunday']);
+  const [weekStartDay, setWeekStartDay] = useState<string>('Monday');
 
   const [weekdayTargetMins, setWeekdayTargetMins] = useState<number>(120);
   const [weekendTargetMins, setWeekendTargetMins] = useState<number>(210);
@@ -35,6 +36,7 @@ export default function SettingsPage() {
     if (data?.day_end_time) setDayEndTime(data.day_end_time);
     if (data?.quotes) setQuotes(data.quotes);
     if (data?.weekend_days) setWeekendDays(data.weekend_days);
+    if (data?.week_start_day) setWeekStartDay(data.week_start_day);
     if (data?.weekday_target_minutes) setWeekdayTargetMins(data.weekday_target_minutes);
     if (data?.weekend_target_minutes) setWeekendTargetMins(data.weekend_target_minutes);
   };
@@ -62,14 +64,24 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveWeekendDays = async () => {
+  const handleSaveWeekendConfig = async () => {
     setSavingWeekend(true);
     try {
       await updateWeekendDaysConfig(weekendDays);
+      if (isSupabaseConfigured && supabase) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user) {
+          await supabase.from('user_settings').upsert({
+            user_id: userData.user.id,
+            week_start_day: weekStartDay,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
       setSuccessWeekend(true);
       setTimeout(() => setSuccessWeekend(false), 2500);
     } catch (err) {
-      console.error('Error updating weekend days:', err);
+      console.error('Error updating weekend config:', err);
     } finally {
       setSavingWeekend(false);
     }
@@ -143,7 +155,7 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-xl font-bold text-zinc-100">User Settings</h1>
           <p className="text-xs text-zinc-400">
-            Configure night owl cutoff hours, weekday & weekend target hours, and focus mode quotes.
+            Configure night owl cutoff hours, week start day, weekend target hours, and focus mode quotes.
           </p>
         </div>
       </div>
@@ -216,12 +228,12 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 2. Custom Weekend Selection */}
+      {/* 2. Custom Weekend Selection & Week Start Day */}
       <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-semibold text-zinc-100">Weekend Days Selection</h2>
+            <h2 className="text-sm font-semibold text-zinc-100">Week Start & Weekend Selection</h2>
           </div>
           {successWeekend && (
             <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
@@ -231,36 +243,58 @@ export default function SettingsPage() {
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Select your custom weekend days. Selected days will use your <strong>Weekend Focus Goal</strong> target!
+          Configure your official <strong>Week Start Day</strong> (when official weekly Hunter Rank updates take place) and select custom weekend days.
         </p>
 
-        <div className="flex flex-wrap gap-2 pt-2">
-          {allDaysOfWeek.map((day) => {
-            const isSelected = weekendDays.includes(day);
-            return (
-              <button
-                key={day}
-                onClick={() => handleToggleWeekendDay(day)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all border ${
-                  isSelected
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
-                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                }`}
-              >
-                {day} {isSelected ? `(Weekend Target: ${weekendTargetMins / 60}h)` : ''}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* Week Start Day */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-300">Official Week Start Day</label>
+            <select
+              value={weekStartDay}
+              onChange={(e) => setWeekStartDay(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
+            >
+              {allDaysOfWeek.map((day) => (
+                <option key={day} value={day}>
+                  {day} (Official Rank Update)
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Weekend Days Checkboxes */}
+        <div className="space-y-2 pt-2">
+          <label className="text-xs font-semibold text-zinc-300 block">Weekend Days Selection</label>
+          <div className="flex flex-wrap gap-2">
+            {allDaysOfWeek.map((day) => {
+              const isSelected = weekendDays.includes(day);
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleToggleWeekendDay(day)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all border ${
+                    isSelected
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                  }`}
+                >
+                  {day} {isSelected ? `(Weekend Target: ${weekendTargetMins / 60}h)` : ''}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="pt-2 flex justify-end">
           <button
-            onClick={handleSaveWeekendDays}
+            onClick={handleSaveWeekendConfig}
             disabled={savingWeekend}
             className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5"
           >
             <Save className="w-4 h-4" />
-            <span>{savingWeekend ? 'Saving...' : 'Save Weekend Configuration'}</span>
+            <span>{savingWeekend ? 'Saving...' : 'Save Week Configuration'}</span>
           </button>
         </div>
       </div>
