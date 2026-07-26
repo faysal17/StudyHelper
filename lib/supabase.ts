@@ -774,6 +774,33 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<vo
 
 export async function deleteTask(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
+    try {
+      // 1. Fetch note image URLs associated with this task to clean up storage files
+      const { data: notes } = await supabase
+        .from('notes')
+        .select('image_url')
+        .eq('task_id', id);
+
+      if (notes && notes.length > 0) {
+        const filePaths: string[] = notes
+          .map((n) => {
+            const url = n.image_url;
+            if (url && url.includes('/scanned-notes/')) {
+              return url.split('/scanned-notes/').pop() || '';
+            }
+            return '';
+          })
+          .filter(Boolean);
+
+        if (filePaths.length > 0) {
+          await supabase.storage.from('scanned-notes').remove(filePaths);
+        }
+      }
+    } catch (err) {
+      console.error('Error clearing note images from Supabase storage during task deletion:', err);
+    }
+
+    // 2. Delete task from Supabase DB (cascades to notes and overlays table rows)
     await supabase.from('tasks').delete().eq('id', id);
     return;
   }
@@ -783,6 +810,35 @@ export async function deleteTask(id: string): Promise<void> {
   const noteIds = db.notes.filter((n) => n.task_id === id).map((n) => n.id);
   db.notes = db.notes.filter((n) => n.task_id !== id);
   db.overlays = db.overlays.filter((o) => !noteIds.includes(o.note_id));
+  saveLocalDB(db);
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: note } = await supabase
+        .from('notes')
+        .select('image_url')
+        .eq('id', id)
+        .single();
+
+      if (note?.image_url && note.image_url.includes('/scanned-notes/')) {
+        const filePath = note.image_url.split('/scanned-notes/').pop();
+        if (filePath) {
+          await supabase.storage.from('scanned-notes').remove([filePath]);
+        }
+      }
+    } catch (err) {
+      console.error('Error clearing note image from Supabase storage during note deletion:', err);
+    }
+
+    await supabase.from('notes').delete().eq('id', id);
+    return;
+  }
+
+  const db = getLocalDB();
+  db.notes = db.notes.filter((n) => n.id !== id);
+  db.overlays = db.overlays.filter((o) => o.note_id !== id);
   saveLocalDB(db);
 }
 
