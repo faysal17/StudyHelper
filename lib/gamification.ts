@@ -36,7 +36,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else if (level <= 50) {
     return {
       rank: 'B-Rank',
-      title: 'Dedicated Practitioner',
+      title: 'The Steady Grinder',
       badgeBg: 'bg-blue-500/10',
       badgeText: 'text-blue-400',
       badgeBorder: 'border-blue-500/20',
@@ -44,7 +44,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else if (level <= 75) {
     return {
       rank: 'A-Rank',
-      title: 'Apex Strategist',
+      title: 'The Discipline Demon',
       badgeBg: 'bg-purple-500/10',
       badgeText: 'text-purple-400',
       badgeBorder: 'border-purple-500/20',
@@ -52,7 +52,7 @@ export function getRankAndTitle(level: number): RankInfo {
   } else {
     return {
       rank: 'S-Rank',
-      title: 'Sovereign Mind',
+      title: 'Sovereign of the Syllabus',
       badgeBg: 'bg-amber-500/20',
       badgeText: 'text-amber-300 font-bold',
       badgeBorder: 'border-amber-500/40 shadow-sm',

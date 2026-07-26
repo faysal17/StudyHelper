@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
 import { fetchUserSettings } from '@/lib/supabase';
-import { calculateLevelAndProgress, getRankAndTitle } from '@/lib/gamification';
+import { calculateLevelAndProgress } from '@/lib/gamification';
 import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 
@@ -44,7 +44,7 @@ export default function HunterRankPage() {
       color: 'text-red-400',
       bgStyle: 'bg-red-500/10',
       borderStyle: 'border-red-500/30',
-      desc: 'Lowest rank for casual slackers. Requires consistency to escape the mud.',
+      desc: 'Lowest rank for casual slackers. Requires real consistency to crawl out of the mud.',
     },
     {
       rank: 'D-Rank',
@@ -55,7 +55,7 @@ export default function HunterRankPage() {
       color: 'text-orange-400',
       bgStyle: 'bg-orange-500/10',
       borderStyle: 'border-orange-500/30',
-      desc: 'Thinking you are studying when you are just staring at screens.',
+      desc: 'Thinking you are studying when you are just staring at screens without retention.',
     },
     {
       rank: 'C-Rank',
@@ -66,40 +66,40 @@ export default function HunterRankPage() {
       color: 'text-yellow-400',
       bgStyle: 'bg-yellow-500/10',
       borderStyle: 'border-yellow-500/30',
-      desc: 'Half-hearted attempt at study. Needs serious discipline to rank up.',
+      desc: 'Half-hearted study sessions. Needs serious discipline and active recall to level up.',
     },
     {
       rank: 'B-Rank',
-      title: 'Dedicated Practitioner',
+      title: 'Relentless Grind-Addict',
       levelRange: 'Lvl 31 – 50',
       minLevel: 31,
       maxLevel: 50,
       color: 'text-blue-400',
       bgStyle: 'bg-blue-500/10',
       borderStyle: 'border-blue-500/30',
-      desc: 'Respectable focus and regular active recall habits forming.',
+      desc: 'Obsessive daily study habits forming. You put in the hours while others sleep.',
     },
     {
       rank: 'A-Rank',
-      title: 'Apex Strategist',
+      title: 'Ruthless Syllabus Slayer',
       levelRange: 'Lvl 51 – 75',
       minLevel: 51,
       maxLevel: 75,
       color: 'text-purple-400',
       bgStyle: 'bg-purple-500/10',
       borderStyle: 'border-purple-500/30',
-      desc: 'Dominating your syllabus with high recall precision and unwavering focus.',
+      desc: 'Demolishing topics and subtopics with high recall precision and total focus.',
     },
     {
       rank: 'S-Rank',
-      title: 'Sovereign Mind',
+      title: 'Shadow Monarch of Learning',
       levelRange: 'Lvl 76+',
       minLevel: 76,
       maxLevel: 999,
       color: 'text-amber-300',
       bgStyle: 'bg-amber-500/20',
       borderStyle: 'border-amber-500/40 shadow-lg shadow-amber-500/10',
-      desc: 'The ultimate academic aura. Total mastery over memory and study discipline.',
+      desc: 'The ultimate academic aura. Total domain control over memory, revision, and discipline.',
     },
   ];
 
@@ -185,7 +185,7 @@ export default function HunterRankPage() {
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Hunter Rank Roadmap</h2>
-            <p className="text-xs text-zinc-400">Progression ladder from E-Rank slacker to S-Rank Sovereign</p>
+            <p className="text-xs text-zinc-400">Progression ladder from E-Rank slacker to S-Rank Shadow Monarch</p>
           </div>
         </div>
 
