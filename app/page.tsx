@@ -70,7 +70,7 @@ export default function DashboardPage() {
     <div className="space-y-8 w-full">
       {/* 4-Block Header Row with Aligned Card Heights */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
-        <FocusTimerBlock onSessionComplete={reloadSettings} />
+        <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />
         <TaskCountersBlock tasks={tasks} />
         <FocusStatsBlock settings={userSettings} />
         <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />

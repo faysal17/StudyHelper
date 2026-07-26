@@ -22,7 +22,7 @@ interface FullscreenFocusModalProps {
 
 function FlipDigit({ value }: { value: string }) {
   return (
-    <div className="relative w-16 h-24 sm:w-24 sm:h-32 md:w-32 md:h-44 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden group">
+    <div className="relative w-16 h-24 sm:w-24 sm:h-32 md:w-28 md:h-40 bg-zinc-900 border border-zinc-800 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden group">
       {/* Top Half Shading */}
       <div className="absolute top-0 left-0 right-0 bottom-1/2 bg-zinc-800/40 border-b border-zinc-950/80 pointer-events-none" />
       {/* Center Flip Divider Line */}
@@ -43,7 +43,7 @@ export default function FullscreenFocusModal({
   targetMinutes,
   onToggleTimer,
   onResetTimer,
-  tasks,
+  tasks = [],
   quotes,
   dayEndTime,
 }: FullscreenFocusModalProps) {
@@ -55,6 +55,18 @@ export default function FullscreenFocusModal({
     setMounted(true);
   }, []);
 
+  // Lock body scroll to prevent page scrollbars when fullscreen mode is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (quotes && quotes.length > 0) {
       setCurrentQuoteIndex(Math.floor(Math.random() * quotes.length));
@@ -65,21 +77,26 @@ export default function FullscreenFocusModal({
 
   const today = getTodayDateString(dayEndTime);
 
-  // Today's study & revision tasks for selection dropdown
+  // Group tasks into today's tasks and other scheduled tasks
   const todayNewTasks = tasks.filter((t) => !t.last_reviewed_date && t.next_revision_date <= today);
   const todayRevisionTasks = tasks.filter(
     (t) => Boolean(t.last_reviewed_date) && t.next_revision_date <= today
   );
+  const otherTasks = tasks.filter((t) => t.next_revision_date > today);
 
   const taskOptions = [
     { value: '', label: 'Select active target task...' },
     ...todayNewTasks.map((t) => ({
       value: t.id,
-      label: `[New] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
+      label: `[New Today] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
     })),
     ...todayRevisionTasks.map((t) => ({
       value: t.id,
-      label: `[Revision] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
+      label: `[Revision Today] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
+    })),
+    ...otherTasks.map((t) => ({
+      value: t.id,
+      label: `[Scheduled] ${t.subject?.name || 'Subject'} • ${t.topic?.name || 'Topic'} | ${t.title}`,
     })),
   ];
 
@@ -92,7 +109,7 @@ export default function FullscreenFocusModal({
   const secStr = String(seconds).padStart(2, '0');
 
   const handleNextQuote = () => {
-    if (quotes.length > 0) {
+    if (quotes && quotes.length > 0) {
       setCurrentQuoteIndex((prev) => (prev + 1) % quotes.length);
     }
   };
@@ -103,26 +120,26 @@ export default function FullscreenFocusModal({
       : 'Focus on being productive instead of busy.';
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-8 text-zinc-100 animate-in fade-in zoom-in-95 duration-200">
-      {/* Top Banner: Motivational Quote Only (Top Exit Button Removed) */}
-      <div className="flex items-center justify-center max-w-3xl mx-auto w-full pt-2">
-        <div className="flex items-center space-x-2 bg-zinc-900/60 border border-zinc-800/80 px-4 py-2 rounded-full shadow-sm">
-          <Quote className="w-4 h-4 text-amber-400 shrink-0" />
-          <p className="text-xs sm:text-sm italic font-medium text-zinc-300 text-center max-w-xl truncate">
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/95 backdrop-blur-2xl flex flex-col justify-between p-4 sm:p-6 text-zinc-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      {/* Top Banner: Bigger & Prominent Motivational Quote Banner */}
+      <div className="flex items-center justify-center max-w-4xl mx-auto w-full pt-2 shrink-0">
+        <div className="flex items-center space-x-3 bg-zinc-900/80 border border-zinc-800 px-5 py-3 rounded-2xl shadow-md max-w-3xl">
+          <Quote className="w-6 h-6 text-amber-400 shrink-0" />
+          <p className="text-sm sm:text-base lg:text-lg italic font-semibold text-zinc-200 text-center leading-snug truncate max-w-2xl">
             &ldquo;{currentQuote}&rdquo;
           </p>
           <button
             onClick={handleNextQuote}
-            className="p-1 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors shrink-0"
+            className="p-1.5 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-amber-400 transition-colors shrink-0"
             title="Next quote"
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* Center Stage: Giant 3D Flip-Style Timer & Controls */}
-      <div className="flex flex-col items-center justify-center my-auto space-y-6 sm:space-y-8 max-w-3xl mx-auto w-full">
+      <div className="flex flex-col items-center justify-center my-auto space-y-5 sm:space-y-6 max-w-3xl mx-auto w-full shrink-0">
         {/* Preset Minutes Selection */}
         <div className="flex items-center space-x-2 bg-zinc-900/90 border border-zinc-800 p-1.5 rounded-xl">
           {[25, 45, 60].map((m) => (
@@ -135,7 +152,7 @@ export default function FullscreenFocusModal({
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
               }`}
             >
-              {m}m
+              {m}m Focus
             </button>
           ))}
         </div>
@@ -150,11 +167,11 @@ export default function FullscreenFocusModal({
         </div>
 
         {/* Reordered Action Bar: Left = Reset, Center = Start/Pause, Right = Exit Fullscreen */}
-        <div className="relative flex items-center justify-center w-full max-w-md border-t border-zinc-800/80 pt-6">
+        <div className="relative flex items-center justify-center w-full max-w-md border-t border-zinc-800/80 pt-4">
           {/* Left: Reset Button */}
           <button
             onClick={() => onResetTimer()}
-            className="absolute left-0 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+            className="absolute left-0 top-1/2 -translate-y-1/2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
             title="Reset Timer"
           >
             <RotateCcw className="w-5 h-5" />
@@ -163,7 +180,7 @@ export default function FullscreenFocusModal({
           {/* Center: Start / Pause Button */}
           <button
             onClick={onToggleTimer}
-            className={`px-8 py-3 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg mx-auto ${
+            className={`px-8 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg mx-auto ${
               isActive
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
                 : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200'
@@ -176,7 +193,7 @@ export default function FullscreenFocusModal({
           {/* Right: Exit Fullscreen Button */}
           <button
             onClick={onClose}
-            className="absolute right-0 top-1/2 -translate-y-1/2 p-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+            className="absolute right-0 top-1/2 -translate-y-1/2 p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
             title="Exit Fullscreen"
           >
             <Minimize2 className="w-5 h-5" />
@@ -185,7 +202,7 @@ export default function FullscreenFocusModal({
       </div>
 
       {/* Bottom Section: Minimal Active Task Target with Upward Dropdown */}
-      <div className="max-w-xl mx-auto w-full bg-zinc-900/80 border border-zinc-800/90 rounded-xl p-3 space-y-2">
+      <div className="max-w-xl mx-auto w-full bg-zinc-900/80 border border-zinc-800/90 rounded-xl p-3 space-y-2 shrink-0">
         <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
           <span className="flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5 text-blue-400" />
