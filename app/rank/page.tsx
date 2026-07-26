@@ -5,23 +5,12 @@ import { UserSettings } from '@/lib/types';
 import { fetchUserSettings } from '@/lib/supabase';
 import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
-import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent, Sparkles, Laugh, Play, Trophy } from 'lucide-react';
+import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import HunterEventModal, { EventType } from '@/components/HunterEventModal';
 
 export default function HunterRankPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Debug Event Modal Simulation States
-  const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [activeEventType, setActiveEventType] = useState<EventType>('rank-up');
-  const [simOldGlobalPos, setSimOldGlobalPos] = useState(450);
-  const [simNewGlobalPos, setSimNewGlobalPos] = useState(380);
-  const [simOldRank, setSimOldRank] = useState('E-Rank');
-  const [simNewRank, setSimNewRank] = useState('D-Rank');
-  const [simOldLevel, setSimOldLevel] = useState(5);
-  const [simNewLevel, setSimNewLevel] = useState(6);
 
   useEffect(() => {
     loadSettings();
@@ -49,32 +38,12 @@ export default function HunterRankPage() {
 
   const momentum = calculateMomentum(settings);
 
-  // Live Provisional vs Official Weekly Rank calculation
+  // Live Provisional Rank calculation
   const provisionalGlobalRank = calculateGlobalHunterRank(level, momentum.score);
-  const officialWeeklyRank = settings?.official_weekly_rank || 500;
 
   // Live components calculation
   const streakBonus = Math.min(15, streakDays * 3);
   const stopPenalty = stopsToday * 15;
-
-  const triggerSimulation = (
-    type: EventType,
-    oldPos: number,
-    newPos: number,
-    oldR: string,
-    newR: string,
-    oldL: number,
-    newL: number
-  ) => {
-    setActiveEventType(type);
-    setSimOldGlobalPos(oldPos);
-    setSimNewGlobalPos(newPos);
-    setSimOldRank(oldR);
-    setSimNewRank(newR);
-    setSimOldLevel(oldL);
-    setSimNewLevel(newL);
-    setEventModalOpen(true);
-  };
 
   const rankRoadmap = [
     {
@@ -161,35 +130,8 @@ export default function HunterRankPage() {
         </span>
       </div>
 
-      {/* Hunter Profile Card with Prominent Giant Global Rank Display */}
+      {/* Hunter Profile Card: Big #500 Global Rank Displayed Prominently Beside Title */}
       <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-zinc-800 space-y-6 relative overflow-hidden">
-        {/* Giant Global Rank Display Banner */}
-        <div className="p-4 bg-zinc-950/90 border border-amber-500/30 rounded-2xl flex items-center justify-between shadow-xl">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
-                Global Hunter Leaderboard Position
-              </span>
-              <div className="flex items-baseline space-x-2">
-                <span className="text-3xl sm:text-4xl font-extrabold font-mono text-zinc-100 drop-shadow-md">
-                  #{provisionalGlobalRank}
-                </span>
-                <span className="text-xs font-mono text-zinc-500">/ 500 Hunters</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden sm:block text-right">
-            <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-lg font-bold">
-              Provisional Live Rank
-            </span>
-            <p className="text-[10px] font-mono text-zinc-500 mt-1">Official updates on {settings?.week_start_day || 'Monday'}</p>
-          </div>
-        </div>
-
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center space-x-4">
             <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border ${rankInfo.badgeBg} ${rankInfo.badgeBorder} flex items-center justify-center shadow-2xl`}>
@@ -213,17 +155,15 @@ export default function HunterRankPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 self-stretch sm:self-auto justify-between sm:justify-end">
-            <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-center min-w-[90px]">
-              <Flame className="w-4 h-4 text-amber-400 mx-auto mb-0.5 fill-amber-400" />
-              <span className="text-sm font-bold font-mono text-zinc-100">{streakDays}d</span>
-              <p className="text-[10px] text-zinc-500 font-mono">Streak</p>
-            </div>
-
-            <div className="p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-center min-w-[90px]">
-              <Clock className="w-4 h-4 text-blue-400 mx-auto mb-0.5" />
-              <span className="text-sm font-bold font-mono text-zinc-100">{Math.floor(focusSecondsToday / 60)}m</span>
-              <p className="text-[10px] text-zinc-500 font-mono">Focus Today</p>
+          {/* Big Global Rank Number Position (#500) directly beside title */}
+          <div className="self-stretch sm:self-auto flex items-center justify-end">
+            <div className="px-5 py-3 bg-zinc-950/90 border border-amber-500/30 rounded-2xl text-right font-mono shadow-xl">
+              <span className="text-[10px] text-amber-400 font-bold uppercase tracking-widest block">
+                Global Hunter Position
+              </span>
+              <span className="text-3xl sm:text-4xl font-extrabold text-zinc-100 drop-shadow-md">
+                #{provisionalGlobalRank}
+              </span>
             </div>
           </div>
         </div>
@@ -249,102 +189,49 @@ export default function HunterRankPage() {
         </div>
       </div>
 
-      {/* Provisional vs Official Weekly Rank Section */}
+      {/* Global Leaderboard Status Card: Streak, Focus Today & Provisional Rank */}
       <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4 text-amber-400" />
             <h2 className="text-sm font-semibold text-zinc-100">Global Leaderboard Status</h2>
           </div>
-          <span className="text-[10px] font-mono text-zinc-500 uppercase">
-            Official Update: Every {settings?.week_start_day || 'Monday'}
-          </span>
+          <span className="text-[10px] font-mono text-zinc-500 uppercase">Live Hunter Metrics</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono text-xs">
-          {/* Official Weekly Rank */}
-          <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1">
-            <span className="text-[10px] text-zinc-500 uppercase block font-bold">Official Weekly Rank</span>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-extrabold text-amber-400">#{officialWeeklyRank}</span>
-              <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-300 px-2 py-0.5 rounded">
-                Finalized
-              </span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
+          {/* Streak Metric */}
+          <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Daily Streak</span>
+              <span className="text-xl font-extrabold text-amber-400">{streakDays}d</span>
             </div>
-            <p className="text-[10px] text-zinc-500">Official rank set on {settings?.week_start_day || 'Monday'}</p>
-          </div>
-
-          {/* Live Provisional Rank */}
-          <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-1">
-            <span className="text-[10px] text-zinc-500 uppercase block font-bold">Provisional Live Rank</span>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-extrabold text-cyan-400">#{provisionalGlobalRank}</span>
-              <span className="text-[10px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded flex items-center gap-1 animate-pulse">
-                <Sparkles className="w-3 h-3" /> Live
-              </span>
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+              <Flame className="w-5 h-5 fill-amber-400" />
             </div>
-            <p className="text-[10px] text-zinc-500">Real-time mid-week estimated rank</p>
           </div>
-        </div>
-      </div>
 
-      {/* DEBUG & SIMULATION CONTROL PANEL */}
-      <div className="glass-panel p-5 rounded-xl border border-amber-500/30 bg-amber-950/10 space-y-3">
-        <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
-          <div className="flex items-center space-x-2 text-amber-400">
-            <Play className="w-4 h-4 fill-current" />
-            <h3 className="text-xs font-bold font-mono uppercase tracking-wider">
-              Debug Simulation & Animation Tester
-            </h3>
+          {/* Focus Today Metric */}
+          <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Focus Today</span>
+              <span className="text-xl font-extrabold text-blue-400">{Math.floor(focusSecondsToday / 60)}m</span>
+            </div>
+            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Clock className="w-5 h-5" />
+            </div>
           </div>
-          <span className="text-[10px] font-mono text-zinc-400">Test Feature Animations</span>
-        </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
-          {/* Test 1: Rank Up Celebration */}
-          <button
-            onClick={() => triggerSimulation('rank-up', 450, 380, 'E-Rank', 'D-Rank', 5, 6)}
-            className="px-3 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 transition-all text-xs font-mono font-bold flex items-center space-x-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>🚀 Test Rank Up (Confetti & Fireworks)</span>
-          </button>
-
-          {/* Test 2: Rank Demotion Roaster */}
-          <button
-            onClick={() => triggerSimulation('rank-down', 380, 450, 'D-Rank', 'E-Rank', 6, 5)}
-            className="px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-all text-xs font-mono font-bold flex items-center space-x-1.5"
-          >
-            <Laugh className="w-3.5 h-3.5" />
-            <span>🤣 Test Rank Demotion (Haha Emoji Rain)</span>
-          </button>
-
-          {/* Test 3: Level Up */}
-          <button
-            onClick={() => triggerSimulation('level-up', 410, 400, 'E-Rank', 'E-Rank', 3, 4)}
-            className="px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 transition-all text-xs font-mono font-bold flex items-center space-x-1.5"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>⬆️ Test Level Up</span>
-          </button>
-
-          {/* Test 4: Level Down */}
-          <button
-            onClick={() => triggerSimulation('level-down', 400, 410, 'E-Rank', 'E-Rank', 4, 3)}
-            className="px-3 py-2 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 hover:bg-orange-500/30 transition-all text-xs font-mono font-bold flex items-center space-x-1.5"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>⬇️ Test Level Down</span>
-          </button>
-
-          {/* Test 5: Week Start Official Transition */}
-          <button
-            onClick={() => triggerSimulation('weekly-transition', 450, 380, 'E-Rank', 'D-Rank', 5, 6)}
-            className="px-3 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 transition-all text-xs font-mono font-bold flex items-center space-x-1.5"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>📅 Test Weekly Official Transition</span>
-          </button>
+          {/* Provisional Live Rank Metric */}
+          <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Provisional Rank</span>
+              <span className="text-xl font-extrabold text-cyan-400">#{provisionalGlobalRank}</span>
+            </div>
+            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 animate-pulse">
+              <Sparkles className="w-5 h-5" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -663,19 +550,6 @@ export default function HunterRankPage() {
           </div>
         </div>
       </div>
-
-      {/* Debug Simulation Event Modal */}
-      <HunterEventModal
-        isOpen={eventModalOpen}
-        onClose={() => setEventModalOpen(false)}
-        eventType={activeEventType}
-        oldRankStr={simOldRank}
-        newRankStr={simNewRank}
-        oldLevel={simOldLevel}
-        newLevel={simNewLevel}
-        oldGlobalPosition={simOldGlobalPos}
-        newGlobalPosition={simNewGlobalPos}
-      />
     </div>
   );
 }
