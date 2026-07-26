@@ -94,6 +94,7 @@ export interface UserSettings {
   last_stop_timestamp?: string | null;
   pause_start_timestamp?: string | null;
   last_active_date?: string | null;
+  momentum_score?: number;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

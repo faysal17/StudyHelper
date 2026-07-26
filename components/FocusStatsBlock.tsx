@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { UserSettings } from '@/lib/types';
 import { calculateLevelAndProgress } from '@/lib/gamification';
+import { calculateMomentum } from '@/lib/momentum';
 import { Shield, Zap, Flame, Award, ChevronRight } from 'lucide-react';
 
 interface FocusStatsBlockProps {
@@ -15,6 +16,8 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
 
   const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
     calculateLevelAndProgress(totalXP);
+
+  const momentum = calculateMomentum(settings);
 
   return (
     <Link
@@ -31,10 +34,17 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
         </div>
 
         <div className="flex items-center space-x-2">
+          {/* Momentum Velocity Badge */}
+          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border ${momentum.badgeBg} ${momentum.color} ${momentum.badgeBorder} flex items-center gap-0.5`}>
+            <span>{momentum.icon}</span>
+            <span>{momentum.velocityTier}</span>
+          </span>
+
           <div className="flex items-center space-x-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-amber-400 font-mono text-[10px] font-bold">
             <Flame className="w-3 h-3 text-amber-400 fill-amber-400" />
-            <span>{streakDays}d Streak</span>
+            <span>{streakDays}d</span>
           </div>
+
           <ChevronRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
         </div>
       </div>

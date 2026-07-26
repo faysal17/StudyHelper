@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification XP/Ranks & Stop Penalties)
+-- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification & Momentum Index)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     target_date DATE DEFAULT NULL,
@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     last_stop_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     pause_start_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     last_active_date DATE DEFAULT CURRENT_DATE,
+    momentum_score INTEGER DEFAULT 0,
     focus_seconds_today INTEGER DEFAULT 0,
     focus_seconds_week INTEGER DEFAULT 0,
     current_rank TEXT DEFAULT 'E-Rank',
@@ -124,6 +125,7 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS stops_this_week INTEGE
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_stop_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS pause_start_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_active_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS momentum_score INTEGER DEFAULT 0;
 
 -- 3. Enable Row Level Security (RLS) on All Tables
 

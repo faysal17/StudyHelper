@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
 import { fetchUserSettings } from '@/lib/supabase';
 import { calculateLevelAndProgress } from '@/lib/gamification';
-import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw } from 'lucide-react';
+import { calculateMomentum } from '@/lib/momentum';
+import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HunterRankPage() {
@@ -33,6 +34,21 @@ export default function HunterRankPage() {
 
   const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
     calculateLevelAndProgress(totalXP);
+
+  const momentum = calculateMomentum(settings);
+
+  // Mock 7-day momentum history curve based on active score
+  const mock7DayHistory = [
+    Math.max(10, momentum.score - 35),
+    Math.max(15, momentum.score - 20),
+    Math.max(20, momentum.score - 10),
+    Math.max(10, momentum.score - 25),
+    Math.max(30, momentum.score - 5),
+    Math.max(20, momentum.score - 15),
+    momentum.score,
+  ];
+
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'];
 
   const rankRoadmap = [
     {
@@ -176,6 +192,102 @@ export default function HunterRankPage() {
               className="bg-gradient-to-r from-amber-500 to-amber-300 h-full rounded-full transition-all duration-500"
               style={{ width: `${progressPercent}%` }}
             />
+          </div>
+        </div>
+      </div>
+
+      {/* Free Stops Tracker & Study Momentum Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Remaining Free Stops Tracker */}
+        <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div className="flex items-center space-x-2">
+              <RotateCcw className="w-4 h-4 text-red-400" />
+              <h3 className="text-sm font-semibold text-zinc-100">Free Stop Allowances</h3>
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500 uppercase">Discipline Tracker</span>
+          </div>
+
+          <div className="space-y-3">
+            {/* Daily Stops Meter */}
+            <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-zinc-200">Daily Free Stops</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">2 Free stops allowed per day</p>
+              </div>
+              <span className={`text-xs font-mono font-extrabold px-2.5 py-1 rounded-lg border ${
+                momentum.remainingStopsToday > 0
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-red-500/20 text-red-400 border-red-500/30'
+              }`}>
+                {momentum.remainingStopsToday} / 2 Left
+              </span>
+            </div>
+
+            {/* Weekly Stops Meter */}
+            <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-zinc-200">Weekly Free Stops</p>
+                <p className="text-[10px] text-zinc-500 mt-0.5">7 Free stops allowed per week</p>
+              </div>
+              <span className={`text-xs font-mono font-extrabold px-2.5 py-1 rounded-lg border ${
+                momentum.remainingStopsWeek > 0
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-red-500/20 text-red-400 border-red-500/30'
+              }`}>
+                {momentum.remainingStopsWeek} / 7 Left
+              </span>
+            </div>
+
+            {momentum.remainingStopsToday === 0 && (
+              <div className="p-2.5 rounded-lg bg-red-950/30 border border-red-500/40 text-[11px] text-red-300 font-mono flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                <span>EXHAUSTED: Excess stops now deduct -30 XP penalty!</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Study Momentum Velocity Graph */}
+        <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+            <div className="flex items-center space-x-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-semibold text-zinc-100">Study Momentum Index</h3>
+            </div>
+
+            <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded border ${momentum.badgeBg} ${momentum.color} ${momentum.badgeBorder} flex items-center gap-1`}>
+              <span>{momentum.icon}</span>
+              <span>{momentum.velocityTier}</span>
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <span className="text-2xl font-extrabold font-mono text-zinc-100">{momentum.score}%</span>
+              <p className="text-[10px] text-zinc-400 font-mono">Velocity Acceleration Score</p>
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-mono font-bold text-amber-400">{momentum.xpMultiplier}x XP Boost</span>
+              <p className="text-[10px] text-zinc-500 font-mono">Current Multiplier</p>
+            </div>
+          </div>
+
+          {/* 7-Day Momentum Visual Bar Chart */}
+          <div className="pt-2">
+            <div className="flex items-end justify-between gap-2 h-24 px-2 bg-zinc-950/80 rounded-xl border border-zinc-800/80 p-2">
+              {mock7DayHistory.map((val, idx) => (
+                <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <div
+                    className={`w-full rounded-t transition-all duration-500 ${
+                      idx === 6 ? 'bg-gradient-to-t from-cyan-500 to-cyan-300 shadow-md shadow-cyan-500/20' : 'bg-zinc-800'
+                    }`}
+                    style={{ height: `${val}%` }}
+                  />
+                  <span className="text-[9px] font-mono text-zinc-500">{daysOfWeek[idx]}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
