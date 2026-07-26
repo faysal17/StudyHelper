@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
 import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target, Shield } from 'lucide-react';
+import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target } from 'lucide-react';
+import CustomSelect from '@/components/CustomSelect';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -126,15 +127,15 @@ export default function SettingsPage() {
   const allDaysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   const targetHoursOptions = [
-    { mins: 60, label: '1.0 Hour / day' },
-    { mins: 90, label: '1.5 Hours / day' },
-    { mins: 120, label: '2.0 Hours / day (Standard)' },
-    { mins: 150, label: '2.5 Hours / day' },
-    { mins: 180, label: '3.0 Hours / day' },
-    { mins: 210, label: '3.5 Hours / day (High Momentum)' },
-    { mins: 240, label: '4.0 Hours / day (Intensive)' },
-    { mins: 300, label: '5.0 Hours / day (Hardcore)' },
-    { mins: 360, label: '6.0 Hours / day (Extreme)' },
+    { value: '60', label: '1.0 Hour / day' },
+    { value: '90', label: '1.5 Hours / day' },
+    { value: '120', label: '2.0 Hours / day (Standard)' },
+    { value: '150', label: '2.5 Hours / day' },
+    { value: '180', label: '3.0 Hours / day' },
+    { value: '210', label: '3.5 Hours / day (High Momentum)' },
+    { value: '240', label: '4.0 Hours / day (Intensive)' },
+    { value: '300', label: '5.0 Hours / day (Hardcore)' },
+    { value: '360', label: '6.0 Hours / day (Extreme)' },
   ];
 
   const timeOptions = [
@@ -184,17 +185,11 @@ export default function SettingsPage() {
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
               <span>Weekday Focus Goal</span>
             </label>
-            <select
-              value={weekdayTargetMins}
-              onChange={(e) => setWeekdayTargetMins(Number(e.target.value))}
-              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
-            >
-              {targetHoursOptions.map((opt) => (
-                <option key={opt.mins} value={opt.mins}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={String(weekdayTargetMins)}
+              onChange={(val) => setWeekdayTargetMins(Number(val))}
+              options={targetHoursOptions}
+            />
           </div>
 
           {/* Weekend Target Hours */}
@@ -202,17 +197,11 @@ export default function SettingsPage() {
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
               <span>Weekend Focus Goal</span>
             </label>
-            <select
-              value={weekendTargetMins}
-              onChange={(e) => setWeekendTargetMins(Number(e.target.value))}
-              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
-            >
-              {targetHoursOptions.map((opt) => (
-                <option key={opt.mins} value={opt.mins}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <CustomSelect
+              value={String(weekendTargetMins)}
+              onChange={(val) => setWeekendTargetMins(Number(val))}
+              options={targetHoursOptions}
+            />
           </div>
         </div>
 
@@ -250,17 +239,14 @@ export default function SettingsPage() {
           {/* Week Start Day */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-300">Official Week Start Day</label>
-            <select
+            <CustomSelect
               value={weekStartDay}
-              onChange={(e) => setWeekStartDay(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
-            >
-              {allDaysOfWeek.map((day) => (
-                <option key={day} value={day}>
-                  {day} (Official Rank Update)
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setWeekStartDay(val)}
+              options={allDaysOfWeek.map((day) => ({
+                value: day,
+                label: `${day} (Official Rank Update)`,
+              }))}
+            />
           </div>
         </div>
 
@@ -318,17 +304,13 @@ export default function SettingsPage() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-          <select
-            value={dayEndTime}
-            onChange={(e) => setDayEndTime(e.target.value)}
-            className="flex-1 bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
-          >
-            {timeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex-1">
+            <CustomSelect
+              value={dayEndTime}
+              onChange={(val) => setDayEndTime(val)}
+              options={timeOptions}
+            />
+          </div>
 
           <button
             onClick={handleSaveDayEndTime}
