@@ -47,63 +47,83 @@ export default function Navbar() {
     router.push('/login');
   };
 
-  const navLinks = [
-    { href: '/', label: 'Dashboard', icon: Layers },
-    { href: '/rank', label: 'Rank Hub', icon: Calendar },
-    { href: '/tasks', label: 'Task Library', icon: CheckSquare },
-    { href: '/syllabus', label: 'Syllabus', icon: ListTree },
-  ];
-
   return (
     <>
       <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          {/* Left: App Brand & Navigation Links */}
-          <div className="flex items-center space-x-6">
-            <Link href="/" className="flex items-center space-x-2 group">
-              <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center font-bold font-mono text-zinc-950 group-hover:scale-105 transition-transform shadow-sm">
-                BCS
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          {/* Left Brand Identifier: StudyHub */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-2.5 group">
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-950 shadow-sm group-hover:scale-105 transition-transform">
+                <Layers className="w-4.5 h-4.5 stroke-[2.5]" />
               </div>
-              <span className="text-sm font-bold text-zinc-100 hidden sm:inline-block tracking-tight">
-                Hunter System
+              <span className="font-semibold text-sm tracking-tight text-zinc-100 group-hover:text-zinc-300 transition-colors">
+                StudyHub
               </span>
             </Link>
-
-            <nav className="flex items-center space-x-1">
-              {navLinks.map((link) => {
-                const Icon = link.icon;
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all ${
-                      isActive
-                        ? 'bg-zinc-800 text-zinc-100 border border-zinc-700 shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{link.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
           </div>
 
-          {/* Right: Quick Action Controls & User Account */}
+          {/* Pixel-Perfect Centered Navigation Tabs */}
+          <nav className="hidden md:flex items-center space-x-1">
+            <Link
+              href="/"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+                pathname === '/'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Dashboard</span>
+            </Link>
+
+            <Link
+              href="/rank"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+                pathname === '/rank'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Rank Hub</span>
+            </Link>
+
+            <Link
+              href="/tasks"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+                pathname === '/tasks'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              <span>Tasks</span>
+            </Link>
+
+            <Link
+              href="/syllabus"
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-1.5 ${
+                pathname === '/syllabus' || pathname === '/topics'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <ListTree className="w-3.5 h-3.5" />
+              <span>Syllabus</span>
+            </Link>
+          </nav>
+
+          {/* Right Action Block (1. Add Task -> 2. Username -> 3. Tools -> 4. Settings -> 5. Logout) */}
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setIsTaskModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5 shadow-sm"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
               <span className="hidden sm:inline">Add Task</span>
             </button>
 
-            <div className="h-4 w-px bg-zinc-800 mx-1" />
-
-            {/* Username Badge */}
             {userEmail && (
               <span className="hidden lg:flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800">
                 <User className="w-3 h-3 text-zinc-500" />
@@ -116,7 +136,7 @@ export default function Navbar() {
               <Link
                 href="/tools"
                 className={`p-2 rounded-lg border transition-colors ${
-                  pathname === '/tools'
+                  pathname === '/tools' || pathname.startsWith('/tools/')
                     ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
                 }`}
