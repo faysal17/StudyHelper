@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV } from '@/lib/banglaVocab';
+import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV, getSampleBanglaCSV } from '@/lib/banglaVocab';
 import { awardXPAndSync, fetchUserSettings } from '@/lib/supabase';
 import { calculateMomentum } from '@/lib/momentum';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { ArrowLeft, BookOpen, Download, Upload, Plus, Trash2, Search, CheckCircle2, Brain, Eye } from 'lucide-react';
+import { ArrowLeft, BookOpen, Download, Upload, Plus, Trash2, Search, CheckCircle2, Brain, Eye, FileSpreadsheet } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import XPChangeModal from '@/components/XPChangeModal';
 import Tooltip from '@/components/Tooltip';
@@ -95,7 +95,7 @@ export default function BanglaVocabPage() {
           setImportStatusMsg(`Successfully synced ${imported.length} Bangla words to Database!`);
           setTimeout(() => setImportStatusMsg(''), 4000);
         } else {
-          setImportStatusMsg('Failed to parse CSV. Ensure columns are: word, meaning, example');
+          setImportStatusMsg('Failed to parse CSV. Ensure columns are: Word, Meaning, Example');
         }
       }
     };
@@ -109,7 +109,19 @@ export default function BanglaVocabPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `bangla_vocabulary_database_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `bangla_vocabulary_words_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSampleCSV = () => {
+    const sampleContent = getSampleBanglaCSV();
+    const blob = new Blob([sampleContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'bangla_vocab_sample_template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -181,7 +193,7 @@ export default function BanglaVocabPage() {
       let reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Already Claimed Today`;
 
       if (lastClaimedDate !== todayStr) {
-        earned = 10; // Cap at +10 XP max per day!
+        earned = 10;
         if (typeof window !== 'undefined') {
           localStorage.setItem('bcs_last_bangla_vocab_xp_date', todayStr);
         }
@@ -228,7 +240,7 @@ export default function BanglaVocabPage() {
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-400 font-bold">
-                Anti-Farm Capped (+10 XP / Day)
+                Database Synced Tool
               </span>
             </div>
             <h1 className="text-lg font-bold text-zinc-100 mt-0.5">Bangla Vocab Builder</h1>
@@ -236,7 +248,7 @@ export default function BanglaVocabPage() {
         </div>
 
         <div className="flex items-center space-x-2">
-          <Tooltip content="Download Vocabulary CSV File">
+          <Tooltip content="Download Vocabulary CSV (Word, Meaning, Example)">
             <button
               onClick={handleDownloadCSV}
               className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
@@ -360,8 +372,8 @@ export default function BanglaVocabPage() {
                   )}
 
                   <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1">
-                    <span>Interval: {word.interval}d (Ease: {word.ease_factor}x)</span>
-                    <span>Next: {word.next_review}</span>
+                    <span>Interval: {word.interval}d</span>
+                    <span>Next Review: {word.next_review}</span>
                   </div>
                 </div>
               ))
@@ -472,18 +484,28 @@ export default function BanglaVocabPage() {
         </div>
       )}
 
-      {/* TAB 3: CSV IMPORT PANEL */}
+      {/* TAB 3: CSV IMPORT & TEMPLATE PANEL */}
       {activeTab === 'import' && (
-        <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
-          <div className="flex items-center space-x-2">
-            <Upload className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-sm font-semibold text-zinc-100">Import Bangla Words to Database via CSV</h2>
-          </div>
+        <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+            <div className="flex items-center space-x-2">
+              <Upload className="w-5 h-5 text-cyan-400" />
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-100">Import Bangla Words via CSV</h2>
+                <p className="text-xs text-zinc-400">
+                  Bulk add vocabulary words. Interval and revision schedules are handled automatically by the application.
+                </p>
+              </div>
+            </div>
 
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            Upload a CSV file containing your Bangla word list. Format:
-            <code className="text-amber-400 font-mono ml-1">Word, Meaning, Example (Optional)</code>
-          </p>
+            <button
+              onClick={handleDownloadSampleCSV}
+              className="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-cyan-400 hover:bg-zinc-800 text-xs font-semibold flex items-center space-x-1.5 transition-colors shrink-0"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Download CSV Template</span>
+            </button>
+          </div>
 
           <div className="p-8 border-2 border-dashed border-zinc-800 rounded-2xl text-center bg-zinc-950/60 hover:border-zinc-700 transition-all">
             <input
@@ -500,7 +522,7 @@ export default function BanglaVocabPage() {
             >
               <Upload className="w-8 h-8 text-zinc-500 mb-1" />
               <span className="text-xs font-bold text-zinc-200">Click to browse & upload `.csv` file</span>
-              <span className="text-[10px] text-zinc-500 font-mono">Imports & syncs directly to Database</span>
+              <span className="text-[10px] text-zinc-500 font-mono">Format: Word, Meaning, Example</span>
             </label>
           </div>
 

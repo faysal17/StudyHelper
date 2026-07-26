@@ -16,59 +16,8 @@ export interface BanglaWord {
 
 const LOCAL_STORAGE_KEY = 'bcs_bangla_vocab_list';
 
-// Default Starter Words
-const DEFAULT_WORDS: BanglaWord[] = [
-  {
-    id: 'bv-1',
-    word: 'অনুধাবন',
-    meaning: 'উপলব্ধি / বোধগম্যতা (Comprehension / Realization)',
-    example: 'বিষয়টি গভীর অনুধাবন প্রয়োজন।',
-    interval: 1,
-    ease_factor: 2.5,
-    next_review: new Date().toISOString().split('T')[0],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bv-2',
-    word: 'অদৃষ্টপূর্ব',
-    meaning: 'পূর্বে যা দেখা যায়নি (Unseen before / Unprecedented)',
-    example: 'এটি এক অদৃষ্টপূর্ব ঘটনা।',
-    interval: 1,
-    ease_factor: 2.5,
-    next_review: new Date().toISOString().split('T')[0],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bv-3',
-    word: 'প্রাজ্ঞ',
-    meaning: 'বিজ্ঞ / পণ্ডিত (Wise / Scholar)',
-    example: 'তিনি একজন প্রাজ্ঞ ব্যক্তিত্ব।',
-    interval: 1,
-    ease_factor: 2.5,
-    next_review: new Date().toISOString().split('T')[0],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bv-4',
-    word: 'জিঘাংসা',
-    meaning: 'বধ করার ইচ্ছা (Desire to kill / Vengeance)',
-    example: 'শত্রুর প্রতি জিঘাংসা পরিহার করা উচিত।',
-    interval: 1,
-    ease_factor: 2.5,
-    next_review: new Date().toISOString().split('T')[0],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'bv-5',
-    word: 'জিজিবিষা',
-    meaning: 'বেঁচে থাকার ইচ্ছা (Will to live)',
-    example: 'কঠিন বিপদেও মানুষের জিজিবিষা প্রবল থাকে।',
-    interval: 1,
-    ease_factor: 2.5,
-    next_review: new Date().toISOString().split('T')[0],
-    created_at: new Date().toISOString(),
-  },
-];
+// Default Starter Words (Empty by default)
+const DEFAULT_WORDS: BanglaWord[] = [];
 
 // Async DB Fetch: Fetch from Supabase Database
 export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
@@ -257,13 +206,21 @@ export function parseBanglaCSV(csvText: string): Omit<BanglaWord, 'id' | 'create
   return newWords;
 }
 
+// Clean CSV Export containing only Word, Meaning, Example (no internal application intervals or dates)
 export function exportBanglaCSV(words: BanglaWord[]): string {
-  const headers = 'Word,Meaning,Example,Interval(Days),NextReviewDate\n';
+  const headers = 'Word,Meaning,Example\n';
   const rows = words
     .map(
       (w) =>
-        `"${w.word.replace(/"/g, '""')}","${w.meaning.replace(/"/g, '""')}","${(w.example || '').replace(/"/g, '""')}",${w.interval},"${w.next_review}"`
+        `"${w.word.replace(/"/g, '""')}","${w.meaning.replace(/"/g, '""')}","${(w.example || '').replace(/"/g, '""')}"`
     )
     .join('\n');
   return headers + rows;
+}
+
+export function getSampleBanglaCSV(): string {
+  return `Word,Meaning,Example
+"অনুধাবন","উপলব্ধি / বোধগম্যতা (Comprehension)","বিষয়টি গভীর অনুধাবন প্রয়োজন।"
+"প্রাজ্ঞ","বিজ্ঞ / পণ্ডিত (Wise / Scholar)","তিনি একজন প্রাজ্ঞ ব্যক্তিত্ব।"
+"জিজিবিষা","বেঁচে থাকার ইচ্ছা (Will to live)","মানুষের জিজিবিষা চিরন্তন।"`;
 }
