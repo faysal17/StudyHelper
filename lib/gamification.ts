@@ -62,14 +62,15 @@ export function getRankAndTitle(level: number): RankInfo {
 }
 
 // Global Hunter Rank Position (#500 to #1)
-export function calculateGlobalHunterRank(level: number, momentumScore: number = 50): number {
+// Level 1 at 0 Momentum starts at #500. S-Rank (Level 76+, 100% Momentum) reaches Top 20 (#1 - #20).
+export function calculateGlobalHunterRank(level: number, momentumScore: number = 0): number {
   const safeLevel = Math.max(1, Math.min(100, level));
   const safeMomentum = Math.max(0, Math.min(100, momentumScore));
 
-  const levelFactor = (safeLevel / 75) * 450;
-  const momentumFactor = (safeMomentum / 100) * 30;
+  const levelBonus = ((safeLevel - 1) / 74) * 450;
+  const momentumBonus = (safeMomentum / 100) * 30;
 
-  const rawPosition = 500 - levelFactor - momentumFactor;
+  const rawPosition = 500 - levelBonus - momentumBonus;
   return Math.max(1, Math.min(500, Math.round(rawPosition)));
 }
 

@@ -5,7 +5,7 @@ import { UserSettings } from '@/lib/types';
 import { fetchUserSettings } from '@/lib/supabase';
 import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
-import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent, Sparkles, Laugh, Play } from 'lucide-react';
+import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent, Sparkles, Laugh, Play, Trophy } from 'lucide-react';
 import Link from 'next/link';
 import HunterEventModal, { EventType } from '@/components/HunterEventModal';
 
@@ -161,8 +161,35 @@ export default function HunterRankPage() {
         </span>
       </div>
 
-      {/* Hunter Profile Card */}
+      {/* Hunter Profile Card with Prominent Giant Global Rank Display */}
       <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-zinc-800 space-y-6 relative overflow-hidden">
+        {/* Giant Global Rank Display Banner */}
+        <div className="p-4 bg-zinc-950/90 border border-amber-500/30 rounded-2xl flex items-center justify-between shadow-xl">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                Global Hunter Leaderboard Position
+              </span>
+              <div className="flex items-baseline space-x-2">
+                <span className="text-3xl sm:text-4xl font-extrabold font-mono text-zinc-100 drop-shadow-md">
+                  #{provisionalGlobalRank}
+                </span>
+                <span className="text-xs font-mono text-zinc-500">/ 500 Hunters</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden sm:block text-right">
+            <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-1 rounded-lg font-bold">
+              Provisional Live Rank
+            </span>
+            <p className="text-[10px] font-mono text-zinc-500 mt-1">Official updates on {settings?.week_start_day || 'Monday'}</p>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center space-x-4">
             <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border ${rankInfo.badgeBg} ${rankInfo.badgeBorder} flex items-center justify-center shadow-2xl`}>
@@ -176,9 +203,6 @@ export default function HunterRankPage() {
                 </span>
                 <span className="text-xs font-mono font-bold text-zinc-400">
                   Level {level}
-                </span>
-                <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
-                  Global Rank #{provisionalGlobalRank}
                 </span>
               </div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-zinc-100 mt-1 flex items-center gap-2">
