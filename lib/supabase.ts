@@ -333,20 +333,22 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
 export async function recordRatedFocusSession(minutes: number, stars: number): Promise<UserSettings> {
   const addedSeconds = Math.round(minutes * 60);
 
-// Base XP: 15 XP for 25m (+ 5 XP per extra 10m). Scaled proportionally for < 25m.
-  const baseXP = minutes >= 25
-    ? 15 + Math.floor((minutes - 25) / 10) * 5
-    : Math.max(3, Math.round(15 * (minutes / 25)));
+  // Focus Timer Anti-Farm Rule: Minimum 15 minutes required to earn XP
+  let earnedXP = 0;
+  if (minutes >= 15) {
+    const baseXP = minutes >= 25
+      ? 15 + Math.floor((minutes - 25) / 10) * 5
+      : Math.round(15 * (minutes / 25));
 
-  // Star Rating Multipliers: 5 = 2.0x, 4 = 1.0x, 3 = 0.7x, 2 = 0.3x, 1 = 0.0x
-  let multiplier = 1.0;
-  if (stars === 5) multiplier = 2.0;
-  else if (stars === 4) multiplier = 1.0;
-  else if (stars === 3) multiplier = 0.7;
-  else if (stars === 2) multiplier = 0.3;
-  else if (stars === 1) multiplier = 0.0;
+    let multiplier = 1.0;
+    if (stars === 5) multiplier = 2.0;
+    else if (stars === 4) multiplier = 1.0;
+    else if (stars === 3) multiplier = 0.7;
+    else if (stars === 2) multiplier = 0.3;
+    else if (stars === 1) multiplier = 0.0;
 
-  const earnedXP = Math.round(baseXP * multiplier);
+    earnedXP = Math.round(baseXP * multiplier);
+  }
 
   const current = await fetchUserSettings();
   const todayStr = getTodayDateString(current.day_end_time || '00:00');
@@ -549,6 +551,16 @@ export async function createSubject(name: string): Promise<Subject> {
 }
 
 export async function deleteSubject(id: string): Promise<void> {
+  const topics = await fetchTopics();
+  const childTopicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
+  const subtopics = await fetchSubtopics();
+  const childSubtopics = subtopics.filter((st) => childTopicIds.includes(st.topic_id));
+  const completedCount = childSubtopics.filter((st) => st.status === 'completed').length;
+
+  if (completedCount > 0) {
+    await awardXPAndSync(-30 * completedCount);
+  }
+
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subjects').delete().eq('id', id);
     return;
@@ -590,6 +602,14 @@ export async function createTopic(name: string, subjectId: string): Promise<Topi
 }
 
 export async function deleteTopic(id: string): Promise<void> {
+  const subtopics = await fetchSubtopics();
+  const childSubtopics = subtopics.filter((st) => st.topic_id === id);
+  const completedCount = childSubtopics.filter((st) => st.status === 'completed').length;
+
+  if (completedCount > 0) {
+    await awardXPAndSync(-30 * completedCount);
+  }
+
   if (isSupabaseConfigured && supabase) {
     await supabase.from('topics').delete().eq('id', id);
     return;
@@ -659,6 +679,13 @@ export async function updateSubtopicStatus(id: string, status: SubtopicStatus): 
 }
 
 export async function deleteSubtopic(id: string): Promise<void> {
+  const subtopics = await fetchSubtopics();
+  const target = subtopics.find((st) => st.id === id);
+
+  if (target && target.status === 'completed') {
+    await awardXPAndSync(-30); // Deduct XP if deleting a completed subtopic
+  }
+
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subtopics').delete().eq('id', id);
     return;
@@ -978,10 +1005,37 @@ export async function updateOverlayFailingStatus(
   }
 }
 
-export async function logRevisionScore(taskId: string, score: number, isRepeatToday: boolean = false): Promise<number> {
-  // Grindy Active Recall XP: 25 XP for 100%, 15 XP for 80%+, 5 XP for 50-79%, 0 XP below 50%
-  // Zero XP awarded if task was already reviewed today (prevents XP farming)
-  const earnedXP = isRepeatToday ? 0 : score >= 100 ? 25 : score >= 80 ? 15 : score >= 50 ? 5 : 0;
+export function calculateActiveRecallXP(
+  totalOverlays: number,
+  score: number,
+  isRepeatToday: boolean = false
+): number {
+  if (isRepeatToday || totalOverlays <= 0 || score < 50) return 0;
+
+  let scoreFactor = 0;
+  if (score >= 100) scoreFactor = 1.0;
+  else if (score >= 80) scoreFactor = 0.7;
+  else if (score >= 50) scoreFactor = 0.3;
+
+  let rawXP = 0;
+  if (totalOverlays <= 3) {
+    rawXP = totalOverlays * 2;
+  } else if (totalOverlays <= 10) {
+    rawXP = totalOverlays * 3;
+  } else {
+    rawXP = Math.min(50, totalOverlays * 4);
+  }
+
+  return Math.round(rawXP * scoreFactor);
+}
+
+export async function logRevisionScore(
+  taskId: string,
+  score: number,
+  totalOverlays: number = 1,
+  isRepeatToday: boolean = false
+): Promise<number> {
+  const earnedXP = calculateActiveRecallXP(totalOverlays, score, isRepeatToday);
   if (earnedXP > 0) {
     await awardXPAndSync(earnedXP);
   }

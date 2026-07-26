@@ -92,7 +92,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
       const isRepeatToday = srResult.isLockedToday;
 
-      const xpGained = await logRevisionScore(task.id, score, isRepeatToday);
+      const xpGained = await logRevisionScore(task.id, score, totalOverlays, isRepeatToday);
       const updatedSettings = await fetchUserSettings();
 
       const newLevel = updatedSettings?.level || 1;
@@ -141,8 +141,8 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const reasonText = isRepeatToday
         ? `Task already reviewed today (0 XP awarded for repeated attempts)`
         : xpGained === 0
-        ? `Active Recall Score: ${score}% (No XP awarded for score below 50%)`
-        : `Active Recall Test Score: ${score}%`;
+        ? `Active Recall Score: ${score}% (${totalOverlays} Overlays - score below 50%)`
+        : `Active Recall Test Score: ${score}% (${totalOverlays} Overlays)`;
       setXpReason(reasonText);
       setXpMultiplier(newMomentum.xpMultiplier);
       setNewTotalXP(updatedSettings.xp || 0);
