@@ -1,3 +1,4 @@
+import { UserSettings } from './types';
 import { getTodayDateString } from './spacedRepetition';
 
 export interface RankInfo {
@@ -104,6 +105,24 @@ export function getEgoAttackMessage(rank: string, level: number): string {
   return list[Math.floor(Math.random() * list.length)];
 }
 
+export function getQuitTauntMessage(rank: string): string {
+  switch (rank) {
+    case 'E-Rank':
+      return "Predictable. An E-Rank Procrastinating Worm quits at the first sign of effort. Go back to doomscrolling.";
+    case 'D-Rank':
+      return "Classic D-Rank move. Delusional Pretenders love giving up as soon as it actually gets tough.";
+    case 'C-Rank':
+      return "Barely Functioning Amateur status confirmed. You couldn't even finish one simple focus session.";
+    case 'B-Rank':
+      return "A Steady Grinder wouldn't fold like this. Pathetic lapse in discipline.";
+    case 'A-Rank':
+      return "Disappointment. A Discipline Demon doesn't surrender to weakness.";
+    case 'S-Rank':
+    default:
+      return "Unbelievable. A Sovereign of the Syllabus falling to distraction? Reclaim your honor immediately.";
+  }
+}
+
 // Grindy XP Level Curve: XP Required for level L = floor(100 * L^1.5)
 export function getXPRequiredForLevel(targetLevel: number): number {
   return Math.floor(100 * Math.pow(targetLevel, 1.5));
@@ -116,17 +135,18 @@ export function calculateLevelAndProgress(totalXP: number): {
   progressPercent: number;
   rankInfo: RankInfo;
 } {
+  const safeXP = Math.max(0, totalXP);
   let level = 1;
   let cumulativeXP = 0;
   let nextLevelCost = getXPRequiredForLevel(level);
 
-  while (totalXP >= cumulativeXP + nextLevelCost) {
+  while (safeXP >= cumulativeXP + nextLevelCost) {
     cumulativeXP += nextLevelCost;
     level++;
     nextLevelCost = getXPRequiredForLevel(level);
   }
 
-  const xpInCurrentLevel = totalXP - cumulativeXP;
+  const xpInCurrentLevel = safeXP - cumulativeXP;
   const xpRequiredForNextLevel = nextLevelCost;
   const progressPercent = Math.min(
     100,

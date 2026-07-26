@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { getEgoAttackMessage } from '@/lib/gamification';
-import { Play, Pause, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame } from 'lucide-react';
+import { Play, Pause, Square, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 interface FullscreenFocusModalProps {
@@ -16,6 +16,7 @@ interface FullscreenFocusModalProps {
   targetMinutes: number;
   onToggleTimer: () => void;
   onResetTimer: (mins?: number) => void;
+  onStopTimer?: () => void;
   tasks: Task[];
   quotes: string[];
   dayEndTime: string;
@@ -46,6 +47,7 @@ export default function FullscreenFocusModal({
   targetMinutes,
   onToggleTimer,
   onResetTimer,
+  onStopTimer,
   tasks = [],
   quotes,
   dayEndTime,
@@ -187,7 +189,7 @@ export default function FullscreenFocusModal({
           <FlipDigit value={secStr[1]} />
         </div>
 
-        {/* Reordered Action Bar: Left = Reset, Center = Start/Pause, Right = Exit Fullscreen */}
+        {/* Toolbar: Left = Reset, Center = Start/Pause + Stop, Right = Exit Fullscreen */}
         <div className="relative flex items-center justify-center w-full max-w-md border-t border-zinc-800/80 pt-4">
           {/* Left: Reset Button */}
           <button
@@ -198,18 +200,34 @@ export default function FullscreenFocusModal({
             <RotateCcw className="w-5 h-5" />
           </button>
 
-          {/* Center: Start / Pause Button */}
-          <button
-            onClick={onToggleTimer}
-            className={`px-8 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg mx-auto ${
-              isActive
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
-                : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200'
-            }`}
-          >
-            {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
-            <span>{isActive ? 'Pause Timer' : 'Start Focus'}</span>
-          </button>
+          {/* Center: Start/Pause & Stop Button */}
+          <div className="flex items-center space-x-2 mx-auto">
+            <button
+              onClick={onToggleTimer}
+              className={`px-8 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center space-x-2 transition-all shadow-lg ${
+                isActive
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30'
+                  : 'bg-zinc-100 text-zinc-950 hover:bg-zinc-200'
+              }`}
+            >
+              {isActive ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
+              <span>{isActive ? 'Pause Timer' : 'Start Focus'}</span>
+            </button>
+
+            {(isActive || secondsLeft < targetMinutes * 60) && onStopTimer && (
+              <button
+                onClick={() => {
+                  onStopTimer();
+                  onClose();
+                }}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-all flex items-center space-x-1.5 shadow-md"
+                title="Abandon & Stop Session"
+              >
+                <Square className="w-4 h-4 fill-current" />
+                <span>Stop</span>
+              </button>
+            )}
+          </div>
 
           {/* Right: Exit Fullscreen Button */}
           <button

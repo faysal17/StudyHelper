@@ -89,6 +89,11 @@ export interface UserSettings {
   level?: number;
   streak_days?: number;
   last_study_date?: string | null;
+  stops_today?: number;
+  stops_this_week?: number;
+  last_stop_timestamp?: string | null;
+  pause_start_timestamp?: string | null;
+  last_active_date?: string | null;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;

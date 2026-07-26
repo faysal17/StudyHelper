@@ -12,8 +12,9 @@ import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
 import { Task, UserSettings } from '@/lib/types';
 import { fetchTasks, fetchUserSettings, isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Skull, AlertCircle, ZapOff } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
+import { getQuitTauntMessage } from '@/lib/gamification';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -66,8 +67,44 @@ export default function DashboardPage() {
     setUserSettings(updated);
   };
 
+  // Determine if a recent quit taunt or low XP warning should be displayed on Dashboard
+  const recentStop = userSettings?.last_stop_timestamp;
+  const isRecentQuitter =
+    recentStop &&
+    Date.now() - new Date(recentStop).getTime() < 1000 * 60 * 60 * 12; // stopped in last 12 hours
+
+  const isLowXP = userSettings?.xp !== undefined && userSettings.xp < 30;
+
   return (
     <div className="space-y-8 w-full">
+      {/* Dynamic Quitter & Low-XP Dashboard Taunt Banner */}
+      {userSettings && isRecentQuitter && (
+        <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 flex items-center justify-between gap-4 shadow-lg animate-in slide-in-from-top duration-300">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
+              <Skull className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold font-mono uppercase tracking-wide text-red-400">
+                Recent Quitter Alert ({userSettings.current_rank})
+              </h4>
+              <p className="text-xs text-red-200 mt-0.5 italic">
+                &ldquo;{getQuitTauntMessage(userSettings.current_rank)}&rdquo;
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userSettings && !isRecentQuitter && isLowXP && (
+        <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 text-amber-200 flex items-center space-x-3 shadow-sm">
+          <ZapOff className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-xs">
+            <strong>Pathetic XP Progress:</strong> You have barely earned any XP today. Complete focus sessions and active recall quizzes to climb out of {userSettings.current_rank}!
+          </p>
+        </div>
+      )}
+
       {/* 4-Block Header Row with Aligned Card Heights */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
         <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />

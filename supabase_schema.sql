@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- User Settings Table (Stores User-Specific D-Day Target, Focus Stats, Day End Cutoff Time, Quotes & Gamification XP/Ranks)
+-- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification XP/Ranks & Stop Penalties)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     target_date DATE DEFAULT NULL,
@@ -100,6 +100,11 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     level INTEGER DEFAULT 1,
     streak_days INTEGER DEFAULT 0,
     last_study_date DATE DEFAULT NULL,
+    stops_today INTEGER DEFAULT 0,
+    stops_this_week INTEGER DEFAULT 0,
+    last_stop_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    pause_start_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    last_active_date DATE DEFAULT CURRENT_DATE,
     focus_seconds_today INTEGER DEFAULT 0,
     focus_seconds_week INTEGER DEFAULT 0,
     current_rank TEXT DEFAULT 'E-Rank',
@@ -107,13 +112,18 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure day_end_time, quotes, xp, level, streak_days, last_study_date columns exist for existing deployments
+-- Ensure all columns exist for existing deployments
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS day_end_time TEXT DEFAULT '00:00';
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS quotes JSONB DEFAULT '["Focus on being productive instead of busy.", "Discipline is choosing between what you want now and what you want most.", "Small daily improvements over time lead to stunning results.", "Success is the sum of small efforts, repeated day in and day out."]'::jsonb;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_study_date DATE DEFAULT NULL;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS stops_today INTEGER DEFAULT 0;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS stops_this_week INTEGER DEFAULT 0;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_stop_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS pause_start_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_active_date DATE DEFAULT CURRENT_DATE;
 
 -- 3. Enable Row Level Security (RLS) on All Tables
 

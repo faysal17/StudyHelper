@@ -56,6 +56,11 @@ const CLEAN_EMPTY_DB: LocalDB = {
     level: 1,
     streak_days: 0,
     last_study_date: null,
+    stops_today: 0,
+    stops_this_week: 0,
+    last_stop_timestamp: null,
+    pause_start_timestamp: null,
+    last_active_date: null,
     focus_seconds_today: 0,
     focus_seconds_week: 0,
     current_rank: 'E-Rank',
@@ -81,6 +86,8 @@ function getLocalDB(): LocalDB {
     if (parsed.settings.xp === undefined) parsed.settings.xp = 0;
     if (parsed.settings.level === undefined) parsed.settings.level = 1;
     if (parsed.settings.streak_days === undefined) parsed.settings.streak_days = 0;
+    if (parsed.settings.stops_today === undefined) parsed.settings.stops_today = 0;
+    if (parsed.settings.stops_this_week === undefined) parsed.settings.stops_this_week = 0;
     return parsed;
   } catch {
     return CLEAN_EMPTY_DB;
@@ -134,6 +141,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
           xp: 0,
           level: stats.level,
           streak_days: 0,
+          stops_today: 0,
+          stops_this_week: 0,
           current_rank: stats.rankInfo.rank,
           current_title: stats.rankInfo.title,
           ...data,
@@ -150,6 +159,11 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         level: 1,
         streak_days: 0,
         last_study_date: null,
+        stops_today: 0,
+        stops_this_week: 0,
+        last_stop_timestamp: null,
+        pause_start_timestamp: null,
+        last_active_date: null,
         focus_seconds_today: 0,
         focus_seconds_week: 0,
         current_rank: 'E-Rank',
@@ -173,7 +187,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
 export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
   const current = await fetchUserSettings();
-  const newXP = (current.xp || 0) + addedXP;
+  const rawXP = (current.xp || 0) + addedXP;
+  const newXP = Math.max(0, rawXP);
   const { level, rankInfo } = calculateLevelAndProgress(newXP);
   const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
     current.streak_days || 0,
@@ -189,6 +204,109 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
     current_title: rankInfo.title,
     streak_days: updatedStreak,
     last_study_date: updatedLastDate,
+    last_active_date: updatedLastDate,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
+      return { ...current, ...updated };
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings = { ...db.settings, ...updated };
+  saveLocalDB(db);
+  return db.settings;
+}
+
+// STOP SESSION PENALTY API
+export async function recordSessionStop(): Promise<{ updatedSettings: UserSettings; isPenaltyApplied: boolean; penaltyAmount: number }> {
+  const current = await fetchUserSettings();
+  const stopsToday = (current.stops_today || 0) + 1;
+  const stopsWeek = (current.stops_this_week || 0) + 1;
+
+  let penaltyAmount = 0;
+  if (stopsToday > 2) {
+    penaltyAmount += 30; // Exceeded daily 2 free stops
+  }
+  if (stopsWeek > 7) {
+    penaltyAmount += 20; // Exceeded weekly 7 free stops
+  }
+
+  const rawXP = (current.xp || 0) - penaltyAmount;
+  const newXP = Math.max(0, rawXP);
+  const { level, rankInfo } = calculateLevelAndProgress(newXP);
+
+  const updated: Partial<UserSettings> = {
+    user_id: current.user_id,
+    stops_today: stopsToday,
+    stops_this_week: stopsWeek,
+    last_stop_timestamp: new Date().toISOString(),
+    pause_start_timestamp: null,
+    xp: newXP,
+    level,
+    current_rank: rankInfo.rank,
+    current_title: rankInfo.title,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
+      return { updatedSettings: { ...current, ...updated }, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings = { ...db.settings, ...updated };
+  saveLocalDB(db);
+  return { updatedSettings: db.settings, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
+}
+
+// COMPLETED FOCUS SESSION WITH SELF-RATING SCORE
+export async function recordRatedFocusSession(minutes: number, stars: number): Promise<UserSettings> {
+  const addedSeconds = Math.round(minutes * 60);
+
+  // Base XP: 15 XP for 25m (+ 5 XP per extra 10m)
+  const baseXP = 15 + Math.max(0, Math.floor((minutes - 25) / 10) * 5);
+
+  // Star Rating Multipliers: 5 = 2.0x, 4 = 1.0x, 3 = 0.7x, 2 = 0.3x, 1 = 0.0x
+  let multiplier = 1.0;
+  if (stars === 5) multiplier = 2.0;
+  else if (stars === 4) multiplier = 1.0;
+  else if (stars === 3) multiplier = 0.7;
+  else if (stars === 2) multiplier = 0.3;
+  else if (stars === 1) multiplier = 0.0;
+
+  const earnedXP = Math.round(baseXP * multiplier);
+
+  const current = await fetchUserSettings();
+  const newToday = (current.focus_seconds_today || 0) + addedSeconds;
+  const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
+  const newXP = Math.max(0, (current.xp || 0) + earnedXP);
+  const { level, rankInfo } = calculateLevelAndProgress(newXP);
+  const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
+    current.streak_days || 0,
+    current.last_study_date || null,
+    current.day_end_time || '00:00'
+  );
+
+  const updated: Partial<UserSettings> = {
+    user_id: current.user_id,
+    focus_seconds_today: newToday,
+    focus_seconds_week: newWeek,
+    xp: newXP,
+    level,
+    current_rank: rankInfo.rank,
+    current_title: rankInfo.title,
+    streak_days: updatedStreak,
+    last_study_date: updatedLastDate,
+    last_active_date: updatedLastDate,
+    pause_start_timestamp: null,
     updated_at: new Date().toISOString(),
   };
 
@@ -266,46 +384,7 @@ export async function updateQuotesConfig(quotes: string[]): Promise<void> {
 }
 
 export async function recordFocusSession(minutes: number): Promise<UserSettings> {
-  const addedSeconds = Math.round(minutes * 60);
-  // Grindy Focus XP: 15 XP for 25m session (+ 5 XP for each additional 10 mins)
-  const earnedXP = 15 + Math.max(0, Math.floor((minutes - 25) / 10) * 5);
-
-  const current = await fetchUserSettings();
-  const newToday = (current.focus_seconds_today || 0) + addedSeconds;
-  const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
-  const newXP = (current.xp || 0) + earnedXP;
-  const { level, rankInfo } = calculateLevelAndProgress(newXP);
-  const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
-    current.streak_days || 0,
-    current.last_study_date || null,
-    current.day_end_time || '00:00'
-  );
-
-  const updated: Partial<UserSettings> = {
-    user_id: current.user_id,
-    focus_seconds_today: newToday,
-    focus_seconds_week: newWeek,
-    xp: newXP,
-    level,
-    current_rank: rankInfo.rank,
-    current_title: rankInfo.title,
-    streak_days: updatedStreak,
-    last_study_date: updatedLastDate,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
-      return { ...current, ...updated };
-    }
-  }
-
-  const db = getLocalDB();
-  db.settings = { ...db.settings, ...updated };
-  saveLocalDB(db);
-  return db.settings;
+  return recordRatedFocusSession(minutes, 4);
 }
 
 // SUBJECT, TOPIC, SUBTOPIC DATA API
