@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { Play, Pause, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2 } from 'lucide-react';
+import { getEgoAttackMessage } from '@/lib/gamification';
+import { Play, Pause, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 
 interface FullscreenFocusModalProps {
@@ -18,6 +19,8 @@ interface FullscreenFocusModalProps {
   tasks: Task[];
   quotes: string[];
   dayEndTime: string;
+  currentRank?: string;
+  currentLevel?: number;
 }
 
 function FlipDigit({ value }: { value: string }) {
@@ -46,10 +49,13 @@ export default function FullscreenFocusModal({
   tasks = [],
   quotes,
   dayEndTime,
+  currentRank = 'E-Rank',
+  currentLevel = 1,
 }: FullscreenFocusModalProps) {
   const [mounted, setMounted] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
+  const [egoMessage, setEgoMessage] = useState<string>('');
 
   useEffect(() => {
     setMounted(true);
@@ -72,6 +78,13 @@ export default function FullscreenFocusModal({
       setCurrentQuoteIndex(Math.floor(Math.random() * quotes.length));
     }
   }, [quotes, isOpen]);
+
+  // Generate new rank-based personal ego attack message whenever session is started or activated
+  useEffect(() => {
+    if (isActive) {
+      setEgoMessage(getEgoAttackMessage(currentRank, currentLevel));
+    }
+  }, [isActive, currentRank, currentLevel]);
 
   if (!isOpen || !mounted) return null;
 
@@ -139,7 +152,15 @@ export default function FullscreenFocusModal({
       </div>
 
       {/* Center Stage: Giant 3D Flip-Style Timer & Controls */}
-      <div className="flex flex-col items-center justify-center my-auto space-y-5 sm:space-y-6 max-w-3xl mx-auto w-full shrink-0">
+      <div className="flex flex-col items-center justify-center my-auto space-y-4 sm:space-y-6 max-w-3xl mx-auto w-full shrink-0">
+        {/* Active Session Rank-Based Personal Ego Attack Banner */}
+        {isActive && egoMessage && (
+          <div className="bg-red-950/40 border border-red-500/40 text-red-300 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 shadow-lg animate-pulse max-w-xl text-center">
+            <Flame className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{egoMessage}</span>
+          </div>
+        )}
+
         {/* Preset Minutes Selection */}
         <div className="flex items-center space-x-2 bg-zinc-900/90 border border-zinc-800 p-1.5 rounded-xl">
           {[25, 45, 60].map((m) => (

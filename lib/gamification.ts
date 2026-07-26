@@ -60,6 +60,50 @@ export function getRankAndTitle(level: number): RankInfo {
   }
 }
 
+export function getEgoAttackMessage(rank: string, level: number): string {
+  const eMessages = [
+    "You're literally an E-Rank Procrastinating Worm. Don't even pretend you'll survive this timer without opening social media.",
+    "A 25-minute timer won't fix years of slacking, Worm. Prove you're not completely hopeless.",
+    "Is your attention span really this pathetic, Worm? Don't quit after 2 minutes.",
+  ];
+
+  const dMessages = [
+    "Still a D-Rank Delusional Pretender. Staring at the screen doesn't count as actual studying.",
+    "You love pretending you're grinding, don't you? Let's see if you can focus for real this time.",
+    "All that fake confidence and you're still stuck in D-Rank. Don't fold halfway.",
+  ];
+
+  const cMessages = [
+    "Congratulations on being a Barely Functioning Amateur. You're still one distraction away from failing.",
+    "C-Rank isn't something to be proud of. Stop daydreaming and lock in.",
+    "Hovering in mediocrity for too long. Focus or stay average forever.",
+  ];
+
+  const bMessages = [
+    "You're a Steady Grinder now. The real test starts here—don't ruin your streak by getting lazy.",
+    "B-Rank means nothing if you fold under pressure today. Stay sharp.",
+  ];
+
+  const aMessages = [
+    "The Discipline Demon has entered the chamber. Maintain absolute dominance—zero excuses.",
+    "A-Rank precision required. Distractions are beneath you now.",
+  ];
+
+  const sMessages = [
+    "A Sovereign of the Syllabus does not break. Execute this session with absolute perfection.",
+    "Total domain control active. Complete the session and claim your glory.",
+  ];
+
+  let list = eMessages;
+  if (rank === 'D-Rank') list = dMessages;
+  else if (rank === 'C-Rank') list = cMessages;
+  else if (rank === 'B-Rank') list = bMessages;
+  else if (rank === 'A-Rank') list = aMessages;
+  else if (rank === 'S-Rank') list = sMessages;
+
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 // Grindy XP Level Curve: XP Required for level L = floor(100 * L^1.5)
 export function getXPRequiredForLevel(targetLevel: number): number {
   return Math.floor(100 * Math.pow(targetLevel, 1.5));

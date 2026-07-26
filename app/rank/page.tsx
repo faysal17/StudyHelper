@@ -70,7 +70,7 @@ export default function HunterRankPage() {
     },
     {
       rank: 'B-Rank',
-      title: 'Relentless Grind-Addict',
+      title: 'The Steady Grinder',
       levelRange: 'Lvl 31 – 50',
       minLevel: 31,
       maxLevel: 50,
@@ -81,7 +81,7 @@ export default function HunterRankPage() {
     },
     {
       rank: 'A-Rank',
-      title: 'Ruthless Syllabus Slayer',
+      title: 'The Discipline Demon',
       levelRange: 'Lvl 51 – 75',
       minLevel: 51,
       maxLevel: 75,
@@ -92,7 +92,7 @@ export default function HunterRankPage() {
     },
     {
       rank: 'S-Rank',
-      title: 'Shadow Monarch of Learning',
+      title: 'Sovereign of the Syllabus',
       levelRange: 'Lvl 76+',
       minLevel: 76,
       maxLevel: 999,
@@ -185,7 +185,7 @@ export default function HunterRankPage() {
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div>
             <h2 className="text-base font-semibold text-zinc-100">Hunter Rank Roadmap</h2>
-            <p className="text-xs text-zinc-400">Progression ladder from E-Rank slacker to S-Rank Shadow Monarch</p>
+            <p className="text-xs text-zinc-400">Progression ladder from E-Rank slacker to S-Rank Sovereign</p>
           </div>
         </div>
 

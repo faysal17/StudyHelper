@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, Clock, Maximize2 } from 'lucide-react';
 import { recordFocusSession, fetchUserSettings } from '@/lib/supabase';
-import { Task } from '@/lib/types';
+import { Task, UserSettings } from '@/lib/types';
 import FullscreenFocusModal from './FullscreenFocusModal';
 
 interface FocusTimerBlockProps {
@@ -17,13 +17,11 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   const [isActive, setIsActive] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  const [userQuotes, setUserQuotes] = useState<string[]>([]);
-  const [dayEndTime, setDayEndTime] = useState<string>('00:00');
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
 
   useEffect(() => {
     fetchUserSettings().then((s) => {
-      if (s?.quotes && s.quotes.length > 0) setUserQuotes(s.quotes);
-      if (s?.day_end_time) setDayEndTime(s.day_end_time);
+      setUserSettings(s);
     });
   }, []);
 
@@ -41,7 +39,8 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   }, [isActive, secondsLeft]);
 
   const handleFinish = async () => {
-    await recordFocusSession(targetMinutes);
+    const updated = await recordFocusSession(targetMinutes);
+    setUserSettings(updated);
     if (onSessionComplete) onSessionComplete();
   };
 
@@ -134,8 +133,10 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         onToggleTimer={toggleTimer}
         onResetTimer={resetTimer}
         tasks={tasks}
-        quotes={userQuotes}
-        dayEndTime={dayEndTime}
+        quotes={userSettings?.quotes || []}
+        dayEndTime={userSettings?.day_end_time || '00:00'}
+        currentRank={userSettings?.current_rank || 'E-Rank'}
+        currentLevel={userSettings?.level || 1}
       />
     </>
   );
