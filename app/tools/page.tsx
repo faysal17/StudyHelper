@@ -1,41 +1,42 @@
 'use client';
 
-import { Wrench, Sparkles, Calculator, FileText, Cpu, Clock, Terminal, ShieldAlert } from 'lucide-react';
+import { Wrench, Sparkles, Calculator, FileText, Cpu, Clock, Terminal, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ToolsPage() {
   const toolCategories = [
     {
+      id: 'bangla-vocab',
+      title: 'Bangla Vocab Builder',
+      description: 'Import CSV, visualize Bangla dictionary words, and study with Spaced Repetition Active Recall flashcards.',
+      icon: <BookOpen className="w-5 h-5 text-amber-400" />,
+      status: 'Active Tool',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      href: '/tools/bangla-vocab',
+    },
+    {
       id: 'calculator',
       title: 'Study XP & Momentum Calculator',
       description: 'Calculate your 7-day momentum velocity score and estimate XP required for target Hunter ranks.',
-      icon: <Calculator className="w-5 h-5 text-amber-400" />,
+      icon: <Calculator className="w-5 h-5 text-cyan-400" />,
       status: 'Coming Soon',
-      badgeBg: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
     },
     {
       id: 'pdf-extractor',
       title: 'OCR Text & Occlusion Generator',
       description: 'Extract handwritten study notes and automatically generate active recall occlusion masks.',
-      icon: <FileText className="w-5 h-5 text-cyan-400" />,
+      icon: <FileText className="w-5 h-5 text-purple-400" />,
       status: 'Coming Soon',
-      badgeBg: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
+      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
     },
     {
       id: 'preset-config',
       title: 'Pomodoro Focus Preset Builder',
       description: 'Build custom focus timer intervals, ambient soundscapes, and rest break sequences.',
-      icon: <Clock className="w-5 h-5 text-emerald-400" />,
+      icon: <Clock className="w-5 h-5 text-blue-400" />,
       status: 'Coming Soon',
-      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-    },
-    {
-      id: 'roast-terminal',
-      title: 'System AI Roast Generator',
-      description: 'Generate personalized ego-attack roasts based on your focus streak and stop allowances.',
-      icon: <Terminal className="w-5 h-5 text-red-400" />,
-      status: 'Coming Soon',
-      badgeBg: 'bg-red-500/10 border-red-500/20 text-red-400',
+      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
     },
   ];
 
@@ -61,30 +62,38 @@ export default function ToolsPage() {
 
       {/* Tools Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {toolCategories.map((tool) => (
-          <div
-            key={tool.id}
-            className="glass-panel p-5 rounded-xl border border-zinc-800/90 hover:border-zinc-700 transition-all space-y-3 relative group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800">
-                {tool.icon}
+        {toolCategories.map((tool) => {
+          const isInteractive = Boolean(tool.href);
+          const Content = (
+            <div className="glass-panel p-5 rounded-xl border border-zinc-800/90 hover:border-zinc-700 transition-all space-y-3 relative group h-full flex flex-col justify-between cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800">
+                  {tool.icon}
+                </div>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${tool.badgeBg}`}>
+                  {tool.status}
+                </span>
               </div>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${tool.badgeBg}`}>
-                {tool.status}
-              </span>
-            </div>
 
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-zinc-100 group-hover:text-amber-400 transition-colors">
-                {tool.title}
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                {tool.description}
-              </p>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-zinc-100 group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                  <span>{tool.title}</span>
+                </h3>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {tool.description}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+
+          return isInteractive ? (
+            <Link key={tool.id} href={tool.href!}>
+              {Content}
+            </Link>
+          ) : (
+            <div key={tool.id}>{Content}</div>
+          );
+        })}
       </div>
     </div>
   );

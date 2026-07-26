@@ -210,3 +210,24 @@ CREATE POLICY "Allow authenticated insert on scanned-notes" ON storage.objects
 DROP POLICY IF EXISTS "Allow authenticated delete on scanned-notes" ON storage.objects;
 CREATE POLICY "Allow authenticated delete on scanned-notes" ON storage.objects
     FOR DELETE USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
+
+-- 6. Bangla Vocabulary Table (Database Synced Dictionary)
+CREATE TABLE IF NOT EXISTS public.bangla_vocab (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    word TEXT NOT NULL,
+    meaning TEXT NOT NULL,
+    example TEXT DEFAULT '',
+    interval INTEGER DEFAULT 1,
+    ease_factor FLOAT DEFAULT 2.5,
+    last_reviewed DATE,
+    next_review DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.bangla_vocab ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage their own bangla vocab" ON public.bangla_vocab;
+CREATE POLICY "Users can manage their own bangla vocab" ON public.bangla_vocab
+    FOR ALL USING (auth.uid() = user_id);
+
