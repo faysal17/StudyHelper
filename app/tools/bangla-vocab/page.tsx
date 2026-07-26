@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV, getSampleBanglaCSV } from '@/lib/banglaVocab';
+import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, clearAllBanglaWordsDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV, getSampleBanglaCSV } from '@/lib/banglaVocab';
 import { awardXPAndSync, fetchUserSettings } from '@/lib/supabase';
 import { calculateMomentum } from '@/lib/momentum';
 import { getTodayDateString } from '@/lib/spacedRepetition';
@@ -78,6 +78,13 @@ export default function BanglaVocabPage() {
   const handleDeleteWord = async (id: string) => {
     setWords((prev) => prev.filter((w) => w.id !== id));
     await deleteBanglaWordDB(id);
+  };
+
+  const handleClearAllWords = async () => {
+    if (confirm('Are you sure you want to delete all Bangla vocabulary words? This action cannot be undone.')) {
+      setWords([]);
+      await clearAllBanglaWordsDB();
+    }
   };
 
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -322,13 +329,25 @@ export default function BanglaVocabPage() {
               />
             </div>
 
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center justify-center space-x-1.5 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Word</span>
-            </button>
+            <div className="flex items-center space-x-2 shrink-0">
+              {words.length > 0 && (
+                <button
+                  onClick={handleClearAllWords}
+                  className="px-3 py-2 rounded-xl bg-red-500/10 text-red-400 border border-red-500/20 font-bold text-xs hover:bg-red-500/20 transition-all flex items-center justify-center space-x-1.5"
+                  title="Delete all words"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Clear All</span>
+                </button>
+              )}
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center justify-center space-x-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Word</span>
+              </button>
+            </div>
           </div>
 
           {/* Word List Cards Grid */}

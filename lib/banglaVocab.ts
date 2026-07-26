@@ -14,13 +14,15 @@ export interface BanglaWord {
   created_at: string;
 }
 
-const LOCAL_STORAGE_KEY = 'bcs_bangla_vocab_list';
+const LEGACY_IDS = new Set(['bv-1', 'bv-2', 'bv-3', 'bv-4', 'bv-5']);
 
-// Default Starter Words (Empty by default)
-const DEFAULT_WORDS: BanglaWord[] = [];
-
-// Async DB Fetch: Fetch from Supabase Database
+// Async DB Fetch: Fetch strictly from Supabase Database
 export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
+  // Purge legacy local storage cache if present
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bcs_bangla_vocab_list');
+  }
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase
@@ -28,21 +30,29 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
-        const formatted: BanglaWord[] = data.map((d: any) => ({
-          id: d.id,
-          word: d.word,
-          meaning: d.meaning,
-          example: d.example || '',
-          interval: d.interval || 1,
-          ease_factor: d.ease_factor || 2.5,
-          last_reviewed: d.last_reviewed || undefined,
-          next_review: d.next_review || new Date().toISOString().split('T')[0],
-          created_at: d.created_at,
-        }));
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formatted));
+      if (!error && data) {
+        const formatted: BanglaWord[] = data
+          .filter((d: any) => !LEGACY_IDS.has(d.id))
+          .map((d: any) => ({
+            id: d.id,
+            word: d.word,
+            meaning: d.meaning,
+            example: d.example || '',
+            interval: d.interval || 1,
+            ease_factor: d.ease_factor || 2.5,
+            last_reviewed: d.last_reviewed || undefined,
+            next_review: d.next_review || new Date().toISOString().split('T')[0],
+            created_at: d.created_at,
+          }));
+
+        // Delete legacy predefined words from Supabase DB if present
+        const legacyItems = data.filter((d: any) => LEGACY_IDS.has(d.id));
+        if (legacyItems.length > 0) {
+          for (const leg of legacyItems) {
+            await supabase.from('bangla_vocab').delete().eq('id', leg.id);
+          }
         }
+
         return formatted;
       }
     } catch (err) {
@@ -50,24 +60,14 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
     }
   }
 
-  // Local Storage Fallback
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {}
-    }
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(DEFAULT_WORDS));
-  }
-  return DEFAULT_WORDS;
+  return [];
 }
 
 // DB Insert: Save Single Word to Database
 export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created_at'>): Promise<BanglaWord> {
   const today = new Date().toISOString().split('T')[0];
-  const newWordObj: BanglaWord = {
-    id: `bv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+  let createdWord: BanglaWord = {
+    id: `bv-${Date.now()}`,
     ...wordData,
     created_at: new Date().toISOString(),
   };
@@ -94,14 +94,24 @@ export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created
         .single();
 
       if (!error && data) {
-        newWordObj.id = data.id;
+        createdWord = {
+          id: data.id,
+          word: data.word,
+          meaning: data.meaning,
+          example: data.example || '',
+          interval: data.interval || 1,
+          ease_factor: data.ease_factor || 2.5,
+          last_reviewed: data.last_reviewed || undefined,
+          next_review: data.next_review || today,
+          created_at: data.created_at,
+        };
       }
     } catch (err) {
       console.error('Error adding bangla word to DB:', err);
     }
   }
 
-  return newWordObj;
+  return createdWord;
 }
 
 // DB Update: Update Spaced Repetition Stats in Database
@@ -170,11 +180,7 @@ export async function importBanglaWordsDB(words: Omit<BanglaWord, 'id' | 'create
     }
   }
 
-  return words.map((w) => ({
-    id: `bv-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-    ...w,
-    created_at: new Date().toISOString(),
-  }));
+  return [];
 }
 
 export function parseBanglaCSV(csvText: string): Omit<BanglaWord, 'id' | 'created_at'>[] {
@@ -223,4 +229,21 @@ export function getSampleBanglaCSV(): string {
 "অনুধাবন","উপলব্ধি / বোধগম্যতা (Comprehension)","বিষয়টি গভীর অনুধাবন প্রয়োজন।"
 "প্রাজ্ঞ","বিজ্ঞ / পণ্ডিত (Wise / Scholar)","তিনি একজন প্রাজ্ঞ ব্যক্তিত্ব।"
 "জিজিবিষা","বেঁচে থাকার ইচ্ছা (Will to live)","মানুষের জিজিবিষা চিরন্তন।"`;
+}
+
+// DB Clear: Wipe all words from database
+export async function clearAllBanglaWordsDB(): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id || DEFAULT_USER_ID;
+      await supabase.from('bangla_vocab').delete().eq('user_id', userId);
+    } catch (err) {
+      console.error('Error clearing bangla words from DB:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('bcs_bangla_vocab_list');
+  }
 }
