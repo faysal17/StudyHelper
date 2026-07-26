@@ -51,7 +51,7 @@ export default function TaskCountersBlock({ tasks }: TaskCountersBlockProps) {
         </div>
       </div>
 
-      <div className="text-[10px] text-zinc-500 text-center border-t border-zinc-800/80 pt-2 shrink-0">
+      <div className="text-[10px] text-zinc-500 text-center pt-1 shrink-0">
         Scheduled task overview
       </div>
     </div>

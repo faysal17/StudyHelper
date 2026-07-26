@@ -246,7 +246,7 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
         </div>
       )}
 
-      <div className="text-[10px] text-zinc-500 border-t border-zinc-800/80 pt-2 truncate shrink-0">
+      <div className="text-[10px] text-zinc-500 pt-1 truncate shrink-0">
         {targetDate ? `Target: ${targetDate}` : 'No date set'}
       </div>
     </div>

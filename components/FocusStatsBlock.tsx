@@ -76,8 +76,8 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
         </h3>
       </div>
 
-      {/* Bottom XP Progress Bar */}
-      <div className="space-y-1.5 pt-2 border-t border-zinc-800/80 shrink-0">
+      {/* Bottom XP Progress Bar without divider border */}
+      <div className="space-y-1.5 pt-1 shrink-0">
         <div className="flex items-center justify-between text-[10px] font-mono">
           <span className="text-zinc-400 flex items-center gap-1">
             <Zap className="w-3 h-3 text-amber-400" />

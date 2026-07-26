@@ -246,8 +246,8 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
           </span>
         </div>
 
-        {/* Toolbar with Beautiful Custom Tooltips */}
-        <div className="relative flex items-center justify-between pt-2 border-t border-zinc-800/80 shrink-0 w-full">
+        {/* Toolbar: Clean layout without border bar */}
+        <div className="relative flex items-center justify-between pt-1 shrink-0 w-full">
           <Tooltip content="Reset Focus Timer">
             <button
               onClick={() => resetTimer()}
