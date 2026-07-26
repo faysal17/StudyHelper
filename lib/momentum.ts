@@ -11,6 +11,8 @@ export interface MomentumDetails {
   xpMultiplier: number;
   remainingStopsToday: number;
   remainingStopsWeek: number;
+  weekdayTargetMins: number;
+  weekendTargetMins: number;
   weeklyTargetLog: { dateStr: string; dayName: string; focusMinutes: number; targetMinutes: number; isWeekend: boolean; ratio: number }[];
 }
 
@@ -18,6 +20,9 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
   const dayEndTime = settings?.day_end_time || '00:00';
   const todayStr = getTodayDateString(dayEndTime);
   const weekendDays = settings?.weekend_days || ['Saturday', 'Sunday'];
+  const weekdayTargetMins = settings?.weekday_target_minutes || 120;
+  const weekendTargetMins = settings?.weekend_target_minutes || 210;
+
   const focusLog = settings?.weekly_focus_log || {};
   const streakDays = settings?.streak_days || 0;
   const stopsToday = settings?.stops_today || 0;
@@ -44,7 +49,7 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
     const fullDayName = curDate.toLocaleDateString('en-US', { weekday: 'long' });
 
     const isWeekend = weekendDays.includes(fullDayName);
-    const targetMinutes = isWeekend ? 210 : 120; // 3.5h weekend vs 2h weekday
+    const targetMinutes = isWeekend ? weekendTargetMins : weekdayTargetMins;
 
     // Actual focus minutes logged on that date
     const actualSeconds = focusLog[dateStr] || (dateStr === todayStr ? settings?.focus_seconds_today || 0 : 0);
@@ -123,6 +128,8 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
     xpMultiplier,
     remainingStopsToday,
     remainingStopsWeek,
+    weekdayTargetMins,
+    weekendTargetMins,
     weeklyTargetLog,
   };
 }

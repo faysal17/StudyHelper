@@ -5,7 +5,7 @@ import { UserSettings } from '@/lib/types';
 import { fetchUserSettings } from '@/lib/supabase';
 import { calculateLevelAndProgress } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
-import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info } from 'lucide-react';
+import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HunterRankPage() {
@@ -31,11 +31,16 @@ export default function HunterRankPage() {
   const totalXP = settings?.xp || 0;
   const streakDays = settings?.streak_days || 0;
   const focusSecondsToday = settings?.focus_seconds_today || 0;
+  const stopsToday = settings?.stops_today || 0;
 
   const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
     calculateLevelAndProgress(totalXP);
 
   const momentum = calculateMomentum(settings);
+
+  // Live components calculation
+  const streakBonus = Math.min(15, streakDays * 3);
+  const stopPenalty = stopsToday * 15;
 
   const rankRoadmap = [
     {
@@ -276,7 +281,7 @@ export default function HunterRankPage() {
                         : 'bg-zinc-800'
                     }`}
                     style={{ height: `${Math.max(10, Math.round(day.ratio * 100))}%` }}
-                    title={`${day.dayName}: ${day.focusMinutes}m / ${day.targetMinutes}m target (${day.isWeekend ? 'Weekend 3.5h' : 'Weekday 2h'})`}
+                    title={`${day.dayName}: ${day.focusMinutes}m / ${day.targetMinutes}m target (${day.isWeekend ? `Weekend ${day.targetMinutes/60}h` : `Weekday ${day.targetMinutes/60}h`})`}
                   />
                   <span className="text-[9px] font-mono text-zinc-500">
                     {day.dayName} {day.isWeekend ? '*' : ''}
@@ -285,8 +290,71 @@ export default function HunterRankPage() {
               ))}
             </div>
             <p className="text-[9px] text-zinc-500 font-mono mt-1.5 text-center">
-              * Weekend Days target 3.5h | Weekdays target 2h
+              * Weekend Days target {momentum.weekendTargetMins / 60}h | Weekdays target {momentum.weekdayTargetMins / 60}h
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Momentum Calculation Breakdown Box */}
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div className="flex items-center space-x-2">
+            <Calculator className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-semibold text-zinc-100">Live Momentum Calculation Formula</h2>
+          </div>
+          <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-lg">
+            Live Score: {momentum.score}%
+          </span>
+        </div>
+
+        <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/90 font-mono text-xs space-y-3">
+          <div className="flex items-center justify-between text-zinc-400 pb-2 border-b border-zinc-800/80">
+            <span>Formula</span>
+            <span className="text-zinc-200 font-bold">
+              Score = Rolling 7-Day Consistency + Streak Bonus - Stop Friction
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-[11px]">
+            {/* Step 1: 7-Day Weighted Focus Ratio */}
+            <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80 space-y-1">
+              <span className="text-zinc-400 font-semibold block text-[10px] uppercase">1. Rolling 7-Day Consistency</span>
+              <p className="text-zinc-200 font-bold text-sm">
+                {Math.round(momentum.score - streakBonus + stopPenalty)} / 100 pts
+              </p>
+              <p className="text-[10px] text-zinc-500">
+                Targets: Weekday {momentum.weekdayTargetMins / 60}h | Weekend {momentum.weekendTargetMins / 60}h
+              </p>
+            </div>
+
+            {/* Step 2: Streak Bonus */}
+            <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80 space-y-1">
+              <span className="text-amber-400 font-semibold block text-[10px] uppercase">2. Streak Bonus</span>
+              <p className="text-amber-300 font-bold text-sm">
+                +{streakBonus} pts
+              </p>
+              <p className="text-[10px] text-zinc-500">
+                From your active {streakDays}d study streak (+3 pts/day, max 15)
+              </p>
+            </div>
+
+            {/* Step 3: Stop Friction */}
+            <div className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80 space-y-1">
+              <span className="text-red-400 font-semibold block text-[10px] uppercase">3. Stop Friction Penalty</span>
+              <p className="text-red-300 font-bold text-sm">
+                -{stopPenalty} pts
+              </p>
+              <p className="text-[10px] text-zinc-500">
+                From {stopsToday} stopped focus sessions today (-15 pts/stop)
+              </p>
+            </div>
+          </div>
+
+          {/* Final Multiplier Summary */}
+          <div className="p-3 bg-cyan-950/20 border border-cyan-500/30 rounded-xl flex items-center justify-between text-cyan-200 text-[11px]">
+            <span>Active Velocity Status: <strong>{momentum.icon} {momentum.velocityTier}</strong></span>
+            <span className="font-bold text-amber-300">{momentum.xpMultiplier}x XP Multiplier Active</span>
           </div>
         </div>
       </div>

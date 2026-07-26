@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
-import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig } from '@/lib/supabase';
-import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Shield } from 'lucide-react';
+import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig } from '@/lib/supabase';
+import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -12,13 +12,18 @@ export default function SettingsPage() {
   const [newQuote, setNewQuote] = useState<string>('');
   const [weekendDays, setWeekendDays] = useState<string[]>(['Saturday', 'Sunday']);
 
+  const [weekdayTargetMins, setWeekdayTargetMins] = useState<number>(120);
+  const [weekendTargetMins, setWeekendTargetMins] = useState<number>(210);
+
   const [savingTime, setSavingTime] = useState(false);
   const [savingQuotes, setSavingQuotes] = useState(false);
   const [savingWeekend, setSavingWeekend] = useState(false);
+  const [savingTargets, setSavingTargets] = useState(false);
 
   const [successTime, setSuccessTime] = useState(false);
   const [successQuotes, setSuccessQuotes] = useState(false);
   const [successWeekend, setSuccessWeekend] = useState(false);
+  const [successTargets, setSuccessTargets] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -30,6 +35,8 @@ export default function SettingsPage() {
     if (data?.day_end_time) setDayEndTime(data.day_end_time);
     if (data?.quotes) setQuotes(data.quotes);
     if (data?.weekend_days) setWeekendDays(data.weekend_days);
+    if (data?.weekday_target_minutes) setWeekdayTargetMins(data.weekday_target_minutes);
+    if (data?.weekend_target_minutes) setWeekendTargetMins(data.weekend_target_minutes);
   };
 
   const handleSaveDayEndTime = async () => {
@@ -68,6 +75,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveStudyTargets = async () => {
+    setSavingTargets(true);
+    try {
+      await updateStudyTargetsConfig(weekdayTargetMins, weekendTargetMins);
+      setSuccessTargets(true);
+      setTimeout(() => setSuccessTargets(false), 2500);
+    } catch (err) {
+      console.error('Error updating study targets:', err);
+    } finally {
+      setSavingTargets(false);
+    }
+  };
+
   const handleAddQuote = () => {
     if (!newQuote.trim()) return;
     setQuotes([...quotes, newQuote.trim()]);
@@ -93,6 +113,18 @@ export default function SettingsPage() {
 
   const allDaysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+  const targetHoursOptions = [
+    { mins: 60, label: '1.0 Hour / day' },
+    { mins: 90, label: '1.5 Hours / day' },
+    { mins: 120, label: '2.0 Hours / day (Standard)' },
+    { mins: 150, label: '2.5 Hours / day' },
+    { mins: 180, label: '3.0 Hours / day' },
+    { mins: 210, label: '3.5 Hours / day (High Momentum)' },
+    { mins: 240, label: '4.0 Hours / day (Intensive)' },
+    { mins: 300, label: '5.0 Hours / day (Hardcore)' },
+    { mins: 360, label: '6.0 Hours / day (Extreme)' },
+  ];
+
   const timeOptions = [
     { value: '00:00', label: '12:00 AM (Midnight - Standard)' },
     { value: '01:00', label: '01:00 AM (Night Owl)' },
@@ -111,12 +143,129 @@ export default function SettingsPage() {
         <div>
           <h1 className="text-xl font-bold text-zinc-100">User Settings</h1>
           <p className="text-xs text-zinc-400">
-            Configure night owl cutoff hours, weekend study expectations, and motivational quotes.
+            Configure night owl cutoff hours, weekday & weekend target hours, and focus mode quotes.
           </p>
         </div>
       </div>
 
-      {/* 1. Day End Cutoff Time (Night Owl Mode) */}
+      {/* 1. Daily Focus Targets (Weekday & Weekend Target Hours) */}
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Target className="w-4 h-4 text-emerald-400" />
+            <h2 className="text-sm font-semibold text-zinc-100">Daily Focus Target Hours</h2>
+          </div>
+          {successTargets && (
+            <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Set your daily study goals for Weekdays vs Weekend Days. Your 7-Day Rolling Momentum Score evaluates how consistently you hit these targets!
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* Weekday Target Hours */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <span>Weekday Focus Goal</span>
+            </label>
+            <select
+              value={weekdayTargetMins}
+              onChange={(e) => setWeekdayTargetMins(Number(e.target.value))}
+              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
+            >
+              {targetHoursOptions.map((opt) => (
+                <option key={opt.mins} value={opt.mins}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Weekend Target Hours */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+              <span>Weekend Focus Goal</span>
+            </label>
+            <select
+              value={weekendTargetMins}
+              onChange={(e) => setWeekendTargetMins(Number(e.target.value))}
+              className="w-full bg-zinc-950 border border-zinc-800 text-zinc-100 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none focus:border-zinc-600 transition-colors font-mono"
+            >
+              {targetHoursOptions.map((opt) => (
+                <option key={opt.mins} value={opt.mins}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            onClick={handleSaveStudyTargets}
+            disabled={savingTargets}
+            className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5"
+          >
+            <Save className="w-4 h-4" />
+            <span>{savingTargets ? 'Saving...' : 'Save Target Goals'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Custom Weekend Selection */}
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-sm font-semibold text-zinc-100">Weekend Days Selection</h2>
+          </div>
+          {successWeekend && (
+            <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Select your custom weekend days. Selected days will use your <strong>Weekend Focus Goal</strong> target!
+        </p>
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {allDaysOfWeek.map((day) => {
+            const isSelected = weekendDays.includes(day);
+            return (
+              <button
+                key={day}
+                onClick={() => handleToggleWeekendDay(day)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all border ${
+                  isSelected
+                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
+                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                }`}
+              >
+                {day} {isSelected ? `(Weekend Target: ${weekendTargetMins / 60}h)` : ''}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            onClick={handleSaveWeekendDays}
+            disabled={savingWeekend}
+            className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5"
+          >
+            <Save className="w-4 h-4" />
+            <span>{savingWeekend ? 'Saving...' : 'Save Weekend Configuration'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. Day End Cutoff Time (Night Owl Mode) */}
       <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -158,56 +307,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* 2. Custom Weekend Selection (Higher Study Expectation Days) */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-semibold text-zinc-100">Weekend Days Selection</h2>
-          </div>
-          {successWeekend && (
-            <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
-            </span>
-          )}
-        </div>
-
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Select your weekend days. Weekend days require a higher focus target (<strong>3.5 Hours/day</strong> vs <strong>2 Hours/day</strong> on weekdays) in your 7-Day Rolling Momentum Score calculation!
-        </p>
-
-        <div className="flex flex-wrap gap-2 pt-2">
-          {allDaysOfWeek.map((day) => {
-            const isSelected = weekendDays.includes(day);
-            return (
-              <button
-                key={day}
-                onClick={() => handleToggleWeekendDay(day)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all border ${
-                  isSelected
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
-                    : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
-                }`}
-              >
-                {day} {isSelected ? '(Weekend - 3.5h)' : ''}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="pt-2 flex justify-end">
-          <button
-            onClick={handleSaveWeekendDays}
-            disabled={savingWeekend}
-            className="px-4 py-2.5 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all flex items-center space-x-1.5"
-          >
-            <Save className="w-4 h-4" />
-            <span>{savingWeekend ? 'Saving...' : 'Save Weekend Configuration'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 3. Focus Mode Motivational Quotes Manager */}
+      {/* 4. Focus Mode Motivational Quotes Manager */}
       <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">

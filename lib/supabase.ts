@@ -56,6 +56,8 @@ const CLEAN_EMPTY_DB: LocalDB = {
     day_end_time: '00:00',
     quotes: DEFAULT_QUOTES,
     weekend_days: DEFAULT_WEEKEND_DAYS,
+    weekday_target_minutes: 120,
+    weekend_target_minutes: 210,
     weekly_focus_log: {},
     xp: 0,
     level: 1,
@@ -91,6 +93,8 @@ function getLocalDB(): LocalDB {
     if (!parsed.settings.weekend_days || parsed.settings.weekend_days.length === 0) {
       parsed.settings.weekend_days = DEFAULT_WEEKEND_DAYS;
     }
+    if (!parsed.settings.weekday_target_minutes) parsed.settings.weekday_target_minutes = 120;
+    if (!parsed.settings.weekend_target_minutes) parsed.settings.weekend_target_minutes = 210;
     if (!parsed.settings.weekly_focus_log) parsed.settings.weekly_focus_log = {};
     if (parsed.settings.xp === undefined) parsed.settings.xp = 0;
     if (parsed.settings.level === undefined) parsed.settings.level = 1;
@@ -148,6 +152,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
           day_end_time: '00:00',
           quotes: DEFAULT_QUOTES,
           weekend_days: DEFAULT_WEEKEND_DAYS,
+          weekday_target_minutes: 120,
+          weekend_target_minutes: 210,
           weekly_focus_log: {},
           xp: 0,
           level: stats.level,
@@ -167,6 +173,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         day_end_time: '00:00',
         quotes: DEFAULT_QUOTES,
         weekend_days: DEFAULT_WEEKEND_DAYS,
+        weekday_target_minutes: 120,
+        weekend_target_minutes: 210,
         weekly_focus_log: {},
         xp: 0,
         level: 1,
@@ -251,6 +259,27 @@ export async function updateWeekendDaysConfig(weekendDays: string[]): Promise<vo
 
   const db = getLocalDB();
   db.settings.weekend_days = weekendDays;
+  saveLocalDB(db);
+}
+
+export async function updateStudyTargetsConfig(weekdayMins: number, weekendMins: number): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        weekday_target_minutes: weekdayMins,
+        weekend_target_minutes: weekendMins,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.weekday_target_minutes = weekdayMins;
+  db.settings.weekend_target_minutes = weekendMins;
   saveLocalDB(db);
 }
 

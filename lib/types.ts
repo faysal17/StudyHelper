@@ -86,6 +86,8 @@ export interface UserSettings {
   day_end_time?: string;
   quotes?: string[];
   weekend_days?: string[];
+  weekday_target_minutes?: number;
+  weekend_target_minutes?: number;
   weekly_focus_log?: Record<string, number>;
   xp?: number;
   level?: number;
