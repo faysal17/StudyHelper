@@ -11,6 +11,7 @@ import FocusRatingModal from './FocusRatingModal';
 import QuitTauntModal from './QuitTauntModal';
 import HunterEventModal, { EventType } from './HunterEventModal';
 import XPChangeModal from './XPChangeModal';
+import Tooltip from './Tooltip';
 
 interface FocusTimerBlockProps {
   onSessionComplete?: () => void;
@@ -245,15 +246,16 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
           </span>
         </div>
 
-        {/* Toolbar */}
+        {/* Toolbar with Beautiful Custom Tooltips */}
         <div className="relative flex items-center justify-between pt-2 border-t border-zinc-800/80 shrink-0 w-full">
-          <button
-            onClick={() => resetTimer()}
-            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-            title="Reset Timer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip content="Reset Focus Timer">
+            <button
+              onClick={() => resetTimer()}
+              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
 
           <div className="flex items-center space-x-1.5">
             <button
@@ -269,24 +271,26 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
             </button>
 
             {(isActive || secondsLeft < targetMinutes * 60) && (
-              <button
-                onClick={handleStop}
-                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center space-x-1"
-                title="Abandon & Stop Session"
-              >
-                <Square className="w-3.5 h-3.5 fill-current" />
-                <span>Stop</span>
-              </button>
+              <Tooltip content="Abandon Focus Session">
+                <button
+                  onClick={handleStop}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all flex items-center space-x-1"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  <span>Stop</span>
+                </button>
+              </Tooltip>
             )}
           </div>
 
-          <button
-            onClick={() => setIsFullscreen(true)}
-            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-            title="Fullscreen Focus Mode"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip content="Fullscreen Focus Mode">
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -320,7 +324,6 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         penaltyAmount={quitPenaltyInfo.amount}
       />
 
-      {/* XP Change Notification Modal */}
       <XPChangeModal
         isOpen={xpModalOpen}
         onClose={handleCloseXPModal}
@@ -330,7 +333,6 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         newTotalXP={xpNewTotal}
       />
 
-      {/* Level Up / Rank Up Celebration Modal */}
       <HunterEventModal
         isOpen={eventModalOpen}
         onClose={() => setEventModalOpen(false)}

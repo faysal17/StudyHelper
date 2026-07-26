@@ -11,6 +11,7 @@ import Link from 'next/link';
 import confetti from 'canvas-confetti';
 import XPChangeModal from './XPChangeModal';
 import HunterEventModal, { EventType } from './HunterEventModal';
+import Tooltip from './Tooltip';
 
 interface ImageOcclusionViewerProps {
   task: Task;
@@ -51,7 +52,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
   };
 
   const handleGradeOverlay = async (e: React.MouseEvent, overlayId: string, isCorrect: boolean) => {
-    e.stopPropagation(); // Don't re-toggle reveal state when grading
+    e.stopPropagation();
     const isCurrentlyFailing = !isCorrect;
     try {
       await updateOverlayFailingStatus(overlayId, isCurrentlyFailing);
@@ -195,20 +196,23 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
-              onClick={revealAllOverlays}
-              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-              title="Reveal all"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            <button
-              onClick={hideAllOverlays}
-              className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-              title="Hide all"
-            >
-              <EyeOff className="w-4 h-4" />
-            </button>
+            <Tooltip content="Reveal All Occlusion Boxes">
+              <button
+                onClick={revealAllOverlays}
+                className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            </Tooltip>
+
+            <Tooltip content="Hide All Occlusion Boxes">
+              <button
+                onClick={hideAllOverlays}
+                className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                <EyeOff className="w-4 h-4" />
+              </button>
+            </Tooltip>
 
             <button
               onClick={handleFinishSession}
@@ -253,7 +257,6 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                     ? 'bg-red-950/90 border-2 border-red-500 text-red-200 hover:bg-red-900/90'
                     : 'bg-zinc-900 border border-zinc-700 text-zinc-200 shadow-md hover:bg-zinc-800'
                 }`}
-                title={isRevealed ? 'Click to hide answer' : 'Click anywhere on box to reveal answer!'}
               >
                 {/* Header label & eye toggle */}
                 <div className="flex items-center justify-between text-[10px] font-mono leading-none">
@@ -268,31 +271,33 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                 {/* Bigger & Prominent Grading Action Buttons when revealed */}
                 {isRevealed && (
                   <div className="flex items-center justify-center space-x-1.5 pt-1">
-                    <button
-                      onClick={(e) => handleGradeOverlay(e, overlay.id, true)}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
-                        !isFailing
-                          ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20'
-                          : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-emerald-400 hover:border-emerald-500/40'
-                      }`}
-                      title="Mark Correct"
-                    >
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Correct</span>
-                    </button>
+                    <Tooltip content="Mark Answer Correct">
+                      <button
+                        onClick={(e) => handleGradeOverlay(e, overlay.id, true)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
+                          !isFailing
+                            ? 'bg-emerald-500 text-zinc-950 shadow-emerald-500/20'
+                            : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-emerald-400 hover:border-emerald-500/40'
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Correct</span>
+                      </button>
+                    </Tooltip>
 
-                    <button
-                      onClick={(e) => handleGradeOverlay(e, overlay.id, false)}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
-                        isFailing
-                          ? 'bg-red-500 text-white shadow-red-500/20'
-                          : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-red-400 hover:border-red-500/40'
-                      }`}
-                      title="Mark Incorrect"
-                    >
-                      <X className="w-3.5 h-3.5 stroke-[3]" />
-                      <span>Incorrect</span>
-                    </button>
+                    <Tooltip content="Mark Answer Incorrect">
+                      <button
+                        onClick={(e) => handleGradeOverlay(e, overlay.id, false)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-extrabold flex items-center space-x-1 transition-all shadow-md ${
+                          isFailing
+                            ? 'bg-red-500 text-white shadow-red-500/20'
+                            : 'bg-zinc-900/90 text-zinc-400 border border-zinc-700 hover:text-red-400 hover:border-red-500/40'
+                        }`}
+                      >
+                        <X className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Incorrect</span>
+                      </button>
+                    </Tooltip>
                   </div>
                 )}
               </div>
