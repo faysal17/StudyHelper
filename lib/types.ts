@@ -85,6 +85,8 @@ export interface UserSettings {
   target_title: string | null;
   day_end_time?: string;
   quotes?: string[];
+  weekend_days?: string[];
+  weekly_focus_log?: Record<string, number>;
   xp?: number;
   level?: number;
   streak_days?: number;

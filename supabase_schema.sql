@@ -89,13 +89,15 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
--- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification & Momentum Index)
+-- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification, Weekend Config & 7-Day Log)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     target_date DATE DEFAULT NULL,
     target_title TEXT DEFAULT NULL,
     day_end_time TEXT DEFAULT '00:00',
     quotes JSONB DEFAULT '["Focus on being productive instead of busy.", "Discipline is choosing between what you want now and what you want most.", "Small daily improvements over time lead to stunning results.", "Success is the sum of small efforts, repeated day in and day out."]'::jsonb,
+    weekend_days JSONB DEFAULT '["Saturday", "Sunday"]'::jsonb,
+    weekly_focus_log JSONB DEFAULT '{}'::jsonb,
     xp INTEGER DEFAULT 0,
     level INTEGER DEFAULT 1,
     streak_days INTEGER DEFAULT 0,
@@ -116,6 +118,8 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
 -- Ensure all columns exist for existing deployments
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS day_end_time TEXT DEFAULT '00:00';
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS quotes JSONB DEFAULT '["Focus on being productive instead of busy.", "Discipline is choosing between what you want now and what you want most.", "Small daily improvements over time lead to stunning results.", "Success is the sum of small efforts, repeated day in and day out."]'::jsonb;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS weekend_days JSONB DEFAULT '["Saturday", "Sunday"]'::jsonb;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS weekly_focus_log JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0;

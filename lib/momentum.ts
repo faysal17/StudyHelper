@@ -1,4 +1,5 @@
 import { UserSettings } from './types';
+import { getTodayDateString } from './spacedRepetition';
 
 export interface MomentumDetails {
   score: number; // 0 - 100%
@@ -10,30 +11,67 @@ export interface MomentumDetails {
   xpMultiplier: number;
   remainingStopsToday: number;
   remainingStopsWeek: number;
+  weeklyTargetLog: { dateStr: string; dayName: string; focusMinutes: number; targetMinutes: number; isWeekend: boolean; ratio: number }[];
 }
 
 export function calculateMomentum(settings: UserSettings | null): MomentumDetails {
-  const focusSeconds = settings?.focus_seconds_today || 0;
+  const dayEndTime = settings?.day_end_time || '00:00';
+  const todayStr = getTodayDateString(dayEndTime);
+  const weekendDays = settings?.weekend_days || ['Saturday', 'Sunday'];
+  const focusLog = settings?.weekly_focus_log || {};
   const streakDays = settings?.streak_days || 0;
   const stopsToday = settings?.stops_today || 0;
   const stopsWeek = settings?.stops_this_week || 0;
 
-  const focusMinutes = Math.floor(focusSeconds / 60);
+  // Build rolling 7-day target array (from 6 days ago to Today)
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const todayObj = new Date(y, m - 1, d);
 
-  // 1. Focus Acceleration: 40 pts max for 120 mins focus
-  const focusScore = Math.min(40, Math.round((focusMinutes / 120) * 40));
+  const dayWeights = [0.10, 0.10, 0.10, 0.15, 0.15, 0.20, 0.20]; // Recent days have higher weight
+  let weightedConsistencySum = 0;
 
-  // 2. Streak Multiplier: 30 pts max for 6-day streak
-  const streakScore = Math.min(30, streakDays * 5);
+  const weeklyTargetLog: MomentumDetails['weeklyTargetLog'] = [];
 
-  // 3. Activity Base Score: 30 pts base for any activity today
-  const activityScore = focusMinutes > 0 ? 30 : 0;
+  for (let i = 6; i >= 0; i--) {
+    const curDate = new Date(todayObj);
+    curDate.setDate(todayObj.getDate() - i);
 
-  // 4. Stop Friction Penalty: -15 pts per stop today
-  const stopFriction = stopsToday * 15;
+    const cYear = curDate.getFullYear();
+    const cMonth = String(curDate.getMonth() + 1).padStart(2, '0');
+    const cDay = String(curDate.getDate()).padStart(2, '0');
+    const dateStr = `${cYear}-${cMonth}-${cDay}`;
+    const dayName = curDate.toLocaleDateString('en-US', { weekday: 'short' });
+    const fullDayName = curDate.toLocaleDateString('en-US', { weekday: 'long' });
 
-  const rawScore = focusScore + streakScore + activityScore - stopFriction;
-  const score = Math.min(100, Math.max(0, rawScore));
+    const isWeekend = weekendDays.includes(fullDayName);
+    const targetMinutes = isWeekend ? 210 : 120; // 3.5h weekend vs 2h weekday
+
+    // Actual focus minutes logged on that date
+    const actualSeconds = focusLog[dateStr] || (dateStr === todayStr ? settings?.focus_seconds_today || 0 : 0);
+    const focusMinutes = Math.floor(actualSeconds / 60);
+
+    const ratio = Math.min(1.0, focusMinutes / targetMinutes);
+    const weightIndex = 6 - i;
+    weightedConsistencySum += ratio * dayWeights[weightIndex];
+
+    weeklyTargetLog.push({
+      dateStr,
+      dayName,
+      focusMinutes,
+      targetMinutes,
+      isWeekend,
+      ratio,
+    });
+  }
+
+  // Raw Rolling Multi-Day Score (0 - 100)
+  const rollingScore = Math.round(weightedConsistencySum * 100);
+
+  // Bonus for active streak (up to +15 pts) & Penalty for stop friction (-15 pts per stop)
+  const streakBonus = Math.min(15, streakDays * 3);
+  const stopPenalty = stopsToday * 15;
+
+  const finalScore = Math.min(100, Math.max(0, rollingScore + streakBonus - stopPenalty));
 
   let velocityTier: MomentumDetails['velocityTier'] = 'Stalled';
   let icon = '🛑';
@@ -42,28 +80,28 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
   let badgeBorder = 'border-red-500/20';
   let xpMultiplier = 0.5;
 
-  if (score >= 85) {
+  if (finalScore >= 85) {
     velocityTier = 'Hyper-Drive';
     icon = '🚀';
     color = 'text-cyan-400';
     badgeBg = 'bg-cyan-500/10';
     badgeBorder = 'border-cyan-500/30';
     xpMultiplier = 1.5;
-  } else if (score >= 60) {
+  } else if (finalScore >= 60) {
     velocityTier = 'Accelerating';
     icon = '⚡';
     color = 'text-emerald-400';
     badgeBg = 'bg-emerald-500/10';
     badgeBorder = 'border-emerald-500/30';
     xpMultiplier = 1.2;
-  } else if (score >= 30) {
+  } else if (finalScore >= 30) {
     velocityTier = 'Steady Pace';
     icon = '🚶';
     color = 'text-blue-400';
     badgeBg = 'bg-blue-500/10';
     badgeBorder = 'border-blue-500/30';
     xpMultiplier = 1.0;
-  } else if (score >= 10) {
+  } else if (finalScore >= 10) {
     velocityTier = 'Sluggish';
     icon = '🐢';
     color = 'text-amber-400';
@@ -76,7 +114,7 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
   const remainingStopsWeek = Math.max(0, 7 - stopsWeek);
 
   return {
-    score,
+    score: finalScore,
     velocityTier,
     icon,
     color,
@@ -85,5 +123,6 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
     xpMultiplier,
     remainingStopsToday,
     remainingStopsWeek,
+    weeklyTargetLog,
   };
 }

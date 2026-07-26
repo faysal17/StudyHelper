@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus } from './types';
 import { calculateLevelAndProgress, updateStreakOnActivity } from './gamification';
+import { getTodayDateString } from './spacedRepetition';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -27,6 +28,8 @@ const DEFAULT_QUOTES = [
   'The secret of getting ahead is getting started.',
 ];
 
+const DEFAULT_WEEKEND_DAYS = ['Saturday', 'Sunday'];
+
 interface LocalDB {
   subjects: Subject[];
   topics: Topic[];
@@ -52,6 +55,8 @@ const CLEAN_EMPTY_DB: LocalDB = {
     target_title: null,
     day_end_time: '00:00',
     quotes: DEFAULT_QUOTES,
+    weekend_days: DEFAULT_WEEKEND_DAYS,
+    weekly_focus_log: {},
     xp: 0,
     level: 1,
     streak_days: 0,
@@ -83,6 +88,10 @@ function getLocalDB(): LocalDB {
     if (!parsed.settings.quotes || parsed.settings.quotes.length === 0) {
       parsed.settings.quotes = DEFAULT_QUOTES;
     }
+    if (!parsed.settings.weekend_days || parsed.settings.weekend_days.length === 0) {
+      parsed.settings.weekend_days = DEFAULT_WEEKEND_DAYS;
+    }
+    if (!parsed.settings.weekly_focus_log) parsed.settings.weekly_focus_log = {};
     if (parsed.settings.xp === undefined) parsed.settings.xp = 0;
     if (parsed.settings.level === undefined) parsed.settings.level = 1;
     if (parsed.settings.streak_days === undefined) parsed.settings.streak_days = 0;
@@ -138,6 +147,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         return {
           day_end_time: '00:00',
           quotes: DEFAULT_QUOTES,
+          weekend_days: DEFAULT_WEEKEND_DAYS,
+          weekly_focus_log: {},
           xp: 0,
           level: stats.level,
           streak_days: 0,
@@ -155,6 +166,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         target_title: null,
         day_end_time: '00:00',
         quotes: DEFAULT_QUOTES,
+        weekend_days: DEFAULT_WEEKEND_DAYS,
+        weekly_focus_log: {},
         xp: 0,
         level: 1,
         streak_days: 0,
@@ -222,6 +235,25 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
   return db.settings;
 }
 
+export async function updateWeekendDaysConfig(weekendDays: string[]): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        weekend_days: weekendDays,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.weekend_days = weekendDays;
+  saveLocalDB(db);
+}
+
 // STOP SESSION PENALTY API
 export async function recordSessionStop(): Promise<{ updatedSettings: UserSettings; isPenaltyApplied: boolean; penaltyAmount: number }> {
   const current = await fetchUserSettings();
@@ -267,7 +299,7 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
   return { updatedSettings: db.settings, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
 }
 
-// COMPLETED FOCUS SESSION WITH SELF-RATING SCORE
+// COMPLETED FOCUS SESSION WITH SELF-RATING SCORE & 7-DAY LOGGING
 export async function recordRatedFocusSession(minutes: number, stars: number): Promise<UserSettings> {
   const addedSeconds = Math.round(minutes * 60);
 
@@ -285,6 +317,7 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
   const earnedXP = Math.round(baseXP * multiplier);
 
   const current = await fetchUserSettings();
+  const todayStr = getTodayDateString(current.day_end_time || '00:00');
   const newToday = (current.focus_seconds_today || 0) + addedSeconds;
   const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
   const newXP = Math.max(0, (current.xp || 0) + earnedXP);
@@ -295,10 +328,15 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
     current.day_end_time || '00:00'
   );
 
+  // Update rolling 7-day focus log dictionary
+  const updatedWeeklyLog = { ...(current.weekly_focus_log || {}) };
+  updatedWeeklyLog[todayStr] = (updatedWeeklyLog[todayStr] || 0) + addedSeconds;
+
   const updated: Partial<UserSettings> = {
     user_id: current.user_id,
     focus_seconds_today: newToday,
     focus_seconds_week: newWeek,
+    weekly_focus_log: updatedWeeklyLog,
     xp: newXP,
     level,
     current_rank: rankInfo.rank,
