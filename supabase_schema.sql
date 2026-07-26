@@ -140,6 +140,7 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_active_date DATE 
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS momentum_score INTEGER DEFAULT 0;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS official_weekly_rank INTEGER DEFAULT 500;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_week_start_date DATE DEFAULT NULL;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_vocab_xp_date DATE DEFAULT NULL;
 
 -- 3. Enable Row Level Security (RLS) on All Tables
 

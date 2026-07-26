@@ -72,6 +72,7 @@ const CLEAN_EMPTY_DB: LocalDB = {
     focus_seconds_week: 0,
     current_rank: 'E-Rank',
     current_title: 'Procrastinating Worm',
+    last_vocab_xp_date: null,
   },
 };
 
@@ -449,6 +450,25 @@ export async function updateQuotesConfig(quotes: string[]): Promise<void> {
 
   const db = getLocalDB();
   db.settings.quotes = quotes;
+  saveLocalDB(db);
+}
+
+export async function updateLastVocabXPDate(dateStr: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        last_vocab_xp_date: dateStr,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.last_vocab_xp_date = dateStr;
   saveLocalDB(db);
 }
 
@@ -958,9 +978,10 @@ export async function updateOverlayFailingStatus(
   }
 }
 
-export async function logRevisionScore(taskId: string, score: number): Promise<void> {
+export async function logRevisionScore(taskId: string, score: number, isRepeatToday: boolean = false): Promise<number> {
   // Grindy Active Recall XP: 25 XP for 100%, 15 XP for 80%+, 5 XP for 50-79%, 0 XP below 50%
-  const earnedXP = score >= 100 ? 25 : score >= 80 ? 15 : score >= 50 ? 5 : 0;
+  // Zero XP awarded if task was already reviewed today (prevents XP farming)
+  const earnedXP = isRepeatToday ? 0 : score >= 100 ? 25 : score >= 80 ? 15 : score >= 50 ? 5 : 0;
   if (earnedXP > 0) {
     await awardXPAndSync(earnedXP);
   }
@@ -971,7 +992,7 @@ export async function logRevisionScore(taskId: string, score: number): Promise<v
     await supabase
       .from('revision_logs')
       .insert([{ task_id: taskId, score, user_id: userId }]);
-    return;
+    return earnedXP;
   }
 
   const db = getLocalDB();
@@ -983,4 +1004,5 @@ export async function logRevisionScore(taskId: string, score: number): Promise<v
     user_id: DEFAULT_USER_ID,
   });
   saveLocalDB(db);
+  return earnedXP;
 }

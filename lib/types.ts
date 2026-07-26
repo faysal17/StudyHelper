@@ -106,5 +106,6 @@ export interface UserSettings {
   focus_seconds_week: number;
   current_rank: string;
   current_title: string;
+  last_vocab_xp_date?: string | null;
   updated_at?: string;
 }

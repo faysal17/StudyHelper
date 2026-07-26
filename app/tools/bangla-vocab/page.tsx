@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { BanglaWord, fetchBanglaWordsDB, addBanglaWordDB, updateBanglaWordDB, deleteBanglaWordDB, clearAllBanglaWordsDB, importBanglaWordsDB, parseBanglaCSV, exportBanglaCSV, getSampleBanglaCSV } from '@/lib/banglaVocab';
-import { awardXPAndSync, fetchUserSettings } from '@/lib/supabase';
+import { awardXPAndSync, fetchUserSettings, updateLastVocabXPDate } from '@/lib/supabase';
 import { calculateMomentum } from '@/lib/momentum';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { ArrowLeft, BookOpen, Download, Upload, Plus, Trash2, Search, CheckCircle2, Brain, Eye, FileSpreadsheet } from 'lucide-react';
@@ -194,19 +194,21 @@ export default function BanglaVocabPage() {
 
       const userSettings = await fetchUserSettings();
       const todayStr = getTodayDateString(userSettings?.day_end_time || '00:00');
-      const lastClaimedDate = typeof window !== 'undefined' ? localStorage.getItem('bcs_last_bangla_vocab_xp_date') : null;
+      const lastClaimedDate = userSettings?.last_vocab_xp_date || null;
 
       let earned = 0;
       let reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Already Claimed Today`;
 
       if (lastClaimedDate !== todayStr) {
         earned = 10;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('bcs_last_bangla_vocab_xp_date', todayStr);
-        }
+        await updateLastVocabXPDate(todayStr);
         await awardXPAndSync(earned);
         reasonStr = `Bangla Vocab Daily Review Completed (${nextCount} Words)`;
         setDailyBonusClaimed(true);
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('bcs_last_bangla_vocab_xp_date');
       }
 
       const updatedSettings = await fetchUserSettings();
