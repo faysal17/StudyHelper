@@ -38,8 +38,9 @@ export default function HunterRankPage() {
 
   const momentum = calculateMomentum(settings);
 
-  // Live Provisional Rank calculation
-  const provisionalGlobalRank = calculateGlobalHunterRank(level, momentum.score);
+  // Official Weekly Rank locked at week start & Previous Week's Rank
+  const officialWeeklyRank = settings?.official_weekly_rank || 500;
+  const lastWeekRank = settings?.last_week_rank || 500;
 
   // Live components calculation
   const streakBonus = Math.min(15, streakDays * 3);
@@ -162,7 +163,7 @@ export default function HunterRankPage() {
                 Global Hunter Position
               </span>
               <span className="text-3xl sm:text-4xl font-extrabold text-zinc-100 drop-shadow-md">
-                #{provisionalGlobalRank}
+                #{officialWeeklyRank}
               </span>
             </div>
           </div>
@@ -189,14 +190,14 @@ export default function HunterRankPage() {
         </div>
       </div>
 
-      {/* Live Hunter Metrics Card: Streak, Focus Today & Provisional Rank */}
+      {/* Live Hunter Metrics Card: Streak, Focus Today & Last Week Ranking */}
       <div className="glass-panel p-5 rounded-xl border border-zinc-800 space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4 text-amber-400" />
             <h2 className="text-sm font-semibold text-zinc-100">Live Hunter Metrics</h2>
           </div>
-          <span className="text-[10px] font-mono text-zinc-500 uppercase">Real-Time Overview</span>
+          <span className="text-[10px] font-mono text-zinc-500 uppercase">Weekly Rank Update</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono text-xs">
@@ -222,14 +223,14 @@ export default function HunterRankPage() {
             </div>
           </div>
 
-          {/* Provisional Live Rank Metric */}
+          {/* Last Week Ranking Metric */}
           <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Provisional Rank</span>
-              <span className="text-xl font-extrabold text-cyan-400">#{provisionalGlobalRank}</span>
+              <span className="text-[10px] text-zinc-500 uppercase block font-bold">Last Week Ranking</span>
+              <span className="text-xl font-extrabold text-cyan-400">#{lastWeekRank}</span>
             </div>
-            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 animate-pulse">
-              <Sparkles className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
+              <Award className="w-5 h-5" />
             </div>
           </div>
         </div>

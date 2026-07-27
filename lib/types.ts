@@ -112,6 +112,7 @@ export interface UserSettings {
   last_active_date?: string | null;
   momentum_score?: number;
   official_weekly_rank?: number;
+  last_week_rank?: number;
   last_week_start_date?: string | null;
   focus_seconds_today: number;
   focus_seconds_week: number;

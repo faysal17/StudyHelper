@@ -87,7 +87,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const oldLevel = oldSettings?.level || 1;
       const oldRank = oldSettings?.current_rank || 'E-Rank';
       const oldMomentum = calculateMomentum(oldSettings);
-      const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+      const oldGlobalPos = oldSettings?.official_weekly_rank || 500;
 
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
       const isRepeatToday = srResult.isLockedToday;
@@ -98,7 +98,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const newLevel = updatedSettings?.level || 1;
       const newRank = updatedSettings?.current_rank || 'E-Rank';
       const newMomentum = calculateMomentum(updatedSettings);
-      const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
+      const newGlobalPos = updatedSettings?.official_weekly_rank || 500;
 
       if (!srResult.isLockedToday) {
         await updateTask(task.id, {

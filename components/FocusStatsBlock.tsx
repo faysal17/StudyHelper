@@ -18,7 +18,7 @@ export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
     calculateLevelAndProgress(totalXP);
 
   const momentum = calculateMomentum(settings);
-  const globalRank = calculateGlobalHunterRank(level, momentum.score);
+  const globalRank = settings?.official_weekly_rank || 500;
 
   return (
     <Link

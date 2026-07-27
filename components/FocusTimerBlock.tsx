@@ -95,7 +95,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     const oldRank = userSettings?.current_rank || 'E-Rank';
     const oldXP = userSettings?.xp || 0;
     const oldMomentum = calculateMomentum(userSettings);
-    const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+    const oldGlobalPos = userSettings?.official_weekly_rank || 500;
 
     const updated = await recordRatedFocusSession(targetMinutes, stars);
     setUserSettings(updated);
@@ -106,7 +106,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     const newXP = updated.xp || 0;
     const gainedXP = newXP - oldXP;
     const newMomentum = calculateMomentum(updated);
-    const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
+    const newGlobalPos = updated.official_weekly_rank || 500;
 
     // Prepare Level Up or Rank Up event if occurred
     let eventType: EventType | null = null;
@@ -149,7 +149,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     const oldRank = userSettings?.current_rank || 'E-Rank';
     const oldXP = userSettings?.xp || 0;
     const oldMomentum = calculateMomentum(userSettings);
-    const oldGlobalPos = calculateGlobalHunterRank(oldLevel, oldMomentum.score);
+    const oldGlobalPos = userSettings?.official_weekly_rank || 500;
 
     const { updatedSettings, isPenaltyApplied, penaltyAmount } = await recordSessionStop();
     setUserSettings(updatedSettings);
@@ -158,7 +158,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     const newRank = updatedSettings.current_rank || 'E-Rank';
     const newXP = updatedSettings.xp || 0;
     const newMomentum = calculateMomentum(updatedSettings);
-    const newGlobalPos = calculateGlobalHunterRank(newLevel, newMomentum.score);
+    const newGlobalPos = updatedSettings.official_weekly_rank || 500;
 
     setQuitPenaltyInfo({ isPenalty: isPenaltyApplied, amount: penaltyAmount });
     setShowQuitModal(true);

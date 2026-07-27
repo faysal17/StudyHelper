@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus, FocusSession } from './types';
-import { calculateLevelAndProgress, updateStreakOnActivity } from './gamification';
+import { calculateLevelAndProgress, updateStreakOnActivity, calculateGlobalHunterRank } from './gamification';
 import { getTodayDateString, getMondayOfWeek } from './spacedRepetition';
+import { calculateMomentum } from './momentum';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -61,7 +62,9 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   stops_this_week: 0,
   last_stop_timestamp: null,
   pause_start_timestamp: null,
-  last_active_date: null,
+  official_weekly_rank: 500,
+  last_week_rank: 500,
+  last_week_start_date: null,
   focus_seconds_today: 0,
   focus_seconds_week: 0,
   current_rank: 'E-Rank',
@@ -177,11 +180,22 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
     }
   }
 
-  // 2. Weekly Rollover
+  // 2. Weekly Rollover & Official Weekly Rank Lock
   const lastActiveMon = lastActive ? getMondayOfWeek(lastActive) : getMondayOfWeek(todayStr);
   const currentMon = getMondayOfWeek(todayStr);
-  if (lastActiveMon !== currentMon) {
+  const stats = calculateLevelAndProgress(settings.xp || 0);
+
+  if (lastActiveMon !== currentMon || settings.last_week_start_date !== currentMon || !settings.official_weekly_rank) {
+    if (settings.last_week_start_date && settings.last_week_start_date !== currentMon) {
+      settings.last_week_rank = settings.official_weekly_rank || 500;
+    } else if (!settings.last_week_rank) {
+      settings.last_week_rank = 500;
+    }
+
     settings.stops_this_week = 0;
+    settings.last_week_start_date = currentMon;
+    const momentum = calculateMomentum(settings);
+    settings.official_weekly_rank = calculateGlobalHunterRank(stats.level, momentum.score);
     needsPersist = true;
   }
 
@@ -201,8 +215,7 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
     }
   }
 
-  // 5. Level & Rank calculation
-  const stats = calculateLevelAndProgress(settings.xp || 0);
+  // 5. Level & Rank title calculation
   settings.level = stats.level;
   settings.current_rank = stats.rankInfo.rank;
   settings.current_title = stats.rankInfo.title;
