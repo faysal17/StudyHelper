@@ -18,7 +18,6 @@ export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
 
-const STORAGE_KEY = 'learning_hub_db_v5';
 const DEFAULT_USER_ID = 'user-owner';
 
 const DEFAULT_QUOTES = [
@@ -30,18 +29,6 @@ const DEFAULT_QUOTES = [
 ];
 
 const DEFAULT_WEEKEND_DAYS = ['Saturday', 'Sunday'];
-
-interface LocalDB {
-  subjects: Subject[];
-  topics: Topic[];
-  subtopics: Subtopic[];
-  tasks: Task[];
-  notes: Note[];
-  overlays: Overlay[];
-  revisionLogs: RevisionLog[];
-  focusSessions: FocusSession[];
-  settings: UserSettings;
-}
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
   user_id: DEFAULT_USER_ID,
@@ -73,64 +60,14 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   last_vocab_xp_date: null,
 };
 
-const CLEAN_EMPTY_DB: LocalDB = {
-  subjects: [],
-  topics: [],
-  subtopics: [],
-  tasks: [],
-  notes: [],
-  overlays: [],
-  revisionLogs: [],
-  focusSessions: [],
-  settings: DEFAULT_USER_SETTINGS,
-};
-
-function getLocalDB(): LocalDB {
-  if (typeof window === 'undefined') return CLEAN_EMPTY_DB;
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (!stored) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(CLEAN_EMPTY_DB));
-    return CLEAN_EMPTY_DB;
+async function getCurrentUserId(): Promise<string> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.id) {
+      return userData.user.id;
+    }
   }
-  try {
-    const parsed = JSON.parse(stored);
-    return {
-      ...CLEAN_EMPTY_DB,
-      ...parsed,
-      settings: {
-        ...DEFAULT_USER_SETTINGS,
-        ...(parsed.settings || {}),
-      },
-    };
-  } catch {
-    return CLEAN_EMPTY_DB;
-  }
-}
-
-function saveLocalDB(db: LocalDB) {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  }
-}
-
-function populateTaskRelations(task: Task, db: LocalDB): Task {
-  const topic = db.topics.find((t) => t.id === task.topic_id);
-  const subtopic = db.subtopics.find((st) => st.id === task.subtopic_id);
-  const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
-  const notes = db.notes
-    .filter((n) => n.task_id === task.id)
-    .map((n) => ({
-      ...n,
-      overlays: db.overlays.filter((o) => o.note_id === n.id),
-    }));
-
-  return {
-    ...task,
-    topic: topic ? { ...topic, subject } : undefined,
-    subtopic,
-    subject,
-    notes,
-  };
+  return DEFAULT_USER_ID;
 }
 
 // USER SETTINGS & GAMIFICATION SYNC
@@ -229,47 +166,35 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
 }
 
 export async function fetchUserSettings(): Promise<UserSettings> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
 
-      if (!error && data) {
-        const sanitized = sanitizeUserSettings(data);
-        if (sanitized._needsPersist) {
-          const { _needsPersist, ...toSave } = sanitized;
-          await supabase.from('user_settings').upsert({ ...toSave, user_id: userId });
-        }
-        delete sanitized._needsPersist;
-        return sanitized;
+    if (!error && data) {
+      const sanitized = sanitizeUserSettings(data);
+      if (sanitized._needsPersist) {
+        const { _needsPersist, ...toSave } = sanitized;
+        await supabase.from('user_settings').upsert({ ...toSave, user_id: userId });
       }
-
-      const defaultSettings: UserSettings = {
-        ...DEFAULT_USER_SETTINGS,
-        user_id: userId,
-        last_active_date: getTodayDateString('00:00'),
-      };
-
-      await supabase.from('user_settings').upsert(defaultSettings);
-      return defaultSettings;
+      delete sanitized._needsPersist;
+      return sanitized;
     }
+
+    const defaultSettings: UserSettings = {
+      ...DEFAULT_USER_SETTINGS,
+      user_id: userId,
+      last_active_date: getTodayDateString('00:00'),
+    };
+
+    await supabase.from('user_settings').upsert(defaultSettings);
+    return defaultSettings;
   }
 
-  const local = getLocalDB().settings;
-  const sanitized = sanitizeUserSettings(local);
-  if (sanitized._needsPersist) {
-    const { _needsPersist, ...toSave } = sanitized;
-    const db = getLocalDB();
-    db.settings = toSave;
-    saveLocalDB(db);
-  }
-  delete sanitized._needsPersist;
-  return sanitized;
+  return { ...DEFAULT_USER_SETTINGS, user_id: userId };
 }
 
 export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
@@ -296,76 +221,48 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
   };
 
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
-      return { ...current, ...updated };
-    }
+    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
   }
 
-  const db = getLocalDB();
-  db.settings = { ...db.settings, ...updated };
-  saveLocalDB(db);
-  return db.settings;
+  return { ...current, ...updated };
 }
 
 export async function updateWeekendDaysConfig(weekendDays: string[]): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        weekend_days: weekendDays,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      weekend_days: weekendDays,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.weekend_days = weekendDays;
-  saveLocalDB(db);
 }
 
 export async function updateStudyTargetsConfig(weekdayMins: number, weekendMins: number): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        weekday_target_minutes: weekdayMins,
-        weekend_target_minutes: weekendMins,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      weekday_target_minutes: weekdayMins,
+      weekend_target_minutes: weekendMins,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.weekday_target_minutes = weekdayMins;
-  db.settings.weekend_target_minutes = weekendMins;
-  saveLocalDB(db);
 }
 
 // FOCUS SESSIONS API
 export async function fetchFocusSessions(): Promise<FocusSession[]> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const { data, error } = await supabase
-        .from('focus_sessions')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('focus_sessions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-      if (!error && data) return data;
-    }
+    if (!error && data) return data;
   }
-
-  const db = getLocalDB();
-  return db.focusSessions || [];
+  return [];
 }
 
 export async function createFocusSession(sessionData: {
@@ -375,9 +272,10 @@ export async function createFocusSession(sessionData: {
   status?: 'completed' | 'abandoned';
   task_id?: string | null;
 }): Promise<FocusSession> {
+  const userId = await getCurrentUserId();
   const newSession: FocusSession = {
     id: `session-${Date.now()}`,
-    user_id: DEFAULT_USER_ID,
+    user_id: userId,
     duration_seconds: sessionData.duration_seconds,
     rating: sessionData.rating ?? 4,
     xp_earned: sessionData.xp_earned ?? 0,
@@ -387,30 +285,22 @@ export async function createFocusSession(sessionData: {
   };
 
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      newSession.user_id = userData.user.id;
-      const { data, error } = await supabase
-        .from('focus_sessions')
-        .insert([{
-          user_id: userData.user.id,
-          task_id: sessionData.task_id || null,
-          duration_seconds: sessionData.duration_seconds,
-          rating: sessionData.rating ?? 4,
-          xp_earned: sessionData.xp_earned ?? 0,
-          status: sessionData.status ?? 'completed',
-        }])
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('focus_sessions')
+      .insert([{
+        user_id: userId,
+        task_id: sessionData.task_id || null,
+        duration_seconds: sessionData.duration_seconds,
+        rating: sessionData.rating ?? 4,
+        xp_earned: sessionData.xp_earned ?? 0,
+        status: sessionData.status ?? 'completed',
+      }])
+      .select()
+      .single();
 
-      if (!error && data) return data;
-    }
+    if (!error && data) return data;
   }
 
-  const db = getLocalDB();
-  if (!db.focusSessions) db.focusSessions = [];
-  db.focusSessions.unshift(newSession);
-  saveLocalDB(db);
   return newSession;
 }
 
@@ -453,24 +343,17 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
   };
 
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
-      return { updatedSettings: { ...current, ...updated }, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
-    }
+    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
   }
 
-  const db = getLocalDB();
-  db.settings = { ...db.settings, ...updated };
-  saveLocalDB(db);
-  return { updatedSettings: db.settings, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
+  const updatedSettings = { ...current, ...updated };
+  return { updatedSettings, isPenaltyApplied: penaltyAmount > 0, penaltyAmount };
 }
 
 // COMPLETED FOCUS SESSION WITH SELF-RATING SCORE & 7-DAY LOGGING
 export async function recordRatedFocusSession(minutes: number, stars: number): Promise<UserSettings> {
   const addedSeconds = Math.round(minutes * 60);
 
-  // Focus Timer Anti-Farm Rule: Minimum 15 minutes required to earn XP
   let earnedXP = 0;
   if (minutes >= 15) {
     const baseXP = minutes >= 25
@@ -498,7 +381,6 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
   const todayStr = getTodayDateString(current.day_end_time || '00:00');
   const newToday = (current.focus_seconds_today || 0) + addedSeconds;
 
-  // Update rolling focus log dictionary first
   const updatedWeeklyLog = { ...(current.weekly_focus_log || {}) };
   updatedWeeklyLog[todayStr] = (updatedWeeklyLog[todayStr] || 0) + addedSeconds;
   const newWeek = calculateWeekFocusSeconds(updatedWeeklyLog, todayStr);
@@ -528,114 +410,66 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
   };
 
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      await supabase.from('user_settings').upsert({ ...updated, user_id: userData.user.id });
-      return { ...current, ...updated };
-    }
+    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
   }
 
-  const db = getLocalDB();
-  db.settings = { ...db.settings, ...updated };
-  saveLocalDB(db);
-  return db.settings;
+  return { ...current, ...updated };
 }
 
 export async function updateDDayConfig(targetDate: string, targetTitle: string): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        target_date: targetDate,
-        target_title: targetTitle,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      target_date: targetDate,
+      target_title: targetTitle,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.target_date = targetDate;
-  db.settings.target_title = targetTitle;
-  saveLocalDB(db);
 }
 
 export async function acknowledgeWeeklyRankModal(): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        show_weekly_rank_modal: false,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      show_weekly_rank_modal: false,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.show_weekly_rank_modal = false;
-  saveLocalDB(db);
 }
 
 export async function updateDayEndTimeConfig(dayEndTime: string): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        day_end_time: dayEndTime,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      day_end_time: dayEndTime,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.day_end_time = dayEndTime;
-  saveLocalDB(db);
 }
 
 export async function updateQuotesConfig(quotes: string[]): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        quotes,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      quotes,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.quotes = quotes;
-  saveLocalDB(db);
 }
 
 export async function updateLastVocabXPDate(dateStr: string): Promise<void> {
+  const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      const userId = userData.user.id;
-      await supabase.from('user_settings').upsert({
-        user_id: userId,
-        last_vocab_xp_date: dateStr,
-        updated_at: new Date().toISOString(),
-      });
-      return;
-    }
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      last_vocab_xp_date: dateStr,
+      updated_at: new Date().toISOString(),
+    });
   }
-
-  const db = getLocalDB();
-  db.settings.last_vocab_xp_date = dateStr;
-  saveLocalDB(db);
 }
 
 export async function recordFocusSession(minutes: number): Promise<UserSettings> {
@@ -649,7 +483,7 @@ export async function fetchSubjects(): Promise<Subject[]> {
     const { data, error } = await supabase.from('subjects').select('*').order('name');
     if (!error && data) return data;
   }
-  return getLocalDB().subjects;
+  return [];
 }
 
 export async function fetchTopics(): Promise<Topic[]> {
@@ -660,11 +494,7 @@ export async function fetchTopics(): Promise<Topic[]> {
       .order('name');
     if (!error && data) return data;
   }
-  const db = getLocalDB();
-  return db.topics.map((t) => ({
-    ...t,
-    subject: db.subjects.find((s) => s.id === t.subject_id),
-  }));
+  return [];
 }
 
 export async function fetchSubtopics(): Promise<Subtopic[]> {
@@ -680,19 +510,12 @@ export async function fetchSubtopics(): Promise<Subtopic[]> {
       }));
     }
   }
-
-  const db = getLocalDB();
-  return db.subtopics.map((st) => {
-    const topic = db.topics.find((t) => t.id === st.topic_id);
-    const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
-    return { ...st, topic: topic ? { ...topic, subject } : undefined, subject };
-  });
+  return [];
 }
 
 export async function createSubject(name: string): Promise<Subject> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('subjects')
       .insert([{ name, user_id: userId }])
@@ -701,17 +524,7 @@ export async function createSubject(name: string): Promise<Subject> {
     if (error) throw error;
     return data;
   }
-
-  const db = getLocalDB();
-  const newSubject: Subject = {
-    id: `subj-${Date.now()}`,
-    name,
-    user_id: DEFAULT_USER_ID,
-    created_at: new Date().toISOString(),
-  };
-  db.subjects.push(newSubject);
-  saveLocalDB(db);
-  return newSubject;
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function deleteSubject(id: string): Promise<void> {
@@ -727,21 +540,12 @@ export async function deleteSubject(id: string): Promise<void> {
 
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subjects').delete().eq('id', id);
-    return;
   }
-
-  const db = getLocalDB();
-  db.subjects = db.subjects.filter((s) => s.id !== id);
-  const topicIds = db.topics.filter((t) => t.subject_id === id).map((t) => t.id);
-  db.topics = db.topics.filter((t) => t.subject_id !== id);
-  db.subtopics = db.subtopics.filter((st) => !topicIds.includes(st.topic_id));
-  saveLocalDB(db);
 }
 
 export async function createTopic(name: string, subjectId: string): Promise<Topic> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('topics')
       .insert([{ name, subject_id: subjectId, user_id: userId }])
@@ -750,19 +554,7 @@ export async function createTopic(name: string, subjectId: string): Promise<Topi
     if (error) throw error;
     return data;
   }
-
-  const db = getLocalDB();
-  const newTopic: Topic = {
-    id: `top-${Date.now()}`,
-    name,
-    subject_id: subjectId,
-    user_id: DEFAULT_USER_ID,
-    subject: db.subjects.find((s) => s.id === subjectId),
-    created_at: new Date().toISOString(),
-  };
-  db.topics.push(newTopic);
-  saveLocalDB(db);
-  return newTopic;
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function deleteTopic(id: string): Promise<void> {
@@ -776,19 +568,12 @@ export async function deleteTopic(id: string): Promise<void> {
 
   if (isSupabaseConfigured && supabase) {
     await supabase.from('topics').delete().eq('id', id);
-    return;
   }
-
-  const db = getLocalDB();
-  db.topics = db.topics.filter((t) => t.id !== id);
-  db.subtopics = db.subtopics.filter((st) => st.topic_id !== id);
-  saveLocalDB(db);
 }
 
 export async function createSubtopic(name: string, topicId: string): Promise<Subtopic> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('subtopics')
       .insert([{ name, topic_id: topicId, status: 'unstudied', user_id: userId }])
@@ -800,23 +585,7 @@ export async function createSubtopic(name: string, topicId: string): Promise<Sub
       subject: data.topic?.subject || undefined,
     };
   }
-
-  const db = getLocalDB();
-  const topic = db.topics.find((t) => t.id === topicId);
-  const subject = topic ? db.subjects.find((s) => s.id === topic.subject_id) : undefined;
-  const newSubtopic: Subtopic = {
-    id: `subtop-${Date.now()}`,
-    name,
-    topic_id: topicId,
-    status: 'unstudied',
-    user_id: DEFAULT_USER_ID,
-    topic: topic ? { ...topic, subject } : undefined,
-    subject,
-    created_at: new Date().toISOString(),
-  };
-  db.subtopics.push(newSubtopic);
-  saveLocalDB(db);
-  return newSubtopic;
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function updateSubtopicStatus(id: string, status: SubtopicStatus): Promise<void> {
@@ -824,21 +593,13 @@ export async function updateSubtopicStatus(id: string, status: SubtopicStatus): 
   const target = subtopics.find((st) => st.id === id);
 
   if (target && target.status !== 'completed' && status === 'completed') {
-    await awardXPAndSync(30); // Subtopic Completed: +30 XP
+    await awardXPAndSync(30);
   } else if (target && target.status === 'completed' && status !== 'completed') {
-    await awardXPAndSync(-30); // Unchecking Completed Subtopic: -30 XP (prevents XP farming)
+    await awardXPAndSync(-30);
   }
 
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subtopics').update({ status }).eq('id', id);
-    return;
-  }
-
-  const db = getLocalDB();
-  const idx = db.subtopics.findIndex((st) => st.id === id);
-  if (idx !== -1) {
-    db.subtopics[idx].status = status;
-    saveLocalDB(db);
   }
 }
 
@@ -847,17 +608,12 @@ export async function deleteSubtopic(id: string): Promise<void> {
   const target = subtopics.find((st) => st.id === id);
 
   if (target && target.status === 'completed') {
-    await awardXPAndSync(-30); // Deduct XP if deleting a completed subtopic
+    await awardXPAndSync(-30);
   }
 
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subtopics').delete().eq('id', id);
-    return;
   }
-
-  const db = getLocalDB();
-  db.subtopics = db.subtopics.filter((st) => st.id !== id);
-  saveLocalDB(db);
 }
 
 // TASK DATA API
@@ -881,9 +637,7 @@ export async function fetchTasks(): Promise<Task[]> {
       }));
     }
   }
-
-  const db = getLocalDB();
-  return db.tasks.map((t) => populateTaskRelations(t, db));
+  return [];
 }
 
 export async function fetchTaskById(id: string): Promise<Task | null> {
@@ -906,10 +660,7 @@ export async function fetchTaskById(id: string): Promise<Task | null> {
       };
     }
   }
-
-  const db = getLocalDB();
-  const raw = db.tasks.find((t) => t.id === id);
-  return raw ? populateTaskRelations(raw, db) : null;
+  return null;
 }
 
 export async function createTask(taskData: {
@@ -920,8 +671,7 @@ export async function createTask(taskData: {
   next_revision_date: string;
 }): Promise<Task> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('tasks')
       .insert([
@@ -947,46 +697,18 @@ export async function createTask(taskData: {
       subject: data.topic?.subject || undefined,
     };
   }
-
-  const db = getLocalDB();
-  const newTask: Task = {
-    id: `task-${Date.now()}`,
-    title: taskData.title,
-    topic_id: taskData.topic_id,
-    subtopic_id: taskData.subtopic_id || null,
-    priority: taskData.priority as any,
-    last_reviewed_date: null,
-    current_interval: 1,
-    ease_factor: 2.5,
-    status_color: 'blue',
-    next_revision_date: taskData.next_revision_date,
-    user_id: DEFAULT_USER_ID,
-    created_at: new Date().toISOString(),
-  };
-
-  db.tasks.unshift(newTask);
-  saveLocalDB(db);
-  return populateTaskRelations(newTask, db);
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     await supabase.from('tasks').update(updates).eq('id', id);
-    return;
-  }
-
-  const db = getLocalDB();
-  const idx = db.tasks.findIndex((t) => t.id === id);
-  if (idx !== -1) {
-    db.tasks[idx] = { ...db.tasks[idx], ...updates };
-    saveLocalDB(db);
   }
 }
 
 export async function deleteTask(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
-      // 1. Fetch note image URLs associated with this task to clean up storage files
       const { data: notes } = await supabase
         .from('notes')
         .select('image_url')
@@ -1011,17 +733,8 @@ export async function deleteTask(id: string): Promise<void> {
       console.error('Error clearing note images from Supabase storage during task deletion:', err);
     }
 
-    // 2. Delete task from Supabase DB (cascades to notes and overlays table rows)
     await supabase.from('tasks').delete().eq('id', id);
-    return;
   }
-
-  const db = getLocalDB();
-  db.tasks = db.tasks.filter((t) => t.id !== id);
-  const noteIds = db.notes.filter((n) => n.task_id === id).map((n) => n.id);
-  db.notes = db.notes.filter((n) => n.task_id !== id);
-  db.overlays = db.overlays.filter((o) => !noteIds.includes(o.note_id));
-  saveLocalDB(db);
 }
 
 export async function deleteNote(id: string): Promise<void> {
@@ -1044,13 +757,7 @@ export async function deleteNote(id: string): Promise<void> {
     }
 
     await supabase.from('notes').delete().eq('id', id);
-    return;
   }
-
-  const db = getLocalDB();
-  db.notes = db.notes.filter((n) => n.id !== id);
-  db.overlays = db.overlays.filter((o) => o.note_id !== id);
-  saveLocalDB(db);
 }
 
 export async function uploadNoteImage(file: File): Promise<string> {
@@ -1077,8 +784,7 @@ export async function uploadNoteImage(file: File): Promise<string> {
 
 export async function createNote(taskId: string, imageUrl: string): Promise<Note> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('notes')
       .insert([{ task_id: taskId, image_url: imageUrl, user_id: userId }])
@@ -1088,19 +794,7 @@ export async function createNote(taskId: string, imageUrl: string): Promise<Note
     if (error) throw error;
     return { ...data, overlays: [] };
   }
-
-  const db = getLocalDB();
-  const newNote: Note = {
-    id: `note-${Date.now()}`,
-    task_id: taskId,
-    image_url: imageUrl,
-    user_id: DEFAULT_USER_ID,
-    created_at: new Date().toISOString(),
-    overlays: [],
-  };
-  db.notes.push(newNote);
-  saveLocalDB(db);
-  return newNote;
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function saveOverlays(
@@ -1108,8 +802,7 @@ export async function saveOverlays(
   overlays: { x_coord: number; y_coord: number; width: number; height: number; label?: string | null }[]
 ): Promise<Overlay[]> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
 
     await supabase.from('overlays').delete().eq('note_id', noteId);
 
@@ -1128,25 +821,7 @@ export async function saveOverlays(
     if (error) throw error;
     return data || [];
   }
-
-  const db = getLocalDB();
-  db.overlays = db.overlays.filter((o) => o.note_id !== noteId);
-
-  const createdOverlays: Overlay[] = overlays.map((ov, i) => ({
-    id: `ov-${Date.now()}-${i}`,
-    note_id: noteId,
-    x_coord: ov.x_coord,
-    y_coord: ov.y_coord,
-    width: ov.width,
-    height: ov.height,
-    label: ov.label || null,
-    is_currently_failing: false,
-    user_id: DEFAULT_USER_ID,
-  }));
-
-  db.overlays.push(...createdOverlays);
-  saveLocalDB(db);
-  return createdOverlays;
+  throw new Error('Supabase database is not configured.');
 }
 
 export async function updateOverlayFailingStatus(
@@ -1158,14 +833,6 @@ export async function updateOverlayFailingStatus(
       .from('overlays')
       .update({ is_currently_failing: isCurrentlyFailing })
       .eq('id', overlayId);
-    return;
-  }
-
-  const db = getLocalDB();
-  const idx = db.overlays.findIndex((o) => o.id === overlayId);
-  if (idx !== -1) {
-    db.overlays[idx].is_currently_failing = isCurrentlyFailing;
-    saveLocalDB(db);
   }
 }
 
@@ -1205,22 +872,11 @@ export async function logRevisionScore(
   }
 
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    const userId = userData?.user?.id || DEFAULT_USER_ID;
+    const userId = await getCurrentUserId();
     await supabase
       .from('revision_logs')
       .insert([{ task_id: taskId, score, user_id: userId }]);
-    return earnedXP;
   }
 
-  const db = getLocalDB();
-  db.revisionLogs.push({
-    id: `rev-${Date.now()}`,
-    task_id: taskId,
-    score,
-    created_at: new Date().toISOString(),
-    user_id: DEFAULT_USER_ID,
-  });
-  saveLocalDB(db);
   return earnedXP;
 }
