@@ -1,4 +1,4 @@
-import { UserSettings } from './types';
+import { UserSettings, FocusSession } from './types';
 import { getTodayDateString } from './spacedRepetition';
 
 export interface MomentumDetails {
@@ -16,7 +16,7 @@ export interface MomentumDetails {
   weeklyTargetLog: { dateStr: string; dayName: string; focusMinutes: number; targetMinutes: number; isWeekend: boolean; ratio: number }[];
 }
 
-export function calculateMomentum(settings: UserSettings | null): MomentumDetails {
+export function calculateMomentum(settings: UserSettings | null, sessions?: FocusSession[]): MomentumDetails {
   const dayEndTime = settings?.day_end_time || '00:00';
   const todayStr = getTodayDateString(dayEndTime);
   const weekendDays = settings?.weekend_days || ['Saturday', 'Sunday'];
@@ -28,6 +28,21 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
   const stopsToday = settings?.stops_today || 0;
   const stopsWeek = settings?.stops_this_week || 0;
 
+  // Build daily focus map from individual focus sessions if provided
+  const sessionMap: Record<string, number> = {};
+  if (sessions && sessions.length > 0) {
+    for (const s of sessions) {
+      if (s.status === 'completed' || (s.duration_seconds || 0) > 0) {
+        const d = new Date(s.created_at);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${day}`;
+        sessionMap[dateStr] = (sessionMap[dateStr] || 0) + (s.duration_seconds || 0);
+      }
+    }
+  }
+
   // Build rolling 7-day target array (from 6 days ago to Today)
   const [y, m, d] = todayStr.split('-').map(Number);
   const todayObj = new Date(y, m - 1, d);
@@ -36,6 +51,9 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
   let weightedConsistencySum = 0;
 
   const weeklyTargetLog: MomentumDetails['weeklyTargetLog'] = [];
+
+  const lastActiveDate = settings?.last_active_date || null;
+  const focusSecondsToday = (lastActiveDate === todayStr) ? (settings?.focus_seconds_today || 0) : 0;
 
   for (let i = 6; i >= 0; i--) {
     const curDate = new Date(todayObj);
@@ -51,8 +69,12 @@ export function calculateMomentum(settings: UserSettings | null): MomentumDetail
     const isWeekend = weekendDays.includes(fullDayName);
     const targetMinutes = isWeekend ? weekendTargetMins : weekdayTargetMins;
 
-    // Actual focus minutes logged on that date
-    const actualSeconds = focusLog[dateStr] || (dateStr === todayStr ? settings?.focus_seconds_today || 0 : 0);
+    // Actual focus seconds: prioritize sessionMap -> focusLog -> focusSecondsToday (today only)
+    const actualSeconds = sessionMap[dateStr] !== undefined
+      ? sessionMap[dateStr]
+      : (focusLog[dateStr] !== undefined
+        ? focusLog[dateStr]
+        : (dateStr === todayStr ? focusSecondsToday : 0));
     const focusMinutes = Math.floor(actualSeconds / 60);
 
     const ratio = Math.min(1.0, focusMinutes / targetMinutes);

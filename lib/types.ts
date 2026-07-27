@@ -79,6 +79,17 @@ export interface RevisionLog {
   user_id: string;
 }
 
+export interface FocusSession {
+  id: string;
+  user_id: string;
+  task_id?: string | null;
+  duration_seconds: number;
+  rating?: number | null;
+  xp_earned?: number;
+  status?: 'completed' | 'abandoned';
+  created_at: string;
+}
+
 export interface UserSettings {
   user_id: string;
   target_date: string | null;

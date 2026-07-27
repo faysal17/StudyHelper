@@ -89,6 +89,18 @@ CREATE TABLE IF NOT EXISTS public.revision_logs (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
+-- Focus Sessions Table (Granular Focus Analytics)
+CREATE TABLE IF NOT EXISTS public.focus_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    task_id UUID REFERENCES public.tasks(id) ON DELETE SET NULL,
+    duration_seconds INTEGER NOT NULL,
+    rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+    xp_earned INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'completed' CHECK (status IN ('completed', 'abandoned')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- User Settings Table (Stores D-Day Target, Focus Stats, Day Cutoff, Quotes, Gamification, Weekend Config, Weekly Ranks & 7-Day Log)
 CREATE TABLE IF NOT EXISTS public.user_settings (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -181,6 +193,11 @@ CREATE POLICY "Users can access their own overlays" ON public.overlays
 
 DROP POLICY IF EXISTS "Users can access their own revision logs" ON public.revision_logs;
 CREATE POLICY "Users can access their own revision logs" ON public.revision_logs
+    FOR ALL USING (auth.uid() = user_id);
+
+ALTER TABLE public.focus_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage their own focus sessions" ON public.focus_sessions;
+CREATE POLICY "Users can manage their own focus sessions" ON public.focus_sessions
     FOR ALL USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can view their own settings" ON public.user_settings;

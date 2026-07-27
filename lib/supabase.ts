@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus } from './types';
+import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus, FocusSession } from './types';
 import { calculateLevelAndProgress, updateStreakOnActivity } from './gamification';
-import { getTodayDateString } from './spacedRepetition';
+import { getTodayDateString, getMondayOfWeek } from './spacedRepetition';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -38,8 +38,36 @@ interface LocalDB {
   notes: Note[];
   overlays: Overlay[];
   revisionLogs: RevisionLog[];
+  focusSessions: FocusSession[];
   settings: UserSettings;
 }
+
+export const DEFAULT_USER_SETTINGS: UserSettings = {
+  user_id: DEFAULT_USER_ID,
+  target_date: null,
+  target_title: null,
+  day_end_time: '00:00',
+  quotes: DEFAULT_QUOTES,
+  weekend_days: DEFAULT_WEEKEND_DAYS,
+  week_start_day: 'Monday',
+  weekday_target_minutes: 120,
+  weekend_target_minutes: 210,
+  weekly_focus_log: {},
+  xp: 0,
+  level: 1,
+  streak_days: 0,
+  last_study_date: null,
+  stops_today: 0,
+  stops_this_week: 0,
+  last_stop_timestamp: null,
+  pause_start_timestamp: null,
+  last_active_date: null,
+  focus_seconds_today: 0,
+  focus_seconds_week: 0,
+  current_rank: 'E-Rank',
+  current_title: 'Procrastinating Worm',
+  last_vocab_xp_date: null,
+};
 
 const CLEAN_EMPTY_DB: LocalDB = {
   subjects: [],
@@ -49,31 +77,8 @@ const CLEAN_EMPTY_DB: LocalDB = {
   notes: [],
   overlays: [],
   revisionLogs: [],
-  settings: {
-    user_id: DEFAULT_USER_ID,
-    target_date: null,
-    target_title: null,
-    day_end_time: '00:00',
-    quotes: DEFAULT_QUOTES,
-    weekend_days: DEFAULT_WEEKEND_DAYS,
-    weekday_target_minutes: 120,
-    weekend_target_minutes: 210,
-    weekly_focus_log: {},
-    xp: 0,
-    level: 1,
-    streak_days: 0,
-    last_study_date: null,
-    stops_today: 0,
-    stops_this_week: 0,
-    last_stop_timestamp: null,
-    pause_start_timestamp: null,
-    last_active_date: null,
-    focus_seconds_today: 0,
-    focus_seconds_week: 0,
-    current_rank: 'E-Rank',
-    current_title: 'Procrastinating Worm',
-    last_vocab_xp_date: null,
-  },
+  focusSessions: [],
+  settings: DEFAULT_USER_SETTINGS,
 };
 
 function getLocalDB(): LocalDB {
@@ -85,24 +90,14 @@ function getLocalDB(): LocalDB {
   }
   try {
     const parsed = JSON.parse(stored);
-    if (!parsed.subtopics) parsed.subtopics = [];
-    if (!parsed.settings) parsed.settings = CLEAN_EMPTY_DB.settings;
-    if (!parsed.settings.day_end_time) parsed.settings.day_end_time = '00:00';
-    if (!parsed.settings.quotes || parsed.settings.quotes.length === 0) {
-      parsed.settings.quotes = DEFAULT_QUOTES;
-    }
-    if (!parsed.settings.weekend_days || parsed.settings.weekend_days.length === 0) {
-      parsed.settings.weekend_days = DEFAULT_WEEKEND_DAYS;
-    }
-    if (!parsed.settings.weekday_target_minutes) parsed.settings.weekday_target_minutes = 120;
-    if (!parsed.settings.weekend_target_minutes) parsed.settings.weekend_target_minutes = 210;
-    if (!parsed.settings.weekly_focus_log) parsed.settings.weekly_focus_log = {};
-    if (parsed.settings.xp === undefined) parsed.settings.xp = 0;
-    if (parsed.settings.level === undefined) parsed.settings.level = 1;
-    if (parsed.settings.streak_days === undefined) parsed.settings.streak_days = 0;
-    if (parsed.settings.stops_today === undefined) parsed.settings.stops_today = 0;
-    if (parsed.settings.stops_this_week === undefined) parsed.settings.stops_this_week = 0;
-    return parsed;
+    return {
+      ...CLEAN_EMPTY_DB,
+      ...parsed,
+      settings: {
+        ...DEFAULT_USER_SETTINGS,
+        ...(parsed.settings || {}),
+      },
+    };
   } catch {
     return CLEAN_EMPTY_DB;
   }
@@ -136,6 +131,88 @@ function populateTaskRelations(task: Task, db: LocalDB): Task {
 
 // USER SETTINGS & GAMIFICATION SYNC
 
+export function calculateWeekFocusSeconds(weeklyLog: Record<string, number>, todayStr: string): number {
+  const currentMon = getMondayOfWeek(todayStr);
+  let total = 0;
+  for (const [dateStr, seconds] of Object.entries(weeklyLog)) {
+    if (getMondayOfWeek(dateStr) === currentMon) {
+      total += seconds || 0;
+    }
+  }
+  return total;
+}
+
+export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & { _needsPersist?: boolean } {
+  let needsPersist = false;
+  const settings: UserSettings = {
+    ...DEFAULT_USER_SETTINGS,
+    ...rawSettings,
+  };
+
+  const dayEndTime = settings.day_end_time || '00:00';
+  const todayStr = getTodayDateString(dayEndTime);
+
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const yesterdayObj = new Date(y, m - 1, d);
+  yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+  const yYear = yesterdayObj.getFullYear();
+  const yMonth = String(yesterdayObj.getMonth() + 1).padStart(2, '0');
+  const yDay = String(yesterdayObj.getDate()).padStart(2, '0');
+  const yesterdayStr = `${yYear}-${yMonth}-${yDay}`;
+
+  const lastActive = settings.last_active_date;
+  const weeklyLog = settings.weekly_focus_log || {};
+
+  // 1. Daily Rollover
+  if (lastActive !== todayStr) {
+    settings.last_active_date = todayStr;
+    settings.focus_seconds_today = weeklyLog[todayStr] || 0;
+    settings.stops_today = 0;
+    needsPersist = true;
+  } else {
+    const logTodaySeconds = weeklyLog[todayStr] || 0;
+    if (logTodaySeconds > (settings.focus_seconds_today || 0)) {
+      settings.focus_seconds_today = logTodaySeconds;
+      needsPersist = true;
+    }
+  }
+
+  // 2. Weekly Rollover
+  const lastActiveMon = lastActive ? getMondayOfWeek(lastActive) : getMondayOfWeek(todayStr);
+  const currentMon = getMondayOfWeek(todayStr);
+  if (lastActiveMon !== currentMon) {
+    settings.stops_this_week = 0;
+    needsPersist = true;
+  }
+
+  // 3. Sync focus_seconds_week
+  const calculatedWeekSeconds = calculateWeekFocusSeconds(weeklyLog, todayStr);
+  if (settings.focus_seconds_week !== calculatedWeekSeconds) {
+    settings.focus_seconds_week = calculatedWeekSeconds;
+    needsPersist = true;
+  }
+
+  // 4. Streak Check
+  const lastStudy = settings.last_study_date;
+  if (lastStudy && lastStudy !== todayStr && lastStudy !== yesterdayStr) {
+    if (settings.streak_days !== 0) {
+      settings.streak_days = 0;
+      needsPersist = true;
+    }
+  }
+
+  // 5. Level & Rank calculation
+  const stats = calculateLevelAndProgress(settings.xp || 0);
+  settings.level = stats.level;
+  settings.current_rank = stats.rankInfo.rank;
+  settings.current_title = stats.rankInfo.title;
+
+  return {
+    ...settings,
+    _needsPersist: needsPersist,
+  };
+}
+
 export async function fetchUserSettings(): Promise<UserSettings> {
   if (isSupabaseConfigured && supabase) {
     const { data: userData } = await supabase.auth.getUser();
@@ -148,48 +225,19 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         .single();
 
       if (!error && data) {
-        const stats = calculateLevelAndProgress(data.xp || 0);
-        return {
-          day_end_time: '00:00',
-          quotes: DEFAULT_QUOTES,
-          weekend_days: DEFAULT_WEEKEND_DAYS,
-          weekday_target_minutes: 120,
-          weekend_target_minutes: 210,
-          weekly_focus_log: {},
-          xp: 0,
-          level: stats.level,
-          streak_days: 0,
-          stops_today: 0,
-          stops_this_week: 0,
-          current_rank: stats.rankInfo.rank,
-          current_title: stats.rankInfo.title,
-          ...data,
-        };
+        const sanitized = sanitizeUserSettings(data);
+        if (sanitized._needsPersist) {
+          const { _needsPersist, ...toSave } = sanitized;
+          await supabase.from('user_settings').upsert({ ...toSave, user_id: userId });
+        }
+        delete sanitized._needsPersist;
+        return sanitized;
       }
 
       const defaultSettings: UserSettings = {
+        ...DEFAULT_USER_SETTINGS,
         user_id: userId,
-        target_date: null,
-        target_title: null,
-        day_end_time: '00:00',
-        quotes: DEFAULT_QUOTES,
-        weekend_days: DEFAULT_WEEKEND_DAYS,
-        weekday_target_minutes: 120,
-        weekend_target_minutes: 210,
-        weekly_focus_log: {},
-        xp: 0,
-        level: 1,
-        streak_days: 0,
-        last_study_date: null,
-        stops_today: 0,
-        stops_this_week: 0,
-        last_stop_timestamp: null,
-        pause_start_timestamp: null,
-        last_active_date: null,
-        focus_seconds_today: 0,
-        focus_seconds_week: 0,
-        current_rank: 'E-Rank',
-        current_title: 'Procrastinating Worm',
+        last_active_date: getTodayDateString('00:00'),
       };
 
       await supabase.from('user_settings').upsert(defaultSettings);
@@ -198,13 +246,15 @@ export async function fetchUserSettings(): Promise<UserSettings> {
   }
 
   const local = getLocalDB().settings;
-  const stats = calculateLevelAndProgress(local.xp || 0);
-  return {
-    ...local,
-    level: stats.level,
-    current_rank: stats.rankInfo.rank,
-    current_title: stats.rankInfo.title,
-  };
+  const sanitized = sanitizeUserSettings(local);
+  if (sanitized._needsPersist) {
+    const { _needsPersist, ...toSave } = sanitized;
+    const db = getLocalDB();
+    db.settings = toSave;
+    saveLocalDB(db);
+  }
+  delete sanitized._needsPersist;
+  return sanitized;
 }
 
 export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
@@ -284,6 +334,71 @@ export async function updateStudyTargetsConfig(weekdayMins: number, weekendMins:
   saveLocalDB(db);
 }
 
+// FOCUS SESSIONS API
+export async function fetchFocusSessions(): Promise<FocusSession[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .select('*')
+        .eq('user_id', userData.user.id)
+        .order('created_at', { ascending: false });
+
+      if (!error && data) return data;
+    }
+  }
+
+  const db = getLocalDB();
+  return db.focusSessions || [];
+}
+
+export async function createFocusSession(sessionData: {
+  duration_seconds: number;
+  rating?: number;
+  xp_earned?: number;
+  status?: 'completed' | 'abandoned';
+  task_id?: string | null;
+}): Promise<FocusSession> {
+  const newSession: FocusSession = {
+    id: `session-${Date.now()}`,
+    user_id: DEFAULT_USER_ID,
+    duration_seconds: sessionData.duration_seconds,
+    rating: sessionData.rating ?? 4,
+    xp_earned: sessionData.xp_earned ?? 0,
+    status: sessionData.status ?? 'completed',
+    task_id: sessionData.task_id || null,
+    created_at: new Date().toISOString(),
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      newSession.user_id = userData.user.id;
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .insert([{
+          user_id: userData.user.id,
+          task_id: sessionData.task_id || null,
+          duration_seconds: sessionData.duration_seconds,
+          rating: sessionData.rating ?? 4,
+          xp_earned: sessionData.xp_earned ?? 0,
+          status: sessionData.status ?? 'completed',
+        }])
+        .select()
+        .single();
+
+      if (!error && data) return data;
+    }
+  }
+
+  const db = getLocalDB();
+  if (!db.focusSessions) db.focusSessions = [];
+  db.focusSessions.unshift(newSession);
+  saveLocalDB(db);
+  return newSession;
+}
+
 // STOP SESSION PENALTY API
 export async function recordSessionStop(): Promise<{ updatedSettings: UserSettings; isPenaltyApplied: boolean; penaltyAmount: number }> {
   const current = await fetchUserSettings();
@@ -297,6 +412,13 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
   if (stopsWeek > 7) {
     penaltyAmount += 20; // Exceeded weekly 7 free stops
   }
+
+  await createFocusSession({
+    duration_seconds: 0,
+    rating: 1,
+    xp_earned: -penaltyAmount,
+    status: 'abandoned',
+  });
 
   const rawXP = (current.xp || 0) - penaltyAmount;
   const newXP = Math.max(0, rawXP);
@@ -350,10 +472,22 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
     earnedXP = Math.round(baseXP * multiplier);
   }
 
+  await createFocusSession({
+    duration_seconds: addedSeconds,
+    rating: stars,
+    xp_earned: earnedXP,
+    status: 'completed',
+  });
+
   const current = await fetchUserSettings();
   const todayStr = getTodayDateString(current.day_end_time || '00:00');
   const newToday = (current.focus_seconds_today || 0) + addedSeconds;
-  const newWeek = (current.focus_seconds_week || 0) + addedSeconds;
+
+  // Update rolling focus log dictionary first
+  const updatedWeeklyLog = { ...(current.weekly_focus_log || {}) };
+  updatedWeeklyLog[todayStr] = (updatedWeeklyLog[todayStr] || 0) + addedSeconds;
+  const newWeek = calculateWeekFocusSeconds(updatedWeeklyLog, todayStr);
+
   const newXP = Math.max(0, (current.xp || 0) + earnedXP);
   const { level, rankInfo } = calculateLevelAndProgress(newXP);
   const { updatedStreak, updatedLastDate } = updateStreakOnActivity(
@@ -361,10 +495,6 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
     current.last_study_date || null,
     current.day_end_time || '00:00'
   );
-
-  // Update rolling 7-day focus log dictionary
-  const updatedWeeklyLog = { ...(current.weekly_focus_log || {}) };
-  updatedWeeklyLog[todayStr] = (updatedWeeklyLog[todayStr] || 0) + addedSeconds;
 
   const updated: Partial<UserSettings> = {
     user_id: current.user_id,
@@ -377,7 +507,7 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
     current_title: rankInfo.title,
     streak_days: updatedStreak,
     last_study_date: updatedLastDate,
-    last_active_date: updatedLastDate,
+    last_active_date: todayStr,
     pause_start_timestamp: null,
     updated_at: new Date().toISOString(),
   };

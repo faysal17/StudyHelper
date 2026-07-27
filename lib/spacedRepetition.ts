@@ -30,6 +30,18 @@ export function addDays(dateStr: string, days: number): string {
   return `${resYear}-${resMonth}-${resDay}`;
 }
 
+export function getMondayOfWeek(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const day = dateObj.getDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  dateObj.setDate(dateObj.getDate() - diffToMonday);
+  const resYear = dateObj.getFullYear();
+  const resMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const resDay = String(dateObj.getDate()).padStart(2, '0');
+  return `${resYear}-${resMonth}-${resDay}`;
+}
+
 export function diffInDays(dateStr1: string, dateStr2: string): number {
   const [y1, m1, d1] = dateStr1.split('-').map(Number);
   const [y2, m2, d2] = dateStr2.split('-').map(Number);
