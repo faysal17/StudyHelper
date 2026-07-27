@@ -18,6 +18,8 @@ interface FocusTimerBlockProps {
   tasks?: Task[];
 }
 
+const TIMER_STORAGE_KEY = 'bcs_active_focus_session';
+
 export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: FocusTimerBlockProps) {
   const [targetMinutes, setTargetMinutes] = useState<number>(25);
   const [secondsLeft, setSecondsLeft] = useState<number>(25 * 60);
@@ -54,10 +56,71 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   const pauseStartRef = useRef<number | null>(null);
   const endTimeRef = useRef<number | null>(null);
 
+  const persistSessionState = (
+    active: boolean,
+    targetMins: number,
+    endTimeVal: number | null,
+    secondsVal: number,
+    fullscreenVal: boolean,
+    pauseStartVal: number | null
+  ) => {
+    if (typeof window === 'undefined') return;
+    if (!active && secondsVal === targetMins * 60) {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      TIMER_STORAGE_KEY,
+      JSON.stringify({
+        targetMins,
+        endTime: endTimeVal,
+        pausedSeconds: !active ? secondsVal : null,
+        active,
+        fullscreen: fullscreenVal,
+        pauseStart: pauseStartVal,
+      })
+    );
+  };
+
   useEffect(() => {
     fetchUserSettings().then((s) => {
       setUserSettings(s);
     });
+
+    // Restore active session state across browser reloads
+    if (typeof window !== 'undefined') {
+      const savedRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+      if (savedRaw) {
+        try {
+          const saved = JSON.parse(savedRaw);
+          if (saved && typeof saved === 'object') {
+            const { targetMins, endTime, pausedSeconds, active, fullscreen, pauseStart } = saved;
+            const mins = targetMins || 25;
+            setTargetMinutes(mins);
+            setIsFullscreen(Boolean(fullscreen));
+
+            if (active && endTime) {
+              const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+              if (remaining > 0) {
+                setSecondsLeft(remaining);
+                endTimeRef.current = endTime;
+                setIsActive(true);
+              } else {
+                localStorage.removeItem(TIMER_STORAGE_KEY);
+                setSecondsLeft(0);
+                setShowRatingModal(true);
+              }
+            } else if (!active && pausedSeconds > 0) {
+              setSecondsLeft(pausedSeconds);
+              setIsActive(false);
+              pauseStartRef.current = pauseStart || null;
+            }
+          }
+        } catch (err) {
+          console.error('Error restoring active focus timer state:', err);
+        }
+      }
+    }
   }, []);
 
   // Main Timer Loop & 10-Minute Pause Timeout Checker
@@ -75,6 +138,9 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
         if (remaining <= 0) {
           endTimeRef.current = null;
           setIsActive(false);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(TIMER_STORAGE_KEY);
+          }
           setShowRatingModal(true);
         }
       };
@@ -116,6 +182,9 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
   const handleFinishRating = async (stars: number) => {
     setShowRatingModal(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+    }
 
     const oldLevel = userSettings?.level || 1;
     const oldRank = userSettings?.current_rank || 'E-Rank';
@@ -171,6 +240,9 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     setIsActive(false);
     endTimeRef.current = null;
     pauseStartRef.current = null;
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+    }
 
     const oldLevel = userSettings?.level || 1;
     const oldRank = userSettings?.current_rank || 'E-Rank';
@@ -234,12 +306,15 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
       if (secondsLeft <= 0) {
         setSecondsLeft(targetMinutes * 60);
       }
-      endTimeRef.current = Date.now() + remainingSec * 1000;
+      const newEndTime = Date.now() + remainingSec * 1000;
+      endTimeRef.current = newEndTime;
       pauseStartRef.current = null;
       setIsActive(true);
+      persistSessionState(true, targetMinutes, newEndTime, remainingSec, isFullscreen, null);
     } else {
       endTimeRef.current = null;
       setIsActive(false);
+      persistSessionState(false, targetMinutes, null, secondsLeft, isFullscreen, pauseStartRef.current);
     }
   };
 
@@ -249,6 +324,23 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     pauseStartRef.current = null;
     setTargetMinutes(mins);
     setSecondsLeft(mins * 60);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(TIMER_STORAGE_KEY);
+    }
+  };
+
+  const openFullscreen = () => {
+    setIsFullscreen(true);
+    if (isActive || secondsLeft < targetMinutes * 60) {
+      persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, true, pauseStartRef.current);
+    }
+  };
+
+  const closeFullscreen = () => {
+    setIsFullscreen(false);
+    if (isActive || secondsLeft < targetMinutes * 60) {
+      persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, false, pauseStartRef.current);
+    }
   };
 
   const minutes = Math.floor(secondsLeft / 60);
@@ -285,7 +377,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
           </span>
         </div>
 
-        {/* Toolbar: Clean layout without border bar */}
+        {/* Toolbar */}
         <div className="relative flex items-center justify-between pt-1 shrink-0 w-full">
           <Tooltip content="Reset Focus Timer">
             <button
@@ -324,7 +416,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
           <Tooltip content="Fullscreen Focus Mode">
             <button
-              onClick={() => setIsFullscreen(true)}
+              onClick={openFullscreen}
               className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -335,7 +427,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
       <FullscreenFocusModal
         isOpen={isFullscreen}
-        onClose={() => setIsFullscreen(false)}
+        onClose={closeFullscreen}
         secondsLeft={secondsLeft}
         isActive={isActive}
         targetMinutes={targetMinutes}
