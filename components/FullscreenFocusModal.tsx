@@ -25,74 +25,104 @@ interface FullscreenFocusModalProps {
 }
 
 function FlipDigit({ value }: { value: string }) {
-  const [currentValue, setCurrentValue] = useState(value);
-  const [previousValue, setPreviousValue] = useState(value);
-  const [isFlipping, setIsFlipping] = useState(false);
+  const [displayValue, setDisplayValue] = useState(value);
+  const [prevValue, setPrevValue] = useState(value);
+  const [flipping, setFlipping] = useState(false);
+  const [flipKey, setFlipKey] = useState(0);
 
   useEffect(() => {
-    if (value !== currentValue) {
-      setPreviousValue(currentValue);
-      setCurrentValue(value);
-      setIsFlipping(true);
-      const timer = setTimeout(() => {
-        setIsFlipping(false);
+    if (value !== displayValue) {
+      setPrevValue(displayValue);
+      setDisplayValue(value);
+      setFlipping(true);
+      setFlipKey((k) => k + 1);
+
+      const t = setTimeout(() => {
+        setFlipping(false);
       }, 500);
-      return () => clearTimeout(timer);
+      return () => clearTimeout(t);
     }
-  }, [value, currentValue]);
+  }, [value, displayValue]);
 
   return (
-    <div className="relative w-20 h-32 sm:w-32 sm:h-48 md:w-40 md:h-60 lg:w-48 lg:h-72 bg-zinc-950 border border-zinc-800/90 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_25px_60px_rgba(0,0,0,0.9)] perspective-1000 select-none overflow-hidden group">
-      {/* Background Top Half (New Value) */}
+    <div
+      className="relative w-20 h-32 sm:w-32 sm:h-48 md:w-40 md:h-60 lg:w-48 lg:h-72 bg-zinc-950 border border-zinc-800/90 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-[0_25px_60px_rgba(0,0,0,0.9)] select-none overflow-hidden group"
+      style={{ perspective: '1000px' }}
+    >
+      {/* 1. Static Top Half: New Value */}
       <div className="absolute top-0 inset-x-0 bottom-1/2 bg-zinc-900 border-b border-zinc-950/80 flex items-end justify-center overflow-hidden">
-        <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter translate-y-1/2 select-none drop-shadow-lg">
-          {currentValue}
+        <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter translate-y-1/2 select-none">
+          {displayValue}
         </span>
       </div>
 
-      {/* Background Bottom Half (Old Value) */}
+      {/* 2. Static Bottom Half: Old Value */}
       <div className="absolute bottom-0 inset-x-0 top-1/2 bg-zinc-900 flex items-start justify-center overflow-hidden">
-        <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter -translate-y-1/2 select-none drop-shadow-lg">
-          {previousValue}
+        <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter -translate-y-1/2 select-none">
+          {prevValue}
         </span>
       </div>
 
-      {/* Animated Flipping Card (Top -> Down) */}
-      {isFlipping && (
-        <>
-          {/* Top Half flipping down */}
-          <div
-            className="absolute top-0 inset-x-0 bottom-1/2 bg-zinc-900 border-b border-zinc-950 flex items-end justify-center overflow-hidden origin-bottom animate-flip-top z-10"
-            style={{
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transformStyle: 'preserve-3d',
-            }}
-          >
-            <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter translate-y-1/2 select-none drop-shadow-lg">
-              {previousValue}
-            </span>
-          </div>
-
-          {/* Bottom Half flipping down */}
-          <div
-            className="absolute bottom-0 inset-x-0 top-1/2 bg-zinc-900 flex items-start justify-center overflow-hidden origin-top animate-flip-bottom z-10"
-            style={{
-              backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden',
-              transformStyle: 'preserve-3d',
-            }}
-          >
-            <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter -translate-y-1/2 select-none drop-shadow-lg">
-              {currentValue}
-            </span>
-          </div>
-        </>
+      {/* 3. Animated Top Flap (Old Value folding down from 0 to -90 deg) */}
+      {flipping && (
+        <div
+          key={`top-${flipKey}`}
+          className="absolute top-0 inset-x-0 bottom-1/2 bg-zinc-900 border-b border-zinc-950/80 flex items-end justify-center overflow-hidden z-20"
+          style={{
+            transformOrigin: 'bottom',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            animation: 'flipTopFold 0.25s ease-in forwards',
+          }}
+        >
+          <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter translate-y-1/2 select-none">
+            {prevValue}
+          </span>
+        </div>
       )}
 
-      {/* Center Line Split & Shading */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] bg-zinc-950 z-20 shadow-md pointer-events-none" />
+      {/* 4. Animated Bottom Flap (New Value unfolding from 90 to 0 deg) */}
+      {flipping && (
+        <div
+          key={`bot-${flipKey}`}
+          className="absolute bottom-0 inset-x-0 top-1/2 bg-zinc-900 flex items-start justify-center overflow-hidden z-20"
+          style={{
+            transformOrigin: 'top',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            animation: 'flipBottomUnfold 0.25s ease-out 0.25s forwards',
+            transform: 'rotateX(90deg)',
+          }}
+        >
+          <span className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-extrabold font-mono text-zinc-100 tracking-tighter -translate-y-1/2 select-none">
+            {displayValue}
+          </span>
+        </div>
+      )}
+
+      {/* Center Line Split & Overlay */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] bg-zinc-950 z-30 shadow-md pointer-events-none" />
       <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-black/40 pointer-events-none z-10" />
+
+      {/* Scoped CSS Keyframes for Reliable 3D Animations */}
+      <style jsx>{`
+        @keyframes flipTopFold {
+          0% {
+            transform: rotateX(0deg);
+          }
+          100% {
+            transform: rotateX(-90deg);
+          }
+        }
+        @keyframes flipBottomUnfold {
+          0% {
+            transform: rotateX(90deg);
+          }
+          100% {
+            transform: rotateX(0deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -194,7 +224,7 @@ export default function FullscreenFocusModal({
 
   return createPortal(
     <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/98 backdrop-blur-3xl flex flex-col justify-between p-4 sm:p-6 lg:p-8 text-zinc-100 overflow-hidden select-none animate-in fade-in zoom-in-95 duration-200">
-      {/* TOP HEADER BAR: Motivational Quote + Exit Fullscreen */}
+      {/* TOP HEADER BAR: Motivational Quote + Exit Fullscreen + Stationary Ego Badge */}
       <div className="w-full flex flex-col items-center gap-3 shrink-0 z-20">
         <div className="w-full flex items-center justify-between gap-4 max-w-5xl mx-auto">
           {/* Motivational Quote Banner */}
@@ -223,13 +253,15 @@ export default function FullscreenFocusModal({
           </button>
         </div>
 
-        {/* Rank Ego Attack Warning Badge (Top Subtle Banner) */}
-        {isActive && egoMessage && (
-          <div className="bg-red-950/40 border border-red-500/30 text-red-300 px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 shadow-lg animate-pulse max-w-lg text-center">
-            <Flame className="w-3.5 h-3.5 text-red-400 shrink-0" />
-            <span className="truncate">{egoMessage}</span>
-          </div>
-        )}
+        {/* Reserved Height Container for Ego Attack Message (Zero Layout Shift) */}
+        <div className="flex items-center justify-center min-h-[38px] w-full px-4">
+          {isActive && egoMessage && (
+            <div className="bg-red-950/60 border border-red-500/40 text-red-300 px-5 py-2 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-xl animate-pulse max-w-2xl text-center leading-normal">
+              <Flame className="w-4 h-4 text-red-400 shrink-0" />
+              <span>{egoMessage}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* CENTER HERO STAGE: Giant 3D Flip Clock & Action Buttons */}
