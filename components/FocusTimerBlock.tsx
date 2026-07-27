@@ -65,7 +65,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
     pauseStartVal: number | null
   ) => {
     if (typeof window === 'undefined') return;
-    if (!active && secondsVal === targetMins * 60) {
+    if (!active && secondsVal === targetMins * 60 && !fullscreenVal) {
       localStorage.removeItem(TIMER_STORAGE_KEY);
       return;
     }
@@ -331,16 +331,12 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
   const openFullscreen = () => {
     setIsFullscreen(true);
-    if (isActive || secondsLeft < targetMinutes * 60) {
-      persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, true, pauseStartRef.current);
-    }
+    persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, true, pauseStartRef.current);
   };
 
   const closeFullscreen = () => {
     setIsFullscreen(false);
-    if (isActive || secondsLeft < targetMinutes * 60) {
-      persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, false, pauseStartRef.current);
-    }
+    persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, false, pauseStartRef.current);
   };
 
   const minutes = Math.floor(secondsLeft / 60);
