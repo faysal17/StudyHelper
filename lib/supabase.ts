@@ -104,7 +104,7 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
   const lastActive = settings.last_active_date;
   const weeklyLog = settings.weekly_focus_log || {};
 
-  // 1. Daily Rollover
+  // 1. Daily Rollover & Focus Seconds Today Sync
   if (lastActive !== todayStr) {
     settings.last_active_date = todayStr;
     settings.focus_seconds_today = weeklyLog[todayStr] || 0;
@@ -112,7 +112,7 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
     needsPersist = true;
   } else {
     const logTodaySeconds = weeklyLog[todayStr] || 0;
-    if (logTodaySeconds > (settings.focus_seconds_today || 0)) {
+    if (settings.focus_seconds_today !== logTodaySeconds) {
       settings.focus_seconds_today = logTodaySeconds;
       needsPersist = true;
     }
@@ -379,10 +379,10 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
 
   const current = await fetchUserSettings();
   const todayStr = getTodayDateString(current.day_end_time || '00:00');
-  const newToday = (current.focus_seconds_today || 0) + addedSeconds;
 
   const updatedWeeklyLog = { ...(current.weekly_focus_log || {}) };
   updatedWeeklyLog[todayStr] = (updatedWeeklyLog[todayStr] || 0) + addedSeconds;
+  const newToday = updatedWeeklyLog[todayStr];
   const newWeek = calculateWeekFocusSeconds(updatedWeeklyLog, todayStr);
 
   const newXP = Math.max(0, (current.xp || 0) + earnedXP);
