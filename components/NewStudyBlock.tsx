@@ -84,14 +84,14 @@ export default function NewStudyBlock({ tasks, onUploadNote }: NewStudyBlockProp
               >
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center space-x-1.5 truncate max-w-[200px]">
+                    <div className="flex items-center space-x-1.5 min-w-0 flex-1">
                       {isOverdue && (
                         <span className="bg-red-500/20 text-red-400 border border-red-500/40 text-[9px] px-1.5 py-0.5 rounded font-mono font-bold flex items-center gap-0.5 shrink-0">
                           <AlertCircle className="w-2.5 h-2.5" />
                           OVERDUE
                         </span>
                       )}
-                      <span className="text-[10px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded truncate">
+                      <span className="text-[10px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded truncate max-w-full">
                         {task.subject?.name || 'Subject'} &bull; {task.topic?.name || 'Topic'}
                       </span>
                     </div>

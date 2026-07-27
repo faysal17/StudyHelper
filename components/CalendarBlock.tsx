@@ -128,7 +128,15 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
           <div className="grid grid-cols-7 gap-2">
             {twoWeeksDays.slice(0, 7).map((day) => {
-              const dayTasks = tasks.filter((t) => t.next_revision_date === day.dateStr);
+              const dayTasks = tasks
+                .filter((t) => (day.isToday ? t.next_revision_date <= day.dateStr : t.next_revision_date === day.dateStr))
+                .sort((a, b) => {
+                  const aOverdue = a.next_revision_date < todayStr;
+                  const bOverdue = b.next_revision_date < todayStr;
+                  if (aOverdue && !bOverdue) return -1;
+                  if (!aOverdue && bOverdue) return 1;
+                  return a.next_revision_date.localeCompare(b.next_revision_date);
+                });
 
               return (
                 <div
@@ -168,28 +176,39 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       </div>
                     ) : (
                       dayTasks.map((t) => {
+                        const isOverdue = t.next_revision_date < todayStr;
                         const firstNote = t.notes && t.notes.length > 0 ? t.notes[0] : null;
                         const overlayCount = firstNote?.overlays?.length || 0;
 
                         return (
                           <div
                             key={t.id}
-                            className="bg-zinc-900 border border-zinc-800/90 rounded-lg p-1.5 text-left transition-all hover:border-zinc-700 space-y-1 group"
+                            className={`bg-zinc-900 rounded-lg p-1.5 text-left transition-all space-y-1 group ${
+                              isOverdue
+                                ? 'border border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'
+                                : 'border border-zinc-800/90 hover:border-zinc-700'
+                            }`}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span
-                                className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
-                                  t.status_color === 'red'
-                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                    : t.status_color === 'yellow'
-                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                    : t.status_color === 'green'
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                }`}
-                              >
-                                P{t.priority}
-                              </span>
+                              {isOverdue ? (
+                                <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded border bg-red-500/20 text-red-400 border-red-500/40">
+                                  OVERDUE
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
+                                    t.status_color === 'red'
+                                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                      : t.status_color === 'yellow'
+                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      : t.status_color === 'green'
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  }`}
+                                >
+                                  P{t.priority}
+                                </span>
+                              )}
                               <span className="text-[9px] font-mono text-zinc-500 truncate max-w-[60px]">
                                 {t.topic?.name || 'Topic'}
                               </span>
@@ -201,12 +220,16 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
                             <div className="pt-1 flex items-center justify-between border-t border-zinc-800/60">
                               <span className="text-[8px] font-mono text-zinc-500">
-                                Int: {t.current_interval}d
+                                {isOverdue ? `Due ${t.next_revision_date}` : `Int: ${t.current_interval}d`}
                               </span>
                               {overlayCount > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
-                                  className="text-[9px] font-bold text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors"
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors ${
+                                    isOverdue
+                                      ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                                      : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-white'
+                                  }`}
                                 >
                                   <Eye className="w-2.5 h-2.5" />
                                   <span>Study</span>
@@ -237,7 +260,15 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
           <div className="grid grid-cols-7 gap-2">
             {twoWeeksDays.slice(7, 14).map((day) => {
-              const dayTasks = tasks.filter((t) => t.next_revision_date === day.dateStr);
+              const dayTasks = tasks
+                .filter((t) => (day.isToday ? t.next_revision_date <= day.dateStr : t.next_revision_date === day.dateStr))
+                .sort((a, b) => {
+                  const aOverdue = a.next_revision_date < todayStr;
+                  const bOverdue = b.next_revision_date < todayStr;
+                  if (aOverdue && !bOverdue) return -1;
+                  if (!aOverdue && bOverdue) return 1;
+                  return a.next_revision_date.localeCompare(b.next_revision_date);
+                });
 
               return (
                 <div
@@ -277,28 +308,39 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
                       </div>
                     ) : (
                       dayTasks.map((t) => {
+                        const isOverdue = t.next_revision_date < todayStr;
                         const firstNote = t.notes && t.notes.length > 0 ? t.notes[0] : null;
                         const overlayCount = firstNote?.overlays?.length || 0;
 
                         return (
                           <div
                             key={t.id}
-                            className="bg-zinc-900 border border-zinc-800/90 rounded-lg p-1.5 text-left transition-all hover:border-zinc-700 space-y-1 group"
+                            className={`bg-zinc-900 rounded-lg p-1.5 text-left transition-all space-y-1 group ${
+                              isOverdue
+                                ? 'border border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse'
+                                : 'border border-zinc-800/90 hover:border-zinc-700'
+                            }`}
                           >
                             <div className="flex items-center justify-between gap-1">
-                              <span
-                                className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
-                                  t.status_color === 'red'
-                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                    : t.status_color === 'yellow'
-                                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                    : t.status_color === 'green'
-                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                }`}
-                              >
-                                P{t.priority}
-                              </span>
+                              {isOverdue ? (
+                                <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded border bg-red-500/20 text-red-400 border-red-500/40">
+                                  OVERDUE
+                                </span>
+                              ) : (
+                                <span
+                                  className={`text-[8px] font-mono uppercase px-1 py-0.2 rounded border ${
+                                    t.status_color === 'red'
+                                      ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                      : t.status_color === 'yellow'
+                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      : t.status_color === 'green'
+                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                      : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  }`}
+                                >
+                                  P{t.priority}
+                                </span>
+                              )}
                               <span className="text-[9px] font-mono text-zinc-500 truncate max-w-[60px]">
                                 {t.topic?.name || 'Topic'}
                               </span>
@@ -310,12 +352,16 @@ export default function CalendarBlock({ tasks }: CalendarBlockProps) {
 
                             <div className="pt-1 flex items-center justify-between border-t border-zinc-800/60">
                               <span className="text-[8px] font-mono text-zinc-500">
-                                Int: {t.current_interval}d
+                                {isOverdue ? `Due ${t.next_revision_date}` : `Int: ${t.current_interval}d`}
                               </span>
                               {overlayCount > 0 ? (
                                 <Link
                                   href={`/study/${t.id}`}
-                                  className="text-[9px] font-bold text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors"
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5 transition-colors ${
+                                    isOverdue
+                                      ? 'bg-red-500 text-white hover:bg-red-600 shadow-sm'
+                                      : 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:text-white'
+                                  }`}
                                 >
                                   <Eye className="w-2.5 h-2.5" />
                                   <span>Study</span>
