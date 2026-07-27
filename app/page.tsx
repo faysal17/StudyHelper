@@ -11,9 +11,10 @@ import RevisionBlock from '@/components/RevisionBlock';
 import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
 import { Task, UserSettings } from '@/lib/types';
-import { fetchTasks, fetchUserSettings, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { fetchTasks, fetchUserSettings, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { Loader2, Skull, AlertCircle, ZapOff } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
+import HunterEventModal from '@/components/HunterEventModal';
 import { getQuitTauntMessage } from '@/lib/gamification';
 
 export default function DashboardPage() {
@@ -21,6 +22,7 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
 
   const [noteTaskTarget, setNoteTaskTarget] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -55,10 +57,22 @@ export default function DashboardPage() {
       ]);
       setTasks(taskData);
       setUserSettings(settingsData);
+
+      if (settingsData?.show_weekly_rank_modal) {
+        setWeeklyModalOpen(true);
+      }
     } catch (err) {
       console.error('Error loading dashboard data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseWeeklyModal = async () => {
+    setWeeklyModalOpen(false);
+    await acknowledgeWeeklyRankModal();
+    if (userSettings) {
+      setUserSettings({ ...userSettings, show_weekly_rank_modal: false });
     }
   };
 
@@ -158,6 +172,17 @@ export default function DashboardPage() {
           checkAuthAndLoad();
         }}
       />
+
+      {/* Weekly Rank Transition Announcement Modal */}
+      {userSettings && (
+        <HunterEventModal
+          isOpen={weeklyModalOpen}
+          onClose={handleCloseWeeklyModal}
+          eventType="weekly-transition"
+          oldGlobalPosition={userSettings.last_week_rank || 500}
+          newGlobalPosition={userSettings.official_weekly_rank || 500}
+        />
+      )}
     </div>
   );
 }

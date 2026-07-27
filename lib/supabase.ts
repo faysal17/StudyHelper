@@ -65,6 +65,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   official_weekly_rank: 500,
   last_week_rank: 500,
   last_week_start_date: null,
+  show_weekly_rank_modal: false,
   focus_seconds_today: 0,
   focus_seconds_week: 0,
   current_rank: 'E-Rank',
@@ -188,6 +189,7 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
   if (lastActiveMon !== currentMon || settings.last_week_start_date !== currentMon || !settings.official_weekly_rank) {
     if (settings.last_week_start_date && settings.last_week_start_date !== currentMon) {
       settings.last_week_rank = settings.official_weekly_rank || 500;
+      settings.show_weekly_rank_modal = true;
     } else if (!settings.last_week_rank) {
       settings.last_week_rank = 500;
     }
@@ -557,6 +559,25 @@ export async function updateDDayConfig(targetDate: string, targetTitle: string):
   const db = getLocalDB();
   db.settings.target_date = targetDate;
   db.settings.target_title = targetTitle;
+  saveLocalDB(db);
+}
+
+export async function acknowledgeWeeklyRankModal(): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const userId = userData.user.id;
+      await supabase.from('user_settings').upsert({
+        user_id: userId,
+        show_weekly_rank_modal: false,
+        updated_at: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  const db = getLocalDB();
+  db.settings.show_weekly_rank_modal = false;
   saveLocalDB(db);
 }
 

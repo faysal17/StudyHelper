@@ -114,6 +114,7 @@ export interface UserSettings {
   official_weekly_rank?: number;
   last_week_rank?: number;
   last_week_start_date?: string | null;
+  show_weekly_rank_modal?: boolean;
   focus_seconds_today: number;
   focus_seconds_week: number;
   current_rank: string;
