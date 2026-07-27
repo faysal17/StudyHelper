@@ -52,6 +52,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const pauseStartRef = useRef<number | null>(null);
+  const endTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchUserSettings().then((s) => {
@@ -63,30 +64,55 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   useEffect(() => {
     let interval: any = null;
 
-    if (isActive && secondsLeft > 0) {
+    if (isActive) {
       pauseStartRef.current = null;
-      interval = setInterval(() => {
-        setSecondsLeft((prev) => prev - 1);
-      }, 1000);
-    } else if (secondsLeft === 0 && isActive) {
-      setIsActive(false);
-      setShowRatingModal(true);
+
+      const tick = () => {
+        if (!endTimeRef.current) return;
+        const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
+        setSecondsLeft(remaining);
+
+        if (remaining <= 0) {
+          endTimeRef.current = null;
+          setIsActive(false);
+          setShowRatingModal(true);
+        }
+      };
+
+      tick();
+      interval = setInterval(tick, 250);
+
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          tick();
+        }
+      };
+
+      window.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleVisibilityChange);
+
+      return () => {
+        if (interval) clearInterval(interval);
+        window.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleVisibilityChange);
+      };
     } else if (!isActive && secondsLeft < targetMinutes * 60 && secondsLeft > 0) {
       if (!pauseStartRef.current) {
         pauseStartRef.current = Date.now();
-      } else {
-        interval = setInterval(() => {
-          const elapsedPausedSec = Math.floor((Date.now() - (pauseStartRef.current || Date.now())) / 1000);
-          if (elapsedPausedSec >= 600) {
-            clearInterval(interval);
-            handleStop();
-          }
-        }, 3000);
       }
-    }
+      interval = setInterval(() => {
+        const elapsedPausedSec = Math.floor((Date.now() - (pauseStartRef.current || Date.now())) / 1000);
+        if (elapsedPausedSec >= 600) {
+          if (interval) clearInterval(interval);
+          handleStop();
+        }
+      }, 3000);
 
-    return () => clearInterval(interval);
-  }, [isActive, secondsLeft, targetMinutes]);
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [isActive]);
 
   const handleFinishRating = async (stars: number) => {
     setShowRatingModal(false);
@@ -143,6 +169,7 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
 
   const handleStop = async () => {
     setIsActive(false);
+    endTimeRef.current = null;
     pauseStartRef.current = null;
 
     const oldLevel = userSettings?.level || 1;
@@ -202,11 +229,23 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   };
 
   const toggleTimer = () => {
-    setIsActive(!isActive);
+    if (!isActive) {
+      const remainingSec = secondsLeft <= 0 ? targetMinutes * 60 : secondsLeft;
+      if (secondsLeft <= 0) {
+        setSecondsLeft(targetMinutes * 60);
+      }
+      endTimeRef.current = Date.now() + remainingSec * 1000;
+      pauseStartRef.current = null;
+      setIsActive(true);
+    } else {
+      endTimeRef.current = null;
+      setIsActive(false);
+    }
   };
 
   const resetTimer = (mins: number = targetMinutes) => {
     setIsActive(false);
+    endTimeRef.current = null;
     pauseStartRef.current = null;
     setTargetMinutes(mins);
     setSecondsLeft(mins * 60);
