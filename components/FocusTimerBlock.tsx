@@ -6,6 +6,7 @@ import { recordRatedFocusSession, recordSessionStop, fetchUserSettings } from '@
 import { Task, UserSettings } from '@/lib/types';
 import { calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
+import { useRouter } from 'next/navigation';
 import FullscreenFocusModal from './FullscreenFocusModal';
 import FocusRatingModal from './FocusRatingModal';
 import QuitTauntModal from './QuitTauntModal';
@@ -21,6 +22,7 @@ interface FocusTimerBlockProps {
 const TIMER_STORAGE_KEY = 'bcs_active_focus_session';
 
 export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: FocusTimerBlockProps) {
+  const router = useRouter();
   const [targetMinutes, setTargetMinutes] = useState<number>(25);
   const [secondsLeft, setSecondsLeft] = useState<number>(25 * 60);
   const [isActive, setIsActive] = useState<boolean>(false);
@@ -330,8 +332,8 @@ export default function FocusTimerBlock({ onSessionComplete, tasks = [] }: Focus
   };
 
   const openFullscreen = () => {
-    setIsFullscreen(true);
     persistSessionState(isActive, targetMinutes, endTimeRef.current, secondsLeft, true, pauseStartRef.current);
+    router.push('/focus');
   };
 
   const closeFullscreen = () => {
