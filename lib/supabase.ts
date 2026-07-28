@@ -94,7 +94,7 @@ export function rebuildWeeklyFocusLog(sessions: FocusSession[], dayEndTime: stri
   return log;
 }
 
-export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & { _needsPersist?: boolean } {
+export function sanitizeUserSettings(rawSettings: UserSettings, sessions?: FocusSession[]): UserSettings & { _needsPersist?: boolean } {
   let needsPersist = false;
   const settings: UserSettings = {
     ...DEFAULT_USER_SETTINGS,
@@ -144,7 +144,7 @@ export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & 
 
     settings.stops_this_week = 0;
     settings.last_week_start_date = currentMon;
-    const momentum = calculateMomentum(settings);
+    const momentum = calculateMomentum(settings, sessions);
     settings.official_weekly_rank = calculateGlobalHunterRank(stats.level, momentum.score);
     needsPersist = true;
   }
@@ -196,7 +196,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
         data.weekly_focus_log = syncedLog;
       }
 
-      const sanitized = sanitizeUserSettings(data);
+      const sanitized = sanitizeUserSettings(data, sessionData || []);
       if (sanitized._needsPersist) {
         const { _needsPersist, ...toSave } = sanitized;
         await supabase.from('user_settings').upsert({ ...toSave, user_id: userId });
