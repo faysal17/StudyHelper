@@ -163,7 +163,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 1. Daily Focus Targets (Weekday & Weekend Target Hours) */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 relative z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Target className="w-4 h-4 text-emerald-400" />
@@ -219,7 +219,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 2. Custom Weekend Selection & Week Start Day */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 relative z-30">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-cyan-400" />
@@ -287,7 +287,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 3. Day End Cutoff Time (Night Owl Mode) */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 relative z-20">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Clock className="w-4 h-4 text-amber-400" />
@@ -325,7 +325,7 @@ export default function SettingsPage() {
       </div>
 
       {/* 4. Focus Mode Motivational Quotes Manager */}
-      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4">
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Quote className="w-4 h-4 text-blue-400" />

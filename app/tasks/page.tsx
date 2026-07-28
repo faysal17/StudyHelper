@@ -117,7 +117,7 @@ export default function TasksPage() {
       </div>
 
       {/* Custom Filter Toolbar */}
-      <div className="glass-panel p-3.5 rounded-xl border border-zinc-800/80 flex flex-wrap items-center gap-3">
+      <div className="glass-panel p-3.5 rounded-xl border border-zinc-800/80 flex flex-wrap items-center gap-3 relative z-20">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input

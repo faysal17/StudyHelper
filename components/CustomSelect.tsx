@@ -44,7 +44,7 @@ export default function CustomSelect({
   }, []);
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${isOpen ? 'z-[100]' : 'z-auto'} ${className}`}>
       <button
         type="button"
         disabled={disabled}
