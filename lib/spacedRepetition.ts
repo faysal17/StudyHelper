@@ -5,7 +5,12 @@ export function getLogicalTodayDate(dayEndTime: string = '00:00'): Date {
 }
 
 export function getLogicalDateForTimestamp(timestamp: Date | string | number, dayEndTime: string = '00:00'): Date {
-  const d = new Date(timestamp);
+  let d: Date;
+  if (typeof timestamp === 'string' && timestamp.includes(' ') && !timestamp.includes('T') && !timestamp.includes('+') && !timestamp.includes('Z')) {
+    d = new Date(timestamp.replace(' ', 'T'));
+  } else {
+    d = new Date(timestamp);
+  }
   const [cutoffHour] = (dayEndTime || '00:00').split(':').map(Number);
 
   if (cutoffHour > 0 && d.getHours() < cutoffHour) {
