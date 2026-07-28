@@ -187,7 +187,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
     const defaultSettings: UserSettings = {
       ...DEFAULT_USER_SETTINGS,
       user_id: userId,
-      last_active_date: getTodayDateString('00:00'),
+      last_active_date: getTodayDateString(DEFAULT_USER_SETTINGS.day_end_time || '00:00'),
     };
 
     await supabase.from('user_settings').upsert(defaultSettings);

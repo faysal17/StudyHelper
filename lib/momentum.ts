@@ -1,5 +1,5 @@
 import { UserSettings, FocusSession } from './types';
-import { getTodayDateString } from './spacedRepetition';
+import { getTodayDateString, getLogicalDateString } from './spacedRepetition';
 
 export interface MomentumDetails {
   score: number; // 0 - 100%
@@ -25,7 +25,8 @@ export function calculateMomentum(settings: UserSettings | null, sessions?: Focu
 
   const focusLog = settings?.weekly_focus_log || {};
   const streakDays = settings?.streak_days || 0;
-  const stopsToday = settings?.stops_today || 0;
+  const lastActiveDate = settings?.last_active_date || null;
+  const stopsToday = (lastActiveDate === todayStr) ? (settings?.stops_today || 0) : 0;
   const stopsWeek = settings?.stops_this_week || 0;
 
   // Build daily focus map from individual focus sessions if provided
@@ -33,11 +34,7 @@ export function calculateMomentum(settings: UserSettings | null, sessions?: Focu
   if (sessions && sessions.length > 0) {
     for (const s of sessions) {
       if (s.status === 'completed' || (s.duration_seconds || 0) > 0) {
-        const d = new Date(s.created_at);
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${day}`;
+        const dateStr = getLogicalDateString(s.created_at, dayEndTime);
         sessionMap[dateStr] = (sessionMap[dateStr] || 0) + (s.duration_seconds || 0);
       }
     }
@@ -52,7 +49,6 @@ export function calculateMomentum(settings: UserSettings | null, sessions?: Focu
 
   const weeklyTargetLog: MomentumDetails['weeklyTargetLog'] = [];
 
-  const lastActiveDate = settings?.last_active_date || null;
   const focusSecondsToday = (lastActiveDate === todayStr) ? (settings?.focus_seconds_today || 0) : 0;
 
   for (let i = 6; i >= 0; i--) {

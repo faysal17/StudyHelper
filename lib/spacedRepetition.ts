@@ -1,23 +1,31 @@
 import { Task, StatusColor } from './types';
 
 export function getLogicalTodayDate(dayEndTime: string = '00:00'): Date {
-  const now = new Date();
+  return getLogicalDateForTimestamp(new Date(), dayEndTime);
+}
+
+export function getLogicalDateForTimestamp(timestamp: Date | string | number, dayEndTime: string = '00:00'): Date {
+  const d = new Date(timestamp);
   const [cutoffHour] = (dayEndTime || '00:00').split(':').map(Number);
 
-  if (cutoffHour > 0 && now.getHours() < cutoffHour) {
-    const logicalDate = new Date(now);
+  if (cutoffHour > 0 && d.getHours() < cutoffHour) {
+    const logicalDate = new Date(d);
     logicalDate.setDate(logicalDate.getDate() - 1);
     return logicalDate;
   }
-  return now;
+  return d;
 }
 
-export function getTodayDateString(dayEndTime: string = '00:00'): string {
-  const d = getLogicalTodayDate(dayEndTime);
+export function getLogicalDateString(timestamp: Date | string | number, dayEndTime: string = '00:00'): string {
+  const d = getLogicalDateForTimestamp(timestamp, dayEndTime);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function getTodayDateString(dayEndTime: string = '00:00'): string {
+  return getLogicalDateString(new Date(), dayEndTime);
 }
 
 export function addDays(dateStr: string, days: number): string {

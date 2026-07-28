@@ -46,6 +46,7 @@ export default function SettingsPage() {
     setSavingTime(true);
     try {
       await updateDayEndTimeConfig(dayEndTime);
+      await loadSettings();
       setSuccessTime(true);
       setTimeout(() => setSuccessTime(false), 2500);
     } catch (err) {

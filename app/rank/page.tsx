@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserSettings } from '@/lib/types';
-import { fetchUserSettings } from '@/lib/supabase';
+import { UserSettings, FocusSession } from '@/lib/types';
+import { fetchUserSettings, fetchFocusSessions } from '@/lib/supabase';
 import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
 import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOpen, RotateCcw, Activity, AlertTriangle, TrendingUp, HelpCircle, Info, Calculator, Percent, Sparkles } from 'lucide-react';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 
 export default function HunterRankPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,8 +20,9 @@ export default function HunterRankPage() {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const data = await fetchUserSettings();
+      const [data, sess] = await Promise.all([fetchUserSettings(), fetchFocusSessions()]);
       setSettings(data);
+      setSessions(sess);
     } catch (err) {
       console.error('Error loading settings:', err);
     } finally {
@@ -36,7 +38,7 @@ export default function HunterRankPage() {
   const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
     calculateLevelAndProgress(totalXP);
 
-  const momentum = calculateMomentum(settings);
+  const momentum = calculateMomentum(settings, sessions);
 
   // Official Weekly Rank locked at week start & Previous Week's Rank
   const officialWeeklyRank = settings?.official_weekly_rank || 500;
