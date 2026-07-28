@@ -51,7 +51,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   pause_start_timestamp: null,
   official_weekly_rank: 500,
   last_week_rank: 500,
-  last_week_start_date: null,
+  last_week_start_date: getMondayOfWeek(getTodayDateString('00:00')),
   show_weekly_rank_modal: false,
   focus_seconds_today: 0,
   focus_seconds_week: 0,
@@ -217,6 +217,9 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
     streak_days: updatedStreak,
     last_study_date: updatedLastDate,
     last_active_date: updatedLastDate,
+    official_weekly_rank: current.official_weekly_rank || 500,
+    last_week_start_date: current.last_week_start_date || getMondayOfWeek(updatedLastDate),
+    last_week_rank: current.last_week_rank || 500,
     updated_at: new Date().toISOString(),
   };
 
@@ -339,6 +342,9 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
     level,
     current_rank: rankInfo.rank,
     current_title: rankInfo.title,
+    official_weekly_rank: current.official_weekly_rank || 500,
+    last_week_start_date: current.last_week_start_date || getMondayOfWeek(getTodayDateString(current.day_end_time || '00:00')),
+    last_week_rank: current.last_week_rank || 500,
     updated_at: new Date().toISOString(),
   };
 
@@ -405,6 +411,9 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
     streak_days: updatedStreak,
     last_study_date: updatedLastDate,
     last_active_date: todayStr,
+    official_weekly_rank: current.official_weekly_rank || 500,
+    last_week_start_date: current.last_week_start_date || getMondayOfWeek(todayStr),
+    last_week_rank: current.last_week_rank || 500,
     pause_start_timestamp: null,
     updated_at: new Date().toISOString(),
   };
