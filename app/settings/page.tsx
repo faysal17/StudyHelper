@@ -80,6 +80,7 @@ export default function SettingsPage() {
           });
         }
       }
+      await loadSettings();
       setSuccessWeekend(true);
       setTimeout(() => setSuccessWeekend(false), 2500);
     } catch (err) {
@@ -93,6 +94,7 @@ export default function SettingsPage() {
     setSavingTargets(true);
     try {
       await updateStudyTargetsConfig(weekdayTargetMins, weekendTargetMins);
+      await loadSettings();
       setSuccessTargets(true);
       setTimeout(() => setSuccessTargets(false), 2500);
     } catch (err) {

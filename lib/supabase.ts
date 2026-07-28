@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus, FocusSession } from './types';
 import { calculateLevelAndProgress, updateStreakOnActivity, calculateGlobalHunterRank } from './gamification';
-import { getTodayDateString, getMondayOfWeek } from './spacedRepetition';
+import { getTodayDateString, getMondayOfWeek, getLogicalDateString } from './spacedRepetition';
 import { calculateMomentum } from './momentum';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -81,6 +81,17 @@ export function calculateWeekFocusSeconds(weeklyLog: Record<string, number>, tod
     }
   }
   return total;
+}
+
+export function rebuildWeeklyFocusLog(sessions: FocusSession[], dayEndTime: string = '00:00'): Record<string, number> {
+  const log: Record<string, number> = {};
+  for (const s of sessions) {
+    if (s.status === 'completed' || (s.duration_seconds || 0) > 0) {
+      const dateStr = getLogicalDateString(s.created_at, dayEndTime);
+      log[dateStr] = (log[dateStr] || 0) + (s.duration_seconds || 0);
+    }
+  }
+  return log;
 }
 
 export function sanitizeUserSettings(rawSettings: UserSettings): UserSettings & { _needsPersist?: boolean } {
@@ -175,6 +186,16 @@ export async function fetchUserSettings(): Promise<UserSettings> {
       .single();
 
     if (!error && data) {
+      const { data: sessionData } = await supabase
+        .from('focus_sessions')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (sessionData && sessionData.length > 0) {
+        const syncedLog = rebuildWeeklyFocusLog(sessionData, data.day_end_time || '00:00');
+        data.weekly_focus_log = { ...(data.weekly_focus_log || {}), ...syncedLog };
+      }
+
       const sanitized = sanitizeUserSettings(data);
       if (sanitized._needsPersist) {
         const { _needsPersist, ...toSave } = sanitized;
