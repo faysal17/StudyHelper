@@ -1,23 +1,24 @@
 'use client';
 
 import Link from 'next/link';
-import { UserSettings } from '@/lib/types';
+import { UserSettings, FocusSession } from '@/lib/types';
 import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
 import { calculateMomentum } from '@/lib/momentum';
 import { Shield, Zap, Flame, Award, ChevronRight } from 'lucide-react';
 
 interface FocusStatsBlockProps {
   settings: UserSettings | null;
+  sessions?: FocusSession[];
 }
 
-export default function FocusStatsBlock({ settings }: FocusStatsBlockProps) {
+export default function FocusStatsBlock({ settings, sessions }: FocusStatsBlockProps) {
   const totalXP = settings?.xp || 0;
   const streakDays = settings?.streak_days || 0;
 
   const { level, xpInCurrentLevel, xpRequiredForNextLevel, progressPercent, rankInfo } =
     calculateLevelAndProgress(totalXP);
 
-  const momentum = calculateMomentum(settings);
+  const momentum = calculateMomentum(settings, sessions);
   const globalRank = settings?.official_weekly_rank || 500;
 
   return (

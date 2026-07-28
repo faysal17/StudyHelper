@@ -10,8 +10,8 @@ import NewStudyBlock from '@/components/NewStudyBlock';
 import RevisionBlock from '@/components/RevisionBlock';
 import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
-import { Task, UserSettings } from '@/lib/types';
-import { fetchTasks, fetchUserSettings, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { Task, UserSettings, FocusSession } from '@/lib/types';
+import { fetchTasks, fetchUserSettings, fetchFocusSessions, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { Loader2, Skull, AlertCircle, ZapOff } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import HunterEventModal from '@/components/HunterEventModal';
@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
+  const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
 
@@ -51,12 +52,14 @@ export default function DashboardPage() {
     }
 
     try {
-      const [taskData, settingsData] = await Promise.all([
+      const [taskData, settingsData, sessionData] = await Promise.all([
         fetchTasks(),
         fetchUserSettings(),
+        fetchFocusSessions(),
       ]);
       setTasks(taskData);
       setUserSettings(settingsData);
+      setSessions(sessionData);
 
       if (settingsData?.show_weekly_rank_modal) {
         setWeeklyModalOpen(true);
@@ -77,8 +80,9 @@ export default function DashboardPage() {
   };
 
   const reloadSettings = async () => {
-    const updated = await fetchUserSettings();
+    const [updated, sess] = await Promise.all([fetchUserSettings(), fetchFocusSessions()]);
     setUserSettings(updated);
+    setSessions(sess);
   };
 
   // Determine if a recent quit taunt or low XP warning should be displayed on Dashboard
@@ -123,7 +127,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
         <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />
         <TaskCountersBlock tasks={tasks} />
-        <FocusStatsBlock settings={userSettings} />
+        <FocusStatsBlock settings={userSettings} sessions={sessions} />
         <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
       </div>
 
