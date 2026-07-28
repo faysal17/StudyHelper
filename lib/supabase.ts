@@ -193,7 +193,7 @@ export async function fetchUserSettings(): Promise<UserSettings> {
 
       if (sessionData && sessionData.length > 0) {
         const syncedLog = rebuildWeeklyFocusLog(sessionData, data.day_end_time || '00:00');
-        data.weekly_focus_log = { ...(data.weekly_focus_log || {}), ...syncedLog };
+        data.weekly_focus_log = syncedLog;
       }
 
       const sanitized = sanitizeUserSettings(data);
