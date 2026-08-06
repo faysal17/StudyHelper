@@ -17,10 +17,13 @@ export default function Navbar() {
 
   useEffect(() => {
     checkUser();
+  }, []);
+
+  useEffect(() => {
     fetchUserSettings()
       .then((s) => setShowRankFeatures(s?.show_rank_features !== false))
       .catch(() => {});
-  }, []);
+  }, [pathname]);
 
   const checkUser = async () => {
     if (isSupabaseConfigured && supabase) {
