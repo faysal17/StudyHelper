@@ -124,18 +124,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Header Row with Aligned Card Heights (Rank Hub features hideable via user settings) */}
-      <div
-        className={`grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch ${
-          loading || showRankFeatures ? 'xl:grid-cols-4' : 'xl:grid-cols-2'
-        }`}
-      >
-        {!loading && showRankFeatures && <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />}
-        <TaskCountersBlock tasks={tasks} />
-        {!loading && showRankFeatures && <FocusStatsBlock settings={userSettings} sessions={sessions} />}
-        <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
-      </div>
-
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-zinc-500 space-y-3">
           <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
@@ -143,6 +131,18 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* Header Row with Aligned Card Heights (Rank Hub features hideable via user settings) */}
+          <div
+            className={`grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch ${
+              showRankFeatures ? 'xl:grid-cols-4' : 'xl:grid-cols-2'
+            }`}
+          >
+            {showRankFeatures && <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />}
+            <TaskCountersBlock tasks={tasks} />
+            {showRankFeatures && <FocusStatsBlock settings={userSettings} sessions={sessions} />}
+            <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
+          </div>
+
           {/* Side-by-Side Fixed-Height Blocks Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             <NewStudyBlock
