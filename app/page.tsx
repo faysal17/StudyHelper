@@ -148,11 +148,13 @@ export default function DashboardPage() {
             <NewStudyBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
+              onTaskCompleted={checkAuthAndLoad}
             />
 
             <RevisionBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
+              onTaskCompleted={checkAuthAndLoad}
             />
           </div>
 

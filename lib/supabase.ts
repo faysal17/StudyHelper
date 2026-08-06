@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Subject, Topic, Subtopic, Task, Note, Overlay, RevisionLog, UserSettings, SubtopicStatus, FocusSession } from './types';
 import { calculateLevelAndProgress, updateStreakOnActivity, calculateGlobalHunterRank } from './gamification';
-import { getTodayDateString, getMondayOfWeek, getLogicalDateString } from './spacedRepetition';
+import { getTodayDateString, getMondayOfWeek, getLogicalDateString, evaluateSpacedRepetition } from './spacedRepetition';
 import { calculateMomentum } from './momentum';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -746,6 +746,22 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<vo
   if (isSupabaseConfigured && supabase) {
     await supabase.from('tasks').update(updates).eq('id', id);
   }
+}
+
+// Manually advance a task's spaced-repetition schedule without going through
+// an Active Recall (image occlusion) review — used when no note/overlays
+// exist yet, or the user simply wants to mark the task done for today.
+export async function completeTaskManually(task: Task, dayEndTime: string = '00:00'): Promise<void> {
+  const srResult = evaluateSpacedRepetition(task, 0, 0, dayEndTime);
+  if (srResult.isLockedToday) return;
+
+  await updateTask(task.id, {
+    last_reviewed_date: srResult.updatedLastReviewedDate,
+    current_interval: srResult.newInterval,
+    ease_factor: srResult.newEaseFactor,
+    status_color: srResult.newStatusColor,
+    next_revision_date: srResult.newNextRevisionDate,
+  });
 }
 
 export async function deleteTask(id: string): Promise<void> {

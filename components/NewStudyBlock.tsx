@@ -4,22 +4,36 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { fetchUserSettings } from '@/lib/supabase';
-import { BookOpen, Eye, FileImage, Layers, ArrowRight, AlertCircle } from 'lucide-react';
+import { fetchUserSettings, completeTaskManually } from '@/lib/supabase';
+import { BookOpen, Eye, FileImage, Layers, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface NewStudyBlockProps {
   tasks: Task[];
   onUploadNote: (task: Task) => void;
+  onTaskCompleted?: () => void;
 }
 
-export default function NewStudyBlock({ tasks, onUploadNote }: NewStudyBlockProps) {
+export default function NewStudyBlock({ tasks, onUploadNote, onTaskCompleted }: NewStudyBlockProps) {
   const [dayEndTime, setDayEndTime] = useState('00:00');
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserSettings().then((s) => {
       if (s?.day_end_time) setDayEndTime(s.day_end_time);
     });
   }, []);
+
+  const handleMarkComplete = async (task: Task) => {
+    setCompletingId(task.id);
+    try {
+      await completeTaskManually(task, dayEndTime);
+      onTaskCompleted?.();
+    } catch (err) {
+      console.error('Error marking task complete:', err);
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   const today = getTodayDateString(dayEndTime);
 
@@ -112,7 +126,17 @@ export default function NewStudyBlock({ tasks, onUploadNote }: NewStudyBlockProp
                     <span>{hasNote ? `${overlayCount} overlays` : 'No note'}</span>
                   </div>
 
-                  <div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleMarkComplete(task)}
+                      disabled={completingId === task.id}
+                      title="Mark this task complete without an Active Recall review"
+                      className="px-2.5 py-1 rounded text-[11px] font-medium bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-emerald-400 hover:border-emerald-500/40 transition-colors flex items-center space-x-1 disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{completingId === task.id ? 'Completing...' : 'Mark Complete'}</span>
+                    </button>
+
                     {!hasNote ? (
                       <button
                         onClick={() => onUploadNote(task)}
