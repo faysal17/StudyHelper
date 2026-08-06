@@ -58,6 +58,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   current_rank: 'E-Rank',
   current_title: 'Procrastinating Worm',
   last_vocab_xp_date: null,
+  show_rank_features: true,
 };
 
 async function getCurrentUserId(): Promise<string> {
@@ -486,6 +487,17 @@ export async function updateQuotesConfig(quotes: string[]): Promise<void> {
     await supabase.from('user_settings').upsert({
       user_id: userId,
       quotes,
+      updated_at: new Date().toISOString(),
+    });
+  }
+}
+
+export async function updateShowRankFeaturesConfig(showRankFeatures: boolean): Promise<void> {
+  const userId = await getCurrentUserId();
+  if (isSupabaseConfigured && supabase) {
+    await supabase.from('user_settings').upsert({
+      user_id: userId,
+      show_rank_features: showRankFeatures,
       updated_at: new Date().toISOString(),
     });
   }

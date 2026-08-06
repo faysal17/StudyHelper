@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench } from 'lucide-react';
-import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { isSupabaseConfigured, supabase, fetchUserSettings } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 import Tooltip from './Tooltip';
 
@@ -13,9 +13,13 @@ export default function Navbar() {
   const router = useRouter();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showRankFeatures, setShowRankFeatures] = useState(true);
 
   useEffect(() => {
     checkUser();
+    fetchUserSettings()
+      .then((s) => setShowRankFeatures(s?.show_rank_features !== false))
+      .catch(() => {});
   }, []);
 
   const checkUser = async () => {
@@ -110,17 +114,19 @@ export default function Navbar() {
             </Link>
 
             {/* 4. Rank Hub */}
-            <Link
-              href="/rank"
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                pathname === '/rank'
-                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-              }`}
-            >
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              <span>Rank Hub</span>
-            </Link>
+            {showRankFeatures && (
+              <Link
+                href="/rank"
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                  pathname === '/rank'
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span>Rank Hub</span>
+              </Link>
+            )}
           </nav>
 
           {/* Right-most Action Controls */}

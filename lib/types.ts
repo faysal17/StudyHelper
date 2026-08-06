@@ -120,5 +120,6 @@ export interface UserSettings {
   current_rank: string;
   current_title: string;
   last_vocab_xp_date?: string | null;
+  show_rank_features?: boolean;
   updated_at?: string;
 }

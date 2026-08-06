@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserSettings, FocusSession } from '@/lib/types';
 import { fetchUserSettings, fetchFocusSessions } from '@/lib/supabase';
 import { calculateLevelAndProgress, calculateGlobalHunterRank } from '@/lib/gamification';
@@ -9,6 +10,7 @@ import { Shield, Zap, Flame, Award, Lock, CheckCircle2, ArrowLeft, Clock, BookOp
 import Link from 'next/link';
 
 export default function HunterRankPage() {
+  const router = useRouter();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,10 @@ export default function HunterRankPage() {
     setLoading(true);
     try {
       const [data, sess] = await Promise.all([fetchUserSettings(), fetchFocusSessions()]);
+      if (data?.show_rank_features === false) {
+        router.push('/');
+        return;
+      }
       setSettings(data);
       setSessions(sess);
     } catch (err) {

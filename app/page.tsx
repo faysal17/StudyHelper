@@ -92,11 +92,12 @@ export default function DashboardPage() {
     Date.now() - new Date(recentStop).getTime() < 1000 * 60 * 60 * 12; // stopped in last 12 hours
 
   const isLowXP = userSettings?.xp !== undefined && userSettings.xp < 30;
+  const showRankFeatures = userSettings?.show_rank_features !== false;
 
   return (
     <div className="space-y-8 w-full">
       {/* Dynamic Quitter & Low-XP Dashboard Taunt Banner */}
-      {userSettings && isRecentQuitter && (
+      {userSettings && showRankFeatures && isRecentQuitter && (
         <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 flex items-center justify-between gap-4 shadow-lg animate-in slide-in-from-top duration-300">
           <div className="flex items-center space-x-3">
             <div className="p-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 shrink-0">
@@ -114,7 +115,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {userSettings && !isRecentQuitter && isLowXP && (
+      {userSettings && showRankFeatures && !isRecentQuitter && isLowXP && (
         <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/30 text-amber-200 flex items-center space-x-3 shadow-sm">
           <ZapOff className="w-4 h-4 text-amber-400 shrink-0" />
           <p className="text-xs">
@@ -123,11 +124,15 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 4-Block Header Row with Aligned Card Heights */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
-        <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />
+      {/* Header Row with Aligned Card Heights (Rank Hub features hideable via user settings) */}
+      <div
+        className={`grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch ${
+          showRankFeatures ? 'xl:grid-cols-4' : 'xl:grid-cols-2'
+        }`}
+      >
+        {showRankFeatures && <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />}
         <TaskCountersBlock tasks={tasks} />
-        <FocusStatsBlock settings={userSettings} sessions={sessions} />
+        {showRankFeatures && <FocusStatsBlock settings={userSettings} sessions={sessions} />}
         <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
       </div>
 
@@ -178,7 +183,7 @@ export default function DashboardPage() {
       />
 
       {/* Weekly Rank Transition Announcement Modal */}
-      {userSettings && (
+      {userSettings && showRankFeatures && (
         <HunterEventModal
           isOpen={weeklyModalOpen}
           onClose={handleCloseWeeklyModal}

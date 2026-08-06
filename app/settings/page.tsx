@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
-import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target } from 'lucide-react';
+import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, updateShowRankFeaturesConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target, Shield } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 
 export default function SettingsPage() {
@@ -16,16 +16,19 @@ export default function SettingsPage() {
 
   const [weekdayTargetMins, setWeekdayTargetMins] = useState<number>(120);
   const [weekendTargetMins, setWeekendTargetMins] = useState<number>(210);
+  const [showRankFeatures, setShowRankFeatures] = useState<boolean>(true);
 
   const [savingTime, setSavingTime] = useState(false);
   const [savingQuotes, setSavingQuotes] = useState(false);
   const [savingWeekend, setSavingWeekend] = useState(false);
   const [savingTargets, setSavingTargets] = useState(false);
+  const [savingRankFeatures, setSavingRankFeatures] = useState(false);
 
   const [successTime, setSuccessTime] = useState(false);
   const [successQuotes, setSuccessQuotes] = useState(false);
   const [successWeekend, setSuccessWeekend] = useState(false);
   const [successTargets, setSuccessTargets] = useState(false);
+  const [successRankFeatures, setSuccessRankFeatures] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -40,6 +43,23 @@ export default function SettingsPage() {
     if (data?.week_start_day) setWeekStartDay(data.week_start_day);
     if (data?.weekday_target_minutes) setWeekdayTargetMins(data.weekday_target_minutes);
     if (data?.weekend_target_minutes) setWeekendTargetMins(data.weekend_target_minutes);
+    setShowRankFeatures(data?.show_rank_features !== false);
+  };
+
+  const handleToggleRankFeatures = async () => {
+    const nextValue = !showRankFeatures;
+    setShowRankFeatures(nextValue);
+    setSavingRankFeatures(true);
+    try {
+      await updateShowRankFeaturesConfig(nextValue);
+      setSuccessRankFeatures(true);
+      setTimeout(() => setSuccessRankFeatures(false), 2500);
+    } catch (err) {
+      console.error('Error updating rank features config:', err);
+      setShowRankFeatures(!nextValue);
+    } finally {
+      setSavingRankFeatures(false);
+    }
   };
 
   const handleSaveDayEndTime = async () => {
@@ -161,6 +181,46 @@ export default function SettingsPage() {
           <p className="text-xs text-zinc-400">
             Configure night owl cutoff hours, week start day, weekend target hours, and focus mode quotes.
           </p>
+        </div>
+      </div>
+
+      {/* 0. Rank Hub, Hunter Rank & Focus Timer Visibility Toggle */}
+      <div className="glass-panel p-6 rounded-xl border border-zinc-800 space-y-4 relative z-50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Shield className="w-4 h-4 text-purple-400" />
+            <h2 className="text-sm font-semibold text-zinc-100">Rank Hub & Focus Timer Features</h2>
+          </div>
+          {successRankFeatures && (
+            <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Toggle off to hide the Focus Timer, Hunter Rank card, and Rank Hub page across the app if you only want to use the plain study tracker.
+        </p>
+
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-xs font-semibold text-zinc-300">
+            Show Focus Timer, Hunter Rank & Rank Hub
+          </span>
+          <button
+            onClick={handleToggleRankFeatures}
+            disabled={savingRankFeatures}
+            role="switch"
+            aria-checked={showRankFeatures}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
+              showRankFeatures ? 'bg-emerald-500' : 'bg-zinc-700'
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+                showRankFeatures ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 

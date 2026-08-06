@@ -129,6 +129,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     focus_seconds_week INTEGER DEFAULT 0,
     current_rank TEXT DEFAULT 'E-Rank',
     current_title TEXT DEFAULT 'Procrastinating Worm',
+    show_rank_features BOOLEAN DEFAULT TRUE,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -153,6 +154,7 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS momentum_score INTEGER
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS official_weekly_rank INTEGER DEFAULT 500;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_week_start_date DATE DEFAULT NULL;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_vocab_xp_date DATE DEFAULT NULL;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_rank_features BOOLEAN DEFAULT TRUE;
 
 -- 3. Enable Row Level Security (RLS) on All Tables
 

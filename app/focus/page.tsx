@@ -184,6 +184,10 @@ export default function FocusPage() {
 
   useEffect(() => {
     Promise.all([fetchUserSettings(), fetchTasks()]).then(([s, t]) => {
+      if (s?.show_rank_features === false) {
+        router.push('/');
+        return;
+      }
       setUserSettings(s);
       setTasks(t);
       if (s?.quotes && s.quotes.length > 0) {
