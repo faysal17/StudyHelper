@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Task, Note, Overlay } from '@/lib/types';
 import { updateOverlayFailingStatus, updateTask, logRevisionScore, fetchUserSettings } from '@/lib/supabase';
 import { evaluateSpacedRepetition } from '@/lib/spacedRepetition';
@@ -19,9 +19,34 @@ interface ImageOcclusionViewerProps {
   overlays: Overlay[];
 }
 
+function shuffledIds(items: Overlay[]): string[] {
+  const ids = items.map((o) => o.id);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids;
+}
+
 export default function ImageOcclusionViewer({ task, note, overlays: initialOverlays }: ImageOcclusionViewerProps) {
   const [overlays, setOverlays] = useState<Overlay[]>(initialOverlays);
   const [revealedIds, setRevealedIds] = useState<Record<string, boolean>>({});
+
+  // Randomized review order: one overlay is "current" at a time — still
+  // covered like the rest, just outlined — and the view auto-scrolls to it.
+  const [reviewOrder] = useState<string[]>(() => shuffledIds(initialOverlays));
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const currentOverlayId = reviewOrder[currentIndex];
+  const overlayRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    if (!currentOverlayId) return;
+    overlayRefs.current[currentOverlayId]?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'center',
+    });
+  }, [currentOverlayId]);
 
   const [isFinishing, setIsFinishing] = useState(false);
   const [summaryResult, setSummaryResult] = useState<any | null>(null);
@@ -59,6 +84,13 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       setOverlays((prev) =>
         prev.map((o) => (o.id === overlayId ? { ...o, is_currently_failing: isCurrentlyFailing } : o))
       );
+
+      // Grading the block currently up for review advances to the next
+      // one in the randomized order and re-covers this one.
+      if (overlayId === currentOverlayId) {
+        setRevealedIds((prev) => ({ ...prev, [overlayId]: false }));
+        setCurrentIndex((idx) => Math.min(idx + 1, reviewOrder.length - 1));
+      }
     } catch (err) {
       console.error('Error updating overlay status:', err);
     }
@@ -198,6 +230,11 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
           <div className="bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg text-xs font-mono flex items-center space-x-3">
             <span className="text-zinc-400">Total: <strong className="text-zinc-200">{overlays.length}</strong></span>
             <span className="text-zinc-400">Incorrect: <strong className="text-red-400">{failedCount}</strong></span>
+            {reviewOrder.length > 0 && (
+              <span className="text-zinc-400">
+                Reviewing: <strong className="text-cyan-400">{Math.min(currentIndex + 1, reviewOrder.length)}/{reviewOrder.length}</strong>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -244,10 +281,14 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
             const isRevealed = Boolean(revealedIds[overlay.id]);
             const isFailing = overlay.is_currently_failing;
             const hasLabel = Boolean(overlay.label && overlay.label.trim());
+            const isCurrent = overlay.id === currentOverlayId;
 
             return (
               <div
                 key={overlay.id}
+                ref={(el) => {
+                  overlayRefs.current[overlay.id] = el;
+                }}
                 onClick={() => toggleReveal(overlay.id)}
                 style={{
                   left: `${overlay.x_coord}%`,
@@ -261,6 +302,10 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
                     : isFailing
                     ? 'bg-red-950/90 border-2 border-red-500 text-red-200 hover:bg-red-900/90'
                     : 'bg-zinc-900 border border-zinc-700 text-zinc-200 shadow-md hover:bg-zinc-800'
+                } ${
+                  isCurrent
+                    ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-zinc-950 z-20'
+                    : ''
                 }`}
               >
                 {/* Header label & eye toggle */}
