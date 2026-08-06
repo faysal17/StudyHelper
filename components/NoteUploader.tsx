@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { compressHandwrittenNote } from '@/lib/imageCompression';
+import { convertPdfToImageFile } from '@/lib/pdfToImage';
 import { uploadNoteImage, createNote } from '@/lib/supabase';
-import { UploadCloud, FileCheck, AlertCircle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { UploadCloud, FileCheck, AlertCircle, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface NoteUploaderProps {
@@ -18,6 +19,8 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isConvertingHeic, setIsConvertingHeic] = useState(false);
+  const [isConvertingPdf, setIsConvertingPdf] = useState(false);
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [compressionStats, setCompressionStats] = useState<{
@@ -31,6 +34,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
       let file = e.target.files[0];
       setErrorMsg('');
       setCompressionStats(null);
+      setPdfPageCount(null);
 
       const isHeic =
         file.name.toLowerCase().endsWith('.heic') ||
@@ -38,7 +42,23 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         file.type === 'image/heic' ||
         file.type === 'image/heif';
 
-      if (isHeic) {
+      const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+
+      if (isPdf) {
+        try {
+          setIsConvertingPdf(true);
+          const result = await convertPdfToImageFile(file);
+          file = result.file;
+          setPdfPageCount(result.pageCount);
+        } catch (err: any) {
+          console.error('PDF conversion failed:', err);
+          setErrorMsg(err.message || 'Could not convert this PDF to an image. Please try a different file.');
+          setIsConvertingPdf(false);
+          return;
+        } finally {
+          setIsConvertingPdf(false);
+        }
+      } else if (isHeic) {
         try {
           setIsConvertingHeic(true);
           const heic2any = (await import('heic2any')).default;
@@ -77,7 +97,9 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
 
       const compressedFile = await compressHandwrittenNote(selectedFile, {
         maxSizeMB: 0.3,
-        maxWidthOrHeight: 1920,
+        // PDF pages are stitched into one tall image, so allow a taller
+        // ceiling than a single photo to keep multi-page text legible.
+        maxWidthOrHeight: pdfPageCount !== null ? 3200 : 1920,
         useWebWorker: true,
         fileType: 'image/webp',
       });
@@ -132,11 +154,16 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         <label className="border border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-zinc-950/60 group">
           <input
             type="file"
-            accept="image/*,.heic,.heif,image/heic,image/heif"
+            accept="image/*,.heic,.heif,image/heic,image/heif,.pdf,application/pdf"
             onChange={handleFileChange}
             className="hidden"
           />
-          {isConvertingHeic ? (
+          {isConvertingPdf ? (
+            <div className="text-center space-y-2 py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-zinc-400 mx-auto" />
+              <p className="text-xs text-zinc-300">Converting PDF pages to an image...</p>
+            </div>
+          ) : isConvertingHeic ? (
             <div className="text-center space-y-2 py-4">
               <Loader2 className="w-6 h-6 animate-spin text-zinc-400 mx-auto" />
               <p className="text-xs text-zinc-300">Converting Apple HEIC image to JPEG...</p>
@@ -151,15 +178,23 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
               <span className="text-xs text-zinc-300 font-medium block">
                 Selected: {selectedFile?.name}
               </span>
+              {pdfPageCount !== null && (
+                <span className="text-[11px] text-zinc-500 flex items-center justify-center space-x-1">
+                  <FileText className="w-3 h-3" />
+                  <span>
+                    Converted {pdfPageCount} PDF page{pdfPageCount === 1 ? '' : 's'} into one stitched image
+                  </span>
+                </span>
+              )}
             </div>
           ) : (
             <div className="text-center space-y-2">
               <ImageIcon className="w-8 h-8 text-zinc-500 group-hover:text-zinc-300 transition-colors mx-auto" />
               <p className="text-xs font-medium text-zinc-200">
-                Click to select handwritten note image
+                Click to select handwritten note image or PDF
               </p>
               <p className="text-[11px] text-zinc-500">
-                HEIC, JPEG, PNG, or WebP (auto-compressed to &lt;300KB WebP)
+                HEIC, JPEG, PNG, WebP, or PDF (auto-compressed to &lt;300KB WebP)
               </p>
             </div>
           )}
@@ -200,7 +235,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         )}
         <button
           onClick={handleUpload}
-          disabled={!selectedFile || isConvertingHeic || isCompressing || isUploading}
+          disabled={!selectedFile || isConvertingHeic || isConvertingPdf || isCompressing || isUploading}
           className="px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-40 flex items-center space-x-2"
         >
           <UploadCloud className="w-3.5 h-3.5" />
