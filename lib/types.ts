@@ -90,6 +90,32 @@ export interface FocusSession {
   created_at: string;
 }
 
+export interface RoutineBlock {
+  id: string;
+  user_id: string;
+  label: string;
+  color: string;
+  weekdays: string[];
+  start_time: string;
+  end_time: string;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface DailyTaskPlacement {
+  id: string;
+  user_id: string;
+  task_id: string;
+  routine_block_id: string | null;
+  placement_date: string;
+  slot_index: number;
+  duration_slots: number;
+  created_at?: string;
+  task?: Task;
+}
+
 export interface UserSettings {
   user_id: string;
   target_date: string | null;

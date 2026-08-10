@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench } from 'lucide-react';
+import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench, ListTodo } from 'lucide-react';
 import { isSupabaseConfigured, supabase, fetchUserSettings } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 import Tooltip from './Tooltip';
@@ -75,8 +75,21 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Centered Navigation Tabs (Order: Dashboard -> Tasks -> Syllabus -> Rank Hub) */}
+          {/* Centered Navigation Tabs (Order: Today -> Dashboard -> Tasks -> Syllabus -> Rank Hub) */}
           <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-1">
+            {/* 0. Today */}
+            <Link
+              href="/today"
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/today' || pathname.startsWith('/today/')
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <ListTodo className="w-3.5 h-3.5" />
+              <span>Today</span>
+            </Link>
+
             {/* 1. Dashboard */}
             <Link
               href="/"
