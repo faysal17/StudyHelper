@@ -1,6 +1,6 @@
 'use client';
 
-import { Wrench, Sparkles, Calculator, FileText, Cpu, Clock, Terminal, BookOpen } from 'lucide-react';
+import { Wrench, BookOpen, Shuffle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ToolsPage() {
@@ -15,28 +15,14 @@ export default function ToolsPage() {
       href: '/tools/bangla-vocab',
     },
     {
-      id: 'calculator',
-      title: 'Study XP & Momentum Calculator',
-      description: 'Calculate your 7-day momentum velocity score and estimate XP required for target Hunter ranks.',
-      icon: <Calculator className="w-5 h-5 text-cyan-400" />,
-      status: 'Coming Soon',
-      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
-    },
-    {
-      id: 'pdf-extractor',
-      title: 'OCR Text & Occlusion Generator',
-      description: 'Extract handwritten study notes and automatically generate active recall occlusion masks.',
-      icon: <FileText className="w-5 h-5 text-purple-400" />,
-      status: 'Coming Soon',
-      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
-    },
-    {
-      id: 'preset-config',
-      title: 'Pomodoro Focus Preset Builder',
-      description: 'Build custom focus timer intervals, ambient soundscapes, and rest break sequences.',
-      icon: <Clock className="w-5 h-5 text-blue-400" />,
-      status: 'Coming Soon',
-      badgeBg: 'bg-zinc-800 border-zinc-700 text-zinc-400',
+      id: 'synonym-practice',
+      title: 'সমার্থক শব্দ অনুশীলন (Synonym Practice)',
+      description: 'BCS Bangla synonym & semantics (অর্থতত্ত্ব) practice tool, hosted separately.',
+      icon: <Shuffle className="w-5 h-5 text-pink-400" />,
+      status: 'External Tool',
+      badgeBg: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
+      href: 'https://synonym-seven.vercel.app/',
+      external: true,
     },
   ];
 
@@ -78,6 +64,7 @@ export default function ToolsPage() {
               <div className="space-y-1">
                 <h3 className="text-sm font-bold text-zinc-100 group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
                   <span>{tool.title}</span>
+                  {tool.external && <ExternalLink className="w-3 h-3 text-zinc-500 group-hover:text-amber-400 transition-colors shrink-0" />}
                 </h3>
                 <p className="text-xs text-zinc-400 leading-relaxed">
                   {tool.description}
@@ -86,12 +73,18 @@ export default function ToolsPage() {
             </div>
           );
 
-          return isInteractive ? (
+          if (!isInteractive) {
+            return <div key={tool.id}>{Content}</div>;
+          }
+
+          return tool.external ? (
+            <a key={tool.id} href={tool.href!} target="_blank" rel="noopener noreferrer">
+              {Content}
+            </a>
+          ) : (
             <Link key={tool.id} href={tool.href!}>
               {Content}
             </Link>
-          ) : (
-            <div key={tool.id}>{Content}</div>
           );
         })}
       </div>
