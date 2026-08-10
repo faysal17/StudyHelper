@@ -126,6 +126,7 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
 
       const xpGained = await logRevisionScore(task.id, score, totalOverlays, isRepeatToday);
       const updatedSettings = await fetchUserSettings();
+      const showRankFeatures = updatedSettings?.show_rank_features !== false;
 
       const newLevel = updatedSettings?.level || 1;
       const newRank = updatedSettings?.current_rank || 'E-Rank';
@@ -149,36 +150,38 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
         score,
       });
 
-      // Prepare Level Up or Rank Up event if occurred
-      let eventType: EventType | null = null;
-      if (newRank !== oldRank && newLevel > oldLevel) {
-        eventType = 'rank-up';
-      } else if (newLevel > oldLevel) {
-        eventType = 'level-up';
-      }
+      if (showRankFeatures) {
+        // Prepare Level Up or Rank Up event if occurred
+        let eventType: EventType | null = null;
+        if (newRank !== oldRank && newLevel > oldLevel) {
+          eventType = 'rank-up';
+        } else if (newLevel > oldLevel) {
+          eventType = 'level-up';
+        }
 
-      if (eventType) {
-        setActiveEventType(eventType);
-        setPendingEventModal(eventType);
-        setEventOldRank(oldRank);
-        setEventNewRank(newRank);
-        setEventOldLevel(oldLevel);
-        setEventNewLevel(newLevel);
-        setEventOldPos(oldGlobalPos);
-        setEventNewPos(newGlobalPos);
-      }
+        if (eventType) {
+          setActiveEventType(eventType);
+          setPendingEventModal(eventType);
+          setEventOldRank(oldRank);
+          setEventNewRank(newRank);
+          setEventOldLevel(oldLevel);
+          setEventNewLevel(newLevel);
+          setEventOldPos(oldGlobalPos);
+          setEventNewPos(newGlobalPos);
+        }
 
-      // Trigger XP Gain Modal FIRST
-      setEarnedXP(xpGained);
-      const reasonText = isRepeatToday
-        ? `Task already reviewed today (0 XP awarded for repeated attempts)`
-        : xpGained === 0
-        ? `Active Recall Score: ${score}% (${totalOverlays} Overlays - score below 50%)`
-        : `Active Recall Test Score: ${score}% (${totalOverlays} Overlays)`;
-      setXpReason(reasonText);
-      setXpMultiplier(newMomentum.xpMultiplier);
-      setNewTotalXP(updatedSettings.xp || 0);
-      setXpModalOpen(true);
+        // Trigger XP Gain Modal FIRST
+        setEarnedXP(xpGained);
+        const reasonText = isRepeatToday
+          ? `Task already reviewed today (0 XP awarded for repeated attempts)`
+          : xpGained === 0
+          ? `Active Recall Score: ${score}% (${totalOverlays} Overlays - score below 50%)`
+          : `Active Recall Test Score: ${score}% (${totalOverlays} Overlays)`;
+        setXpReason(reasonText);
+        setXpMultiplier(newMomentum.xpMultiplier);
+        setNewTotalXP(updatedSettings.xp || 0);
+        setXpModalOpen(true);
+      }
 
       try {
         confetti({
