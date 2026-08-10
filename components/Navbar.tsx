@@ -150,7 +150,7 @@ export default function Navbar() {
             )}
 
             {/* Tools Icon Link */}
-            <Tooltip content="Hunter Tools Hub" position="bottom">
+            <Tooltip content="Tools Hub" position="bottom">
               <Link
                 href="/tools"
                 className={`p-2 rounded-lg border transition-colors ${

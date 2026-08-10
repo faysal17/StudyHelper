@@ -35,10 +35,7 @@ export default function ToolsPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
-            <span>Hunter Tools & Utilities</span>
-            <span className="text-[10px] font-mono font-extrabold uppercase px-2 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-400">
-              v1.0
-            </span>
+            <span>Tools</span>
           </h1>
           <p className="text-xs text-zinc-400">
             Specialized utility programs, calculators, and automation tools for BCS study optimization.
