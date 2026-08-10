@@ -17,12 +17,11 @@ export default function ToolsPage() {
     {
       id: 'synonym-practice',
       title: 'সমার্থক শব্দ অনুশীলন (Synonym Practice)',
-      description: 'BCS Bangla synonym & semantics (অর্থতত্ত্ব) practice tool, hosted separately.',
+      description: 'BCS Bangla synonym & semantics (অর্থতত্ত্ব) practice tool with spaced repetition.',
       icon: <Shuffle className="w-5 h-5 text-pink-400" />,
-      status: 'External Tool',
-      badgeBg: 'bg-pink-500/10 border-pink-500/20 text-pink-400',
-      href: 'https://synonym-seven.vercel.app/',
-      external: true,
+      status: 'Active Tool',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      href: '/tools/synonym-practice',
     },
   ];
 

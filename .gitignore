@@ -33,6 +33,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# MCP server config (contains local access tokens)
+.mcp.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
