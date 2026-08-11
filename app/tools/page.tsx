@@ -13,15 +13,17 @@ export default function ToolsPage() {
       status: 'Active Tool',
       badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
       href: '/tools/bangla-vocab',
+      external: false,
     },
     {
       id: 'synonym-practice',
-      title: 'সমার্থক শব্দ অনুশীলন (Synonym Practice)',
+      title: 'Bangla Word Practice',
       description: 'BCS Bangla synonym & semantics (অর্থতত্ত্ব) practice tool with spaced repetition.',
       icon: <Shuffle className="w-5 h-5 text-pink-400" />,
       status: 'Active Tool',
       badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
       href: '/tools/synonym-practice',
+      external: false,
     },
   ];
 
