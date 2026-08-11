@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { Fragment, useState, useRef, useEffect } from 'react';
 import { Overlay } from '@/lib/types';
 import { saveOverlays } from '@/lib/supabase';
 import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle } from 'lucide-react';
@@ -57,6 +57,25 @@ export default function ImageOcclusionCreator({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Rendered pixel size of the container, used to tell whether a box is too
+  // small to host its controls internally (see COMPACT_* thresholds below).
+  // The container's height is driven entirely by the <img>'s intrinsic size
+  // once it loads (w-full h-auto), so that's the reliable signal to key off
+  // of — rather than ResizeObserver, which ties into the paint/composite
+  // pipeline and can go unfired in some environments.
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  const updateContainerSize = () => {
+    const el = containerRef.current;
+    if (el) setContainerSize({ width: el.clientWidth, height: el.clientHeight });
+  };
+
+  useEffect(() => {
+    updateContainerSize();
+    window.addEventListener('resize', updateContainerSize);
+    return () => window.removeEventListener('resize', updateContainerSize);
+  }, []);
+
   useEffect(() => {
     if (existingOverlays.length > 0) {
       setBoxes(
@@ -89,6 +108,13 @@ export default function ImageOcclusionCreator({
   // tall image (see lib/pdfToImage.ts), so a percent-based threshold made
   // ordinary drags on later pages silently fail to register.
   const MIN_BOX_PX = 8;
+
+  // Below these rendered pixel dimensions, a box has no room to host its
+  // header (index + delete button) and 4 corner resize handles internally
+  // without them getting clipped by the box's own overflow-hidden — so
+  // those controls render as floating siblings just outside the box instead.
+  const COMPACT_HEIGHT_PX = 34;
+  const COMPACT_WIDTH_PX = 60;
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') {
@@ -326,28 +352,135 @@ export default function ImageOcclusionCreator({
           <img
             src={imageUrl}
             alt="Scanned note"
+            onLoad={updateContainerSize}
             className="w-full h-auto object-contain pointer-events-none block"
           />
 
           {boxes.map((box, index) => {
             const isEditingThisLabel = activeLabelId === box.id;
 
+            const boxWidthPx = (box.width / 100) * containerSize.width;
+            const boxHeightPx = (box.height / 100) * containerSize.height;
+            const isCompact =
+              containerSize.width > 0 &&
+              (boxHeightPx < COMPACT_HEIGHT_PX || boxWidthPx < COMPACT_WIDTH_PX);
+
+            const label = (
+              <div className="w-full h-full flex items-center justify-center">
+                {isEditingThisLabel ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    value={box.label || ''}
+                    onChange={(e) => handleLabelChange(box.id, e.target.value)}
+                    onBlur={() => setActiveLabelId(null)}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="Type question prompt..."
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 text-center font-medium"
+                  />
+                ) : box.label ? (
+                  <span className="text-[10px] font-medium text-zinc-200 truncate px-1 text-center block w-full leading-tight">
+                    {box.label}
+                  </span>
+                ) : !isCompact ? (
+                  <span className="text-[9px] text-zinc-600 italic group-hover:text-zinc-400 transition-colors flex items-center gap-0.5">
+                    <HelpCircle className="w-2.5 h-2.5" />
+                    <span>Click to add question</span>
+                  </span>
+                ) : null}
+              </div>
+            );
+
+            const resizeHandleDefs: [ResizeHandle, string][] = [
+              ['nw', 'top-0 left-0 cursor-nwse-resize'],
+              ['ne', 'top-0 right-0 cursor-nesw-resize'],
+              ['sw', 'bottom-0 left-0 cursor-nesw-resize'],
+              ['se', 'bottom-0 right-0 cursor-nwse-resize'],
+            ];
+
+            if (!isCompact) {
+              return (
+                <div
+                  key={box.id}
+                  style={{
+                    left: `${box.x}%`,
+                    top: `${box.y}%`,
+                    width: `${box.width}%`,
+                    height: `${box.height}%`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLabelId(box.id);
+                  }}
+                  className="absolute bg-zinc-950 border-2 border-zinc-500 rounded shadow-md flex flex-col justify-between p-1 overflow-hidden group hover:border-zinc-300 transition-colors z-10 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between w-full shrink-0">
+                    <span className="text-[9px] font-mono text-zinc-400 font-bold">
+                      #{index + 1}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteBox(box.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-900 rounded"
+                      title="Delete box"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="w-full my-auto flex items-center justify-center flex-1 min-h-0">
+                    {label}
+                  </div>
+
+                  {resizeHandleDefs.map(([handle, posClasses]) => (
+                    <div
+                      key={handle}
+                      onMouseDown={(e) => handleResizeStart(e, box, handle)}
+                      className={`absolute w-2.5 h-2.5 rounded-sm bg-zinc-100 border border-zinc-950 opacity-0 group-hover:opacity-100 transition-opacity z-20 ${posClasses}`}
+                    />
+                  ))}
+                </div>
+              );
+            }
+
+            // Compact mode: the box only shows its background/label — the
+            // header (index + delete) and resize handles are too cramped to
+            // render inside it, so they float just outside its bounds
+            // instead, positioned relative to the same container.
+            const nearTop = box.y * (containerSize.height / 100) < 22;
+            const right = box.x + box.width;
+            const bottom = box.y + box.height;
+
             return (
-              <div
-                key={box.id}
-                style={{
-                  left: `${box.x}%`,
-                  top: `${box.y}%`,
-                  width: `${box.width}%`,
-                  height: `${box.height}%`,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveLabelId(box.id);
-                }}
-                className="absolute bg-zinc-950 border-2 border-zinc-500 rounded shadow-md flex flex-col justify-between p-1 overflow-hidden group hover:border-zinc-300 transition-colors z-10 cursor-pointer"
-              >
-                <div className="flex items-center justify-between w-full shrink-0">
+              <Fragment key={box.id}>
+                <div
+                  style={{
+                    left: `${box.x}%`,
+                    top: `${box.y}%`,
+                    width: `${box.width}%`,
+                    height: `${box.height}%`,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveLabelId(box.id);
+                  }}
+                  className="absolute bg-zinc-950 border-2 border-zinc-500 rounded-sm shadow-md overflow-hidden hover:border-zinc-300 transition-colors z-10 cursor-pointer"
+                >
+                  {label}
+                </div>
+
+                {/* Floating header (index + delete), outside the box's clipped area.
+                    Always visible (not hover-gated) since it's a DOM sibling of the
+                    box, not a descendant, so Tailwind's group-hover can't reach it. */}
+                <div
+                  style={{
+                    left: `${box.x}%`,
+                    top: nearTop ? `calc(${bottom}% + 2px)` : `calc(${box.y}% - 18px)`,
+                  }}
+                  className="absolute flex items-center space-x-1 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 opacity-80 hover:opacity-100 transition-opacity z-30"
+                >
                   <span className="text-[9px] font-mono text-zinc-400 font-bold">
                     #{index + 1}
                   </span>
@@ -356,52 +489,32 @@ export default function ImageOcclusionCreator({
                       e.stopPropagation();
                       handleDeleteBox(box.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-red-400 hover:text-red-300 bg-zinc-900 rounded"
+                    className="p-0.5 text-red-400 hover:text-red-300"
                     title="Delete box"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
 
-                {/* Question Prompt Text Input / Label Display */}
-                <div className="w-full my-auto flex items-center justify-center">
-                  {isEditingThisLabel ? (
-                    <input
-                      type="text"
-                      autoFocus
-                      value={box.label || ''}
-                      onChange={(e) => handleLabelChange(box.id, e.target.value)}
-                      onBlur={() => setActiveLabelId(null)}
-                      onClick={(e) => e.stopPropagation()}
-                      placeholder="Type question prompt..."
-                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-400 text-center font-medium"
+                {/* Resize handles rendered outside the box's own bounds/overflow */}
+                {resizeHandleDefs.map(([handle]) => {
+                  const isLeft = handle === 'nw' || handle === 'sw';
+                  const isTop = handle === 'nw' || handle === 'ne';
+                  return (
+                    <div
+                      key={handle}
+                      onMouseDown={(e) => handleResizeStart(e, box, handle)}
+                      style={{
+                        left: `calc(${isLeft ? box.x : right}% - 5px)`,
+                        top: `calc(${isTop ? box.y : bottom}% - 5px)`,
+                      }}
+                      className={`absolute w-2.5 h-2.5 rounded-sm bg-zinc-100 border border-zinc-950 opacity-80 hover:opacity-100 transition-opacity z-30 ${
+                        isTop === isLeft ? 'cursor-nwse-resize' : 'cursor-nesw-resize'
+                      }`}
                     />
-                  ) : box.label ? (
-                    <span className="text-[10px] font-medium text-zinc-200 truncate px-1 text-center block w-full leading-tight">
-                      {box.label}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-zinc-600 italic group-hover:text-zinc-400 transition-colors flex items-center gap-0.5">
-                      <HelpCircle className="w-2.5 h-2.5" />
-                      <span>Click to add question</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Resize Handles */}
-                {([
-                  ['nw', 'top-0 left-0 cursor-nwse-resize'],
-                  ['ne', 'top-0 right-0 cursor-nesw-resize'],
-                  ['sw', 'bottom-0 left-0 cursor-nesw-resize'],
-                  ['se', 'bottom-0 right-0 cursor-nwse-resize'],
-                ] as [ResizeHandle, string][]).map(([handle, posClasses]) => (
-                  <div
-                    key={handle}
-                    onMouseDown={(e) => handleResizeStart(e, box, handle)}
-                    className={`absolute w-2.5 h-2.5 rounded-sm bg-zinc-100 border border-zinc-950 opacity-0 group-hover:opacity-100 transition-opacity z-20 ${posClasses}`}
-                  />
-                ))}
-              </div>
+                  );
+                })}
+              </Fragment>
             );
           })}
 
