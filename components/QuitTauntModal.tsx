@@ -23,7 +23,7 @@ export default function QuitTauntModal({
   const tauntMessage = getQuitTauntMessage(currentRank);
 
   return (
-    <div className="fixed inset-0 z-[100000] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100000] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 !m-0 animate-in fade-in duration-200">
       <div className="bg-zinc-900 border border-red-500/30 rounded-2xl p-6 max-w-md w-full text-center space-y-5 shadow-2xl relative">
         <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mx-auto shadow-inner">
           <Skull className="w-6 h-6" />

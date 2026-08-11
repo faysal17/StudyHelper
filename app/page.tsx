@@ -243,7 +243,7 @@ export default function DashboardPage() {
 
       {/* Note Uploader Modal */}
       {noteTaskTarget && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
           <NoteUploader
             taskId={noteTaskTarget.id}
             taskTitle={noteTaskTarget.title}

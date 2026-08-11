@@ -557,7 +557,7 @@ export default function BanglaVocabPage() {
 
       {/* Add Manual Word Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
           <div className="glass-panel p-6 rounded-2xl border border-zinc-800 max-w-md w-full space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-sm font-bold text-zinc-100">Add New Bangla Word to Database</h3>
 
