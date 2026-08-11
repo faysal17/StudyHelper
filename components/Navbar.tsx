@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench, ListTodo } from 'lucide-react';
+import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench, ListTodo, Menu, X } from 'lucide-react';
 import { isSupabaseConfigured, supabase, fetchUserSettings } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 import Tooltip from './Tooltip';
@@ -14,6 +14,7 @@ export default function Navbar() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showRankFeatures, setShowRankFeatures] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -23,6 +24,10 @@ export default function Navbar() {
     fetchUserSettings()
       .then((s) => setShowRankFeatures(s?.show_rank_features !== false))
       .catch(() => {});
+  }, [pathname]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
   }, [pathname]);
 
   const checkUser = async () => {
@@ -147,6 +152,15 @@ export default function Navbar() {
 
           {/* Right-most Action Controls */}
           <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMobileMenuOpen((v) => !v)}
+              className="md:hidden p-2 rounded-lg border bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+              aria-label="Toggle navigation menu"
+            >
+              {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+
             <button
               onClick={() => setIsTaskModalOpen(true)}
               className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 text-zinc-950 hover:bg-zinc-200 transition-all shadow-sm flex items-center space-x-1.5"
@@ -201,6 +215,80 @@ export default function Navbar() {
             </Tooltip>
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <nav className="md:hidden border-t border-zinc-800/80 bg-zinc-950/95 px-4 py-2 flex flex-col space-y-1">
+            <Link
+              href="/today"
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/today' || pathname.startsWith('/today/')
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <ListTodo className="w-4 h-4" />
+              <span>Today</span>
+            </Link>
+
+            <Link
+              href="/"
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Dashboard</span>
+            </Link>
+
+            <Link
+              href="/tasks"
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/tasks'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <CheckSquare className="w-4 h-4" />
+              <span>Tasks</span>
+            </Link>
+
+            <Link
+              href="/syllabus"
+              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
+                pathname === '/syllabus' || pathname === '/topics'
+                  ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+            >
+              <ListTree className="w-4 h-4" />
+              <span>Syllabus</span>
+            </Link>
+
+            {showRankFeatures && (
+              <Link
+                href="/rank"
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
+                  pathname === '/rank'
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+              >
+                <Calendar className="w-4 h-4 text-amber-400" />
+                <span>Rank Hub</span>
+              </Link>
+            )}
+
+            {userEmail && (
+              <span className="flex items-center space-x-1.5 text-xs text-zinc-400 font-mono bg-zinc-900 px-2.5 py-1.5 rounded-lg border border-zinc-800 mt-1">
+                <User className="w-3 h-3 text-zinc-500" />
+                <span className="truncate">{userEmail}</span>
+              </span>
+            )}
+          </nav>
+        )}
       </header>
 
       <TaskCreatorModal
