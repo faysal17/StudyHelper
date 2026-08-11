@@ -41,8 +41,18 @@ export default function ImageOcclusionCreator({
     width: number;
     height: number;
   } | null>(null);
+  const currentDrawBoxRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const [activeLabelId, setActiveLabelId] = useState<string | null>(null);
+
+  type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se';
+  const [resizeState, setResizeState] = useState<{
+    boxId: string;
+    handle: ResizeHandle;
+    startX: number;
+    startY: number;
+    origBox: { x: number; y: number; width: number; height: number };
+  } | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -62,11 +72,11 @@ export default function ImageOcclusionCreator({
     }
   }, [existingOverlays]);
 
-  const getContainerCoords = (e: React.MouseEvent<HTMLDivElement>) => {
+  const getContainerCoords = (clientX: number, clientY: number) => {
     if (!containerRef.current) return { xPercent: 0, yPercent: 0 };
     const rect = containerRef.current.getBoundingClientRect();
-    const xPixel = e.clientX - rect.left;
-    const yPixel = e.clientY - rect.top;
+    const xPixel = clientX - rect.left;
+    const yPixel = clientY - rect.top;
 
     const xPercent = Math.max(0, Math.min(100, (xPixel / rect.width) * 100));
     const yPercent = Math.max(0, Math.min(100, (yPixel / rect.height) * 100));
@@ -74,49 +84,146 @@ export default function ImageOcclusionCreator({
     return { xPercent, yPercent };
   };
 
+  // Minimum drag distance to register a box, in actual pixels rather than
+  // percent of container height — multi-page PDFs are stitched into one
+  // tall image (see lib/pdfToImage.ts), so a percent-based threshold made
+  // ordinary drags on later pages silently fail to register.
+  const MIN_BOX_PX = 8;
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') {
       return;
     }
-    const { xPercent, yPercent } = getContainerCoords(e);
+    const { xPercent, yPercent } = getContainerCoords(e.clientX, e.clientY);
+    const box = { x: xPercent, y: yPercent, width: 0, height: 0 };
     setIsDrawing(true);
     setStartPos({ x: xPercent, y: yPercent });
-    setCurrentDrawBox({ x: xPercent, y: yPercent, width: 0, height: 0 });
+    currentDrawBoxRef.current = box;
+    setCurrentDrawBox(box);
     setActiveLabelId(null);
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawing || !startPos) return;
-    const { xPercent, yPercent } = getContainerCoords(e);
-
-    const x = Math.min(startPos.x, xPercent);
-    const y = Math.min(startPos.y, yPercent);
-    const width = Math.abs(xPercent - startPos.x);
-    const height = Math.abs(yPercent - startPos.y);
-
-    setCurrentDrawBox({ x, y, width, height });
+  const handleResizeStart = (e: React.MouseEvent, box: DottedBox, handle: ResizeHandle) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const { xPercent, yPercent } = getContainerCoords(e.clientX, e.clientY);
+    setResizeState({
+      boxId: box.id,
+      handle,
+      startX: xPercent,
+      startY: yPercent,
+      origBox: { x: box.x, y: box.y, width: box.width, height: box.height },
+    });
   };
 
-  const handleMouseUp = () => {
-    if (isDrawing && currentDrawBox && currentDrawBox.width > 1 && currentDrawBox.height > 1) {
-      const newId = `box-${Date.now()}-${Math.random()}`;
-      setBoxes((prev) => [
-        ...prev,
-        {
-          id: newId,
-          x: Math.round(currentDrawBox.x * 100) / 100,
-          y: Math.round(currentDrawBox.y * 100) / 100,
-          width: Math.round(currentDrawBox.width * 100) / 100,
-          height: Math.round(currentDrawBox.height * 100) / 100,
-          label: '',
-        },
-      ]);
-      setActiveLabelId(newId);
-    }
-    setIsDrawing(false);
-    setStartPos(null);
-    setCurrentDrawBox(null);
-  };
+  useEffect(() => {
+    if (!isDrawing && !resizeState) return;
+
+    const onMove = (e: MouseEvent) => {
+      const { xPercent, yPercent } = getContainerCoords(e.clientX, e.clientY);
+
+      if (resizeState) {
+        // Minimum size floor in percent, derived from MIN_BOX_PX rather than
+        // a flat percent — a flat percent floor (e.g. 1%) is huge on a tall
+        // stitched multi-page image and would clamp small boxes open.
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        const minWidthPercent = containerRect ? (MIN_BOX_PX / containerRect.width) * 100 : 1;
+        const minHeightPercent = containerRect ? (MIN_BOX_PX / containerRect.height) * 100 : 1;
+
+        const dx = xPercent - resizeState.startX;
+        const dy = yPercent - resizeState.startY;
+        const { x, y, width, height } = resizeState.origBox;
+        let newX = x;
+        let newY = y;
+        let newWidth = width;
+        let newHeight = height;
+
+        if (resizeState.handle.includes('e')) {
+          newWidth = Math.max(minWidthPercent, width + dx);
+        }
+        if (resizeState.handle.includes('w')) {
+          newX = Math.min(x + dx, x + width - minWidthPercent);
+          newWidth = width - (newX - x);
+        }
+        if (resizeState.handle.includes('s')) {
+          newHeight = Math.max(minHeightPercent, height + dy);
+        }
+        if (resizeState.handle.includes('n')) {
+          newY = Math.min(y + dy, y + height - minHeightPercent);
+          newHeight = height - (newY - y);
+        }
+
+        newX = Math.max(0, newX);
+        newY = Math.max(0, newY);
+        newWidth = Math.min(newWidth, 100 - newX);
+        newHeight = Math.min(newHeight, 100 - newY);
+
+        setBoxes((prev) =>
+          prev.map((b) =>
+            b.id === resizeState.boxId
+              ? {
+                  ...b,
+                  x: Math.round(newX * 100) / 100,
+                  y: Math.round(newY * 100) / 100,
+                  width: Math.round(newWidth * 100) / 100,
+                  height: Math.round(newHeight * 100) / 100,
+                }
+              : b
+          )
+        );
+        return;
+      }
+
+      if (!startPos) return;
+      const x = Math.min(startPos.x, xPercent);
+      const y = Math.min(startPos.y, yPercent);
+      const width = Math.abs(xPercent - startPos.x);
+      const height = Math.abs(yPercent - startPos.y);
+      const box = { x, y, width, height };
+      currentDrawBoxRef.current = box;
+      setCurrentDrawBox(box);
+    };
+
+    const onUp = () => {
+      if (resizeState) {
+        setResizeState(null);
+        return;
+      }
+
+      const box = currentDrawBoxRef.current;
+      if (box && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const widthPx = (box.width / 100) * rect.width;
+        const heightPx = (box.height / 100) * rect.height;
+        if (widthPx > MIN_BOX_PX && heightPx > MIN_BOX_PX) {
+          const newId = `box-${Date.now()}-${Math.random()}`;
+          setBoxes((prev) => [
+            ...prev,
+            {
+              id: newId,
+              x: Math.round(box.x * 100) / 100,
+              y: Math.round(box.y * 100) / 100,
+              width: Math.round(box.width * 100) / 100,
+              height: Math.round(box.height * 100) / 100,
+              label: '',
+            },
+          ]);
+          setActiveLabelId(newId);
+        }
+      }
+      currentDrawBoxRef.current = null;
+      setCurrentDrawBox(null);
+      setIsDrawing(false);
+      setStartPos(null);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isDrawing, resizeState, startPos]);
 
   const handleLabelChange = (id: string, text: string) => {
     setBoxes((prev) => prev.map((b) => (b.id === id ? { ...b, label: text } : b)));
@@ -214,8 +321,6 @@ export default function ImageOcclusionCreator({
         <div
           ref={containerRef}
           onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
           className="relative inline-block w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 select-none cursor-crosshair"
         >
           <img
@@ -282,6 +387,20 @@ export default function ImageOcclusionCreator({
                     </span>
                   )}
                 </div>
+
+                {/* Resize Handles */}
+                {([
+                  ['nw', 'top-0 left-0 cursor-nwse-resize'],
+                  ['ne', 'top-0 right-0 cursor-nesw-resize'],
+                  ['sw', 'bottom-0 left-0 cursor-nesw-resize'],
+                  ['se', 'bottom-0 right-0 cursor-nwse-resize'],
+                ] as [ResizeHandle, string][]).map(([handle, posClasses]) => (
+                  <div
+                    key={handle}
+                    onMouseDown={(e) => handleResizeStart(e, box, handle)}
+                    className={`absolute w-2.5 h-2.5 rounded-sm bg-zinc-100 border border-zinc-950 opacity-0 group-hover:opacity-100 transition-opacity z-20 ${posClasses}`}
+                  />
+                ))}
               </div>
             );
           })}
