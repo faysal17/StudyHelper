@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import SynonymBlock from './SynonymBlock';
 
@@ -19,7 +18,6 @@ export default function Dashboard({
   onStartQuiz: () => void;
   onStartReview: (answerMode: 'write' | 'mcq', reviewList: RevisionItem[]) => void;
 }) {
-  const router = useRouter();
   const [stats, setStats] = useState({
     totalAttempts: 0,
     averageAccuracy: 0,
@@ -148,20 +146,6 @@ export default function Dashboard({
                 </div>
                 <div className="topic-footer">
                   <span className="topic-progress">{stats.masteredWords}/{words.length} শব্দ আয়ত্ত</span>
-                  <span className="topic-action">অনুশীলন করুন</span>
-                </div>
-              </div>
-
-              <div className="topic-card" onClick={() => router.push('/tools/word-classification')}>
-                <div>
-                  <div className="topic-category">শব্দতত্ত্ব (Word Classification)</div>
-                  <h4 className="topic-title">শব্দের শ্রেণিবিভাগ</h4>
-                  <p className="topic-desc">
-                    গঠন, অর্থ ও উৎপত্তি অনুসারে শব্দের শ্রেণি এবং বিদেশি শব্দের উৎস ভাষা অনুশীলন করুন — সাথে আসল BCS প্রশ্নব্যাংক।
-                  </p>
-                </div>
-                <div className="topic-footer">
-                  <span className="topic-progress">নতুন</span>
                   <span className="topic-action">অনুশীলন করুন</span>
                 </div>
               </div>
