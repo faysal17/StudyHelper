@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { compressHandwrittenNote } from '@/lib/imageCompression';
 import { convertPdfToImageFile } from '@/lib/pdfToImage';
 import { uploadNoteImage, createNote } from '@/lib/supabase';
@@ -28,6 +28,18 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
     compressedSizeMB: string;
   } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Lock background scroll while this modal is open — otherwise the page
+  // behind it can still scroll, and on mobile browsers the address bar
+  // collapsing/expanding as you scroll it can make the fixed backdrop
+  // appear to leave a gap instead of covering the full page.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -101,10 +113,19 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         // same 300KB budget that's fine for a phone snapshot forces heavy
         // WebP quality loss on small print, so give PDFs a much bigger
         // ceiling to keep the text legible.
-        maxSizeMB: isFromPdf ? 3 : 0.3,
-        // PDF pages are stitched into one tall image, so allow a taller
-        // ceiling than a single photo to keep multi-page text legible.
-        maxWidthOrHeight: isFromPdf ? 3200 : 1920,
+        maxSizeMB: isFromPdf ? 6 : 0.3,
+        // convertPdfToImageFile already sizes the stitched image (capping
+        // its own total height for very long documents) to keep per-page
+        // text legible. Re-applying a maxWidthOrHeight cap here constrains
+        // whichever side is longest — for a multi-page stitch that's
+        // always the height, so it was scaling width down proportionally
+        // too (an 11-page note ended up 226px wide). Only cap it for
+        // regular photos; let PDFs keep the dimensions already chosen.
+        maxWidthOrHeight: isFromPdf ? undefined : 1920,
+        // Let quality flex to hit the byte budget instead of silently
+        // shrinking dimensions further when a long multi-page doc doesn't
+        // fit under maxSizeMB — a bigger file beats illegible text.
+        alwaysKeepResolution: isFromPdf,
         useWebWorker: true,
         fileType: 'image/webp',
       });
