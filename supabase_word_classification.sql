@@ -563,6 +563,33 @@ drop policy if exists "Users can update their own classification srs records" on
 create policy "Users can update their own classification srs records" on public.user_classification_srs
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+-- 3b. Completed chapter tracking for the chapter-based study mode. Keyed by
+-- a stable string (e.g. 'উৎপত্তি:বিদেশি:ফারসি:0') rather than a numeric
+-- index, and in its own table (not user_completed_chunks, which the
+-- synonym-practice tool already owns) so chapter numbers from the two tools
+-- never collide.
+create table if not exists public.user_completed_classification_chunks (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  chunk_key text not null,
+  completed_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (user_id, chunk_key)
+);
+
+alter table public.user_completed_classification_chunks enable row level security;
+drop policy if exists "Users can view their own completed classification chapters" on public.user_completed_classification_chunks;
+create policy "Users can view their own completed classification chapters" on public.user_completed_classification_chunks
+  for select using (auth.uid() = user_id);
+drop policy if exists "Users can record their own completed classification chapters" on public.user_completed_classification_chunks;
+create policy "Users can record their own completed classification chapters" on public.user_completed_classification_chunks
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "Users can delete their own completed classification chapters" on public.user_completed_classification_chunks;
+create policy "Users can delete their own completed classification chapters" on public.user_completed_classification_chunks
+  for delete using (auth.uid() = user_id);
+drop policy if exists "Users can update their own completed classification chapters" on public.user_completed_classification_chunks;
+create policy "Users can update their own completed classification chapters" on public.user_completed_classification_chunks
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- 3. Real BCS exam question bank (read-only for all authenticated users).
 -- Sourced from a BCS Bangla prep book (উত্তরণ ক্যারিয়ার এন্ড স্কিলস একাডেমি,
 -- অধ্যায় ০৩ শব্দতত্ত্ব/রূপতত্ত্ব, পরিচ্ছেদ ৩.১). correct_index is 0-based

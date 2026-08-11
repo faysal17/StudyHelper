@@ -19,12 +19,16 @@ export default function QuizSummary({
   score,
   total,
   results,
+  mode,
+  selectedChunks,
   onRestart,
   onGoToDashboard,
 }: {
   score: number;
   total: number;
   results: ResultEntry[];
+  mode: string;
+  selectedChunks: string[];
   onRestart: () => void;
   onGoToDashboard: () => void;
 }) {
@@ -130,6 +134,20 @@ export default function QuizSummary({
 
           if (srsUpsertError) throw srsUpsertError;
         }
+      }
+
+      if (mode === 'chapter' && score === total && selectedChunks && selectedChunks.length > 0) {
+        const uniqueChunks = [...new Set(selectedChunks)];
+        const completedInserts = uniqueChunks.map((chunkKey) => ({
+          user_id: user.id,
+          chunk_key: chunkKey,
+        }));
+
+        const { error: completedError } = await supabase
+          .from('user_completed_classification_chunks')
+          .upsert(completedInserts, { onConflict: 'user_id,chunk_key' });
+
+        if (completedError) throw completedError;
       }
     } catch (err: any) {
       console.error('Error saving classification quiz results:', err);

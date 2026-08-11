@@ -33,6 +33,7 @@ export default function WordClassificationPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [entries, setEntries] = useState<ClassificationEntry[]>([]);
   const [examBank, setExamBank] = useState<ExamQuestion[]>([]);
+  const [completedChapters, setCompletedChapters] = useState<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [view, setView] = useState<'dashboard' | 'setup' | 'quiz' | 'summary'>('dashboard');
   const [userInfo, setUserInfo] = useState<{ email?: string | null; user_metadata?: { full_name?: string } } | null>(null);
@@ -44,6 +45,8 @@ export default function WordClassificationPage() {
   const [questionWasCorrect, setQuestionWasCorrect] = useState(false);
   const [userAnswerValue, setUserAnswerValue] = useState('');
   const [sessionResults, setSessionResults] = useState<ResultEntry[]>([]);
+  const [sessionMode, setSessionMode] = useState('normal');
+  const [sessionSelectedChunks, setSessionSelectedChunks] = useState<string[]>([]);
   const [sessionAnswerMode, setSessionAnswerMode] = useState<'write' | 'mcq'>('write');
 
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function WordClassificationPage() {
     if (!checkingAuth && userInfo) {
       fetchEntries();
       fetchExamBank();
+      fetchCompletedChapters();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkingAuth, userInfo]);
@@ -123,6 +127,20 @@ export default function WordClassificationPage() {
       setExamBank(formatted);
     } catch (err) {
       console.error('Error fetching exam question bank:', err);
+    }
+  };
+
+  const fetchCompletedChapters = async () => {
+    try {
+      if (!isSupabaseConfigured || !supabase) return;
+      const { data, error } = await supabase.from('user_completed_classification_chunks').select('chunk_key');
+
+      if (error) throw error;
+
+      const keys = new Set<string>((data || []).map((item: any) => item.chunk_key));
+      setCompletedChapters(keys);
+    } catch (err) {
+      console.error('Error fetching completed classification chapters:', err);
     }
   };
 
@@ -291,7 +309,13 @@ export default function WordClassificationPage() {
     return shuffle([...generatedQuestions, ...examQuestions]);
   };
 
-  const handleStartSession = async (pool: ClassificationEntry[], size: number, answerMode: string) => {
+  const handleStartSession = async (
+    mode: string,
+    pool: ClassificationEntry[],
+    size: number,
+    selectedChunkKeys: string[],
+    answerMode: string
+  ) => {
     try {
       setLoadingData(true);
       if (!isSupabaseConfigured || !supabase) return;
@@ -336,6 +360,8 @@ export default function WordClassificationPage() {
       setQuestionWasCorrect(false);
       setUserAnswerValue('');
       setSessionResults([]);
+      setSessionMode(mode);
+      setSessionSelectedChunks(selectedChunkKeys);
       setSessionAnswerMode(answerMode as 'write' | 'mcq');
 
       setView('quiz');
@@ -350,7 +376,7 @@ export default function WordClassificationPage() {
     const pool: ClassificationEntry[] = reviewList
       .map((item) => entries.find((e) => e.word === item.word && e.axis === item.axis))
       .filter((e): e is ClassificationEntry => Boolean(e));
-    handleStartSession(pool, pool.length, answerMode);
+    handleStartSession('normal', pool, pool.length, [], answerMode);
   };
 
   const handleAnswerQuestion = (skip: boolean, answer: string) => {
@@ -392,6 +418,9 @@ export default function WordClassificationPage() {
       setUserAnswerValue('');
     } else {
       setView('summary');
+      if (sessionMode === 'chapter') {
+        fetchCompletedChapters();
+      }
     }
   };
 
@@ -422,7 +451,14 @@ export default function WordClassificationPage() {
             <Dashboard user={userInfo} entries={entries} onStartQuiz={() => setView('setup')} onStartReview={handleStartReview} />
           )}
 
-          {view === 'setup' && <QuizSetup entries={entries} onStart={handleStartSession} onBackToDashboard={handleGoToDashboard} />}
+          {view === 'setup' && (
+            <QuizSetup
+              entries={entries}
+              completedChapters={completedChapters}
+              onStart={handleStartSession}
+              onBackToDashboard={handleGoToDashboard}
+            />
+          )}
 
           {view === 'quiz' && (
             <QuizActive
@@ -444,6 +480,8 @@ export default function WordClassificationPage() {
               score={quizScore}
               total={quizQuestions.length}
               results={sessionResults}
+              mode={sessionMode}
+              selectedChunks={sessionSelectedChunks}
               onRestart={handleSessionRestart}
               onGoToDashboard={handleGoToDashboard}
             />
