@@ -255,9 +255,24 @@ export default function QuizSetup({
           </div>
 
           <div className="setup-label">চ্যাপ্টার বেছে নাও (একাধিক নেওয়া যায়)</div>
-          <div className="note" style={{ marginTop: 0, marginBottom: '10px' }}>
-            গঠন (মৌলিক/সাধিত) চ্যাপ্টার ভিত্তিক অনুশীলনে অন্তর্ভুক্ত নয় — এটি "স্বাভাবিক অনুশীলন" থেকে অনুশীলন করুন।
+
+          <div style={{ marginBottom: '10px' }}>
+            <div className="setup-label" style={{ fontSize: '12px', opacity: 0.75 }}>
+              গঠন (চ্যাপ্টার ভিত্তিক অনুশীলনে অন্তর্ভুক্ত নয় — এটি "স্বাভাবিক অনুশীলন" থেকে অনুশীলন করুন)
+            </div>
+            <div className="chunk-grid">
+              {chaptersByAxis['গঠন'].map((chapter) => {
+                const wordsList = chapter.entries.map((e) => e.word).join(', ');
+                return (
+                  <div key={chapter.key} className="chunk-btn no-checkbox">
+                    <span className="cnum">{chapter.label}</span>
+                    <span className="cwords">{wordsList}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
           {(['অর্থ', 'উৎপত্তি'] as Axis[]).map((axis) => (
             <div key={axis} style={{ marginBottom: '10px' }}>
               <div className="setup-label" style={{ fontSize: '12px', opacity: 0.75 }}>
