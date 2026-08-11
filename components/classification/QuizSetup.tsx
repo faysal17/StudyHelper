@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { Axis, ClassificationEntry } from '@/lib/wordClassification';
-import { buildChapters } from '@/lib/wordClassification';
+import { buildChapters, AXIS_SUBGROUPS } from '@/lib/wordClassification';
+
+const AXIS_ORDER: Axis[] = ['গঠন', 'অর্থ', 'উৎপত্তি'];
 
 const AXIS_OPTIONS: { value: Axis | 'all'; label: string }[] = [
   { value: 'all', label: 'সব' },
@@ -137,6 +139,39 @@ export default function QuizSetup({
       ? `${e.subGroup} (${e.originLanguage})`
       : e.subGroup;
 
+  // Groups the study pool by axis, then by sub-group — splitting বিদেশি
+  // further by origin language, since that's the natural unit a student
+  // studies at once (mirrors buildChapters' grouping logic).
+  const studyGroups = useMemo(() => {
+    type Group = { key: string; axis: Axis; label: string; entries: ClassificationEntry[] };
+    const groups: Group[] = [];
+
+    AXIS_ORDER.forEach((axis) => {
+      AXIS_SUBGROUPS[axis].forEach((subGroup) => {
+        const subEntries = studyPool.filter((e) => e.axis === axis && e.subGroup === subGroup);
+        if (subEntries.length === 0) return;
+
+        if (subGroup === 'বিদেশি') {
+          const byLang = new Map<string, ClassificationEntry[]>();
+          subEntries.forEach((e) => {
+            const lang = e.originLanguage || 'অজানা ভাষা';
+            if (!byLang.has(lang)) byLang.set(lang, []);
+            byLang.get(lang)!.push(e);
+          });
+          Array.from(byLang.keys())
+            .sort((a, b) => a.localeCompare(b, 'bn'))
+            .forEach((lang) => {
+              groups.push({ key: `${axis}-${subGroup}-${lang}`, axis, label: `বিদেশি (${lang})`, entries: byLang.get(lang)! });
+            });
+        } else {
+          groups.push({ key: `${axis}-${subGroup}`, axis, label: subGroup, entries: subEntries });
+        }
+      });
+    });
+
+    return groups;
+  }, [studyPool]);
+
   if (isStudyMode) {
     return (
       <div className="study-card">
@@ -144,14 +179,36 @@ export default function QuizSetup({
           ← সেটআপে ফিরি
         </button>
         <div className="study-words-container">
-          {studyPool.map((e) => (
-            <div key={`${e.word}-${e.axis}`} className="study-word-block">
-              <div className="study-word">{e.word}</div>
-              <div className="study-syns">
-                {e.axis} — {labelFor(e)}
+          {AXIS_ORDER.map((axis) => {
+            const axisGroups = studyGroups.filter((g) => g.axis === axis);
+            if (axisGroups.length === 0) return null;
+            const axisTotal = axisGroups.reduce((sum, g) => sum + g.entries.length, 0);
+            return (
+              <div key={axis} className="study-axis-section">
+                <div className="study-axis-header">
+                  <span className="study-axis-title">{axis}</span>
+                  <span className="study-axis-count">{axisTotal}টি শব্দ</span>
+                </div>
+                <div className="study-group-list">
+                  {axisGroups.map((g) => (
+                    <div key={g.key} className="study-group">
+                      <div className="study-group-header">
+                        <span className="study-group-label">{g.label}</span>
+                        <span className="study-group-count">{g.entries.length}</span>
+                      </div>
+                      <div className="study-chip-grid">
+                        {g.entries.map((e) => (
+                          <span key={`${e.word}-${e.axis}`} className="study-chip">
+                            {e.word}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <button className="start-btn" onClick={handleStudyStart} disabled={studyPool.length === 0}>
           অনুশীলন শুরু করি

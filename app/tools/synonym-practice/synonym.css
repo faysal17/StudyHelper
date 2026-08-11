@@ -731,6 +731,88 @@
   color: var(--ivory-dim);
 }
 
+/* Grouped Study View (word classification) */
+.synonym-app .study-axis-section {
+  margin-bottom: 22px;
+}
+
+.synonym-app .study-axis-section:last-child {
+  margin-bottom: 22px;
+}
+
+.synonym-app .study-axis-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(201, 162, 75, 0.3);
+}
+
+.synonym-app .study-axis-title {
+  font-family: 'Tiro Bangla', serif;
+  font-size: 19px;
+  color: var(--gold);
+  letter-spacing: 0.01em;
+}
+
+.synonym-app .study-axis-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--ivory-dim);
+}
+
+.synonym-app .study-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.synonym-app .study-group {
+  background: var(--surface-2);
+  border: 1px solid rgba(238, 230, 210, 0.08);
+  border-radius: var(--border-radius-sm);
+  padding: 14px 16px;
+}
+
+.synonym-app .study-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.synonym-app .study-group-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jade);
+}
+
+.synonym-app .study-group-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ivory-dim);
+  background: rgba(238, 230, 210, 0.08);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+
+.synonym-app .study-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.synonym-app .study-chip {
+  font-family: 'Tiro Bangla', serif;
+  font-size: 15.5px;
+  color: var(--paper);
+  background: rgba(201, 162, 75, 0.1);
+  border: 1px solid rgba(201, 162, 75, 0.22);
+  border-radius: 8px;
+  padding: 5px 12px;
+}
+
 /* Quiz Screen styling */
 .synonym-app .progress-row {
   display: flex;
@@ -812,6 +894,31 @@
   font-family: 'Tiro Bangla', serif;
   font-size: 44px;
   line-height: 1.1;
+}
+
+.synonym-app .headword-tag {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-family: 'Tiro Bangla', serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: rgba(201, 162, 75, 0.18);
+  border: 1px solid rgba(201, 162, 75, 0.4);
+  border-radius: 999px;
+  padding: 4px 12px;
+  max-width: calc(100% - 32px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.synonym-app .prompt-main {
+  font-family: 'Tiro Bangla', serif;
+  font-size: 26px;
+  line-height: 1.35;
+  padding-top: 6px;
 }
 
 .synonym-app .headword-card::after {
@@ -1140,6 +1247,9 @@
   }
   .synonym-app .headword {
     font-size: 34px;
+  }
+  .synonym-app .prompt-main {
+    font-size: 21px;
   }
   .synonym-app .option {
     font-size: 15px;

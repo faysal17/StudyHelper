@@ -55,7 +55,16 @@ export default function QuizActive({
 
   const isLastQuestion = current === questions.length - 1;
   const typeLabel = q.kind === 'exam' ? 'BCS প্রশ্নব্যাংক' : q.kind === 'reverse' ? 'শব্দ বাছাই করুন' : 'শ্রেণি নির্ণয় করুন';
-  const isLongPrompt = q.shown.length > 24;
+
+  // For generated forward/reverse questions, qLabel is the full question
+  // sentence and shown is just the short word/category it's about — so the
+  // sentence belongs front-and-center with shown as a small context tag.
+  // Exam-bank questions are the opposite: qLabel is a generic type label and
+  // shown holds the actual (often long) question text, so that stays big
+  // and untagged.
+  const isExam = q.kind === 'exam';
+  const mainPromptText = isExam ? q.shown : q.qLabel;
+  const isLongPrompt = mainPromptText.length > 40;
 
   return (
     <div id="quiz">
@@ -78,9 +87,9 @@ export default function QuizActive({
       <div className="qtype">{typeLabel}</div>
 
       <div className="headword-card">
-        <div className="prompt">{q.qLabel}</div>
-        <div className="headword" style={isLongPrompt ? { fontSize: '22px', lineHeight: 1.4 } : undefined}>
-          {q.shown}
+        {!isExam && <span className="headword-tag">{q.shown}</span>}
+        <div className="prompt-main" style={isLongPrompt ? { fontSize: '22px', lineHeight: 1.4 } : undefined}>
+          {mainPromptText}
         </div>
       </div>
 
