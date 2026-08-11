@@ -169,12 +169,14 @@ export default function SyllabusPage() {
 
     if (nextStatus === 'completed') {
       const updatedSettings = await fetchUserSettings();
-      const momentum = calculateMomentum(updatedSettings);
-      setEarnedXP(30);
-      setXpReason('Syllabus Subtopic Completed!');
-      setXpMultiplier(momentum.xpMultiplier);
-      setNewTotalXP(updatedSettings.xp || 0);
-      setXpModalOpen(true);
+      if (updatedSettings?.show_rank_features !== false) {
+        const momentum = calculateMomentum(updatedSettings);
+        setEarnedXP(30);
+        setXpReason('Syllabus Subtopic Completed!');
+        setXpMultiplier(momentum.xpMultiplier);
+        setNewTotalXP(updatedSettings.xp || 0);
+        setXpModalOpen(true);
+      }
     }
   };
 
