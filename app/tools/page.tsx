@@ -1,6 +1,6 @@
 'use client';
 
-import { Wrench, BookOpen, Shuffle, ExternalLink } from 'lucide-react';
+import { Wrench, BookOpen, Shuffle, ExternalLink, ListTree } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ToolsPage() {
@@ -23,6 +23,16 @@ export default function ToolsPage() {
       status: 'Active Tool',
       badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
       href: '/tools/synonym-practice',
+      external: false,
+    },
+    {
+      id: 'word-classification',
+      title: 'Bangla Word Classification',
+      description: 'BCS Bangla শব্দের শ্রেণিবিভাগ (গঠন, অর্থ, উৎপত্তি) practice tool with spaced repetition and a real exam question bank.',
+      icon: <ListTree className="w-5 h-5 text-sky-400" />,
+      status: 'Active Tool',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      href: '/tools/word-classification',
       external: false,
     },
   ];

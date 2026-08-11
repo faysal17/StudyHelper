@@ -1,40 +1,35 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import SynonymBlock from './SynonymBlock';
-
-type WordEntry = [string, string[], string];
-type RevisionItem = { word: string; alternatives: string[]; cluster: string };
+import ClassificationBlock from './ClassificationBlock';
+import type { ClassificationEntry, RevisionItem } from '@/lib/wordClassification';
 
 export default function Dashboard({
   user,
-  words,
+  entries,
   onStartQuiz,
   onStartReview,
 }: {
   user: { email?: string | null; user_metadata?: { full_name?: string } };
-  words: WordEntry[];
+  entries: ClassificationEntry[];
   onStartQuiz: () => void;
   onStartReview: (answerMode: 'write' | 'mcq', reviewList: RevisionItem[]) => void;
 }) {
-  const router = useRouter();
   const [stats, setStats] = useState({
     totalAttempts: 0,
     averageAccuracy: 0,
-    totalQuestions: 0,
-    masteredWords: 0,
+    masteredFacts: 0,
   });
   const [revisionList, setRevisionList] = useState<RevisionItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user && words.length > 0) {
+    if (user) {
       fetchUserData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, words]);
+  }, [user, entries]);
 
   const fetchUserData = async () => {
     try {
@@ -43,13 +38,14 @@ export default function Dashboard({
 
       const { data: attemptsData, error: attemptsError } = await supabase
         .from('quiz_attempts')
-        .select('score, total_questions');
+        .select('score, total_questions, mode')
+        .like('mode', 'classification%');
 
       if (attemptsError) throw attemptsError;
 
       const { data: srsData, error: srsError } = await supabase
-        .from('user_synonym_srs')
-        .select('word, synonym, box, next_review_at');
+        .from('user_classification_srs')
+        .select('word, axis, box, next_review_at');
 
       if (srsError) throw srsError;
 
@@ -61,41 +57,30 @@ export default function Dashboard({
         averageAccuracy = totalQ > 0 ? Math.round((totalCorrect / totalQ) * 100) : 0;
       }
 
-      const recordsByWord: Record<string, any[]> = {};
-      srsData?.forEach((r: any) => {
-        if (!recordsByWord[r.word]) recordsByWord[r.word] = [];
-        recordsByWord[r.word].push(r);
+      const boxByKey: Record<string, number> = {};
+      (srsData || []).forEach((r: any) => {
+        boxByKey[`${r.word} ${r.axis}`] = r.box;
       });
 
-      const practicedWords = Object.keys(recordsByWord);
-      const totalQuestions = practicedWords.length;
-
-      const masteredWords = words.filter(([word, alternatives]) => {
-        const records = recordsByWord[word];
-        if (!records || records.length < alternatives.length) return false;
-        return records.every((r) => r.box === 5);
-      }).length;
+      const masteredFacts = entries.filter((e) => boxByKey[`${e.word} ${e.axis}`] === 5).length;
 
       const now = new Date();
-      const dueWords = new Set(
-        (srsData || [])
-          .filter((r: any) => new Date(r.next_review_at) <= now)
-          .map((r: any) => r.word)
-      );
+      const matchedReviews: RevisionItem[] = (srsData || [])
+        .filter((r: any) => new Date(r.next_review_at) <= now)
+        .map((r: any) => {
+          const match = entries.find((e) => e.word === r.word && e.axis === r.axis);
+          if (!match) return null;
+          const label = match.axis === 'উৎপত্তি' && match.subGroup === 'বিদেশি'
+            ? `${match.subGroup} (${match.originLanguage})`
+            : match.subGroup;
+          return { word: r.word, axis: r.axis, label: `${match.axis} — ${label}` };
+        })
+        .filter((r: RevisionItem | null): r is RevisionItem => Boolean(r));
 
-      const matchedReviews: RevisionItem[] = Array.from(dueWords).map((word) => {
-        const match = words.find((w) => w[0] === word);
-        return {
-          word: word as string,
-          alternatives: match ? match[1] : [],
-          cluster: match ? match[2] : '',
-        };
-      }).filter((r) => r.alternatives.length > 0);
-
-      setStats({ totalAttempts, averageAccuracy, totalQuestions, masteredWords });
+      setStats({ totalAttempts, averageAccuracy, masteredFacts });
       setRevisionList(matchedReviews);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err);
+      console.error('Error fetching classification dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -114,7 +99,9 @@ export default function Dashboard({
     <div className="dashboard-container">
       <div className="welcome-banner">
         <h2>স্বাগতম, {user.user_metadata?.full_name || (user.email ? user.email.split('@')[0] : 'শিক্ষার্থী')}!</h2>
-        <p>BCS বাংলা অর্থতত্ত্ব অনুশীলন ড্যাশবোর্ডে আপনাকে স্বাগতম। আপনার অগ্রগতি ট্র্যাক করতে, ভুল করা শব্দগুলো রিভিশন দিতে এবং নিয়মিত অনুশীলনের মাধ্যমে প্রস্তুতি মজবুত করুন।</p>
+        <p>
+          শব্দের শ্রেণিবিভাগ (গঠন, অর্থ ও উৎপত্তি অনুসারে) অনুশীলন করুন এবং আসল BCS প্রশ্নব্যাংক দিয়ে নিজেকে যাচাই করুন।
+        </p>
       </div>
 
       <div className="stats-grid">
@@ -127,8 +114,8 @@ export default function Dashboard({
           <div className="stat-label">গড় নির্ভুলতা</div>
         </div>
         <div className="stat-card">
-          <div className="stat-val">{stats.totalQuestions}টি</div>
-          <div className="stat-label">মোট অনুশীলিত শব্দ</div>
+          <div className="stat-val">{stats.masteredFacts}টি</div>
+          <div className="stat-label">আয়ত্ত করা শ্রেণি-তথ্য</div>
         </div>
       </div>
 
@@ -142,18 +129,6 @@ export default function Dashboard({
             <div className="topics-grid">
               <div className="topic-card" onClick={onStartQuiz}>
                 <div>
-                  <div className="topic-category">অর্থতত্ত্ব (Semantics)</div>
-                  <h4 className="topic-title">সমার্থক শব্দ</h4>
-                  <p className="topic-desc">৪৪টি মূল শব্দ এবং তাদের ৫ শতাধিক সমার্থক শব্দ অনুশীলন করুন। সাজেশন-ভিত্তিক টাইপিং সেশনের মাধ্যমে বানান ও প্রস্তুতি নিশ্চিত করুন।</p>
-                </div>
-                <div className="topic-footer">
-                  <span className="topic-progress">{stats.masteredWords}/{words.length} শব্দ আয়ত্ত</span>
-                  <span className="topic-action">অনুশীলন করুন</span>
-                </div>
-              </div>
-
-              <div className="topic-card" onClick={() => router.push('/tools/word-classification')}>
-                <div>
                   <div className="topic-category">শব্দতত্ত্ব (Word Classification)</div>
                   <h4 className="topic-title">শব্দের শ্রেণিবিভাগ</h4>
                   <p className="topic-desc">
@@ -161,7 +136,7 @@ export default function Dashboard({
                   </p>
                 </div>
                 <div className="topic-footer">
-                  <span className="topic-progress">নতুন</span>
+                  <span className="topic-progress">{stats.masteredFacts}/{entries.length} তথ্য আয়ত্ত</span>
                   <span className="topic-action">অনুশীলন করুন</span>
                 </div>
               </div>
@@ -173,7 +148,7 @@ export default function Dashboard({
           <div className="section-header">
             <h3 className="section-title">আজকের রিভিশন লিস্ট</h3>
           </div>
-          <SynonymBlock revisionList={revisionList} onStartReview={onStartReview} />
+          <ClassificationBlock revisionList={revisionList} onStartReview={onStartReview} />
         </div>
       </div>
     </div>
