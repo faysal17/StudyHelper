@@ -277,19 +277,29 @@ export default function WordClassificationPage() {
     count: number,
     allEntries: ClassificationEntry[],
     bank: ExamQuestion[],
-    answerMode: string
+    answerMode: string,
+    sessionMode: string
   ): Question[] => {
     const isMCQ = answerMode === 'mcq';
     const allLanguages = Array.from(new Set(allEntries.filter((e) => e.originLanguage).map((e) => e.originLanguage as string)));
 
-    // গঠন-axis facts never produce a generated question (see buildFactQuestion),
-    // so if the pool is entirely গঠন facts (e.g. axis filter = গঠন / a গঠন
-    // chapter), fall back to covering the whole session with real exam
-    // questions instead of generated ones.
+    // গঠন-axis facts never produce a generated question (see buildFactQuestion).
+    // In normal (non-chapter) sessions that just means falling back to real
+    // exam questions when the pool is entirely গঠন facts. Chapter-wise
+    // sessions never mix in exam-bank questions at all — a chapter should
+    // only ever quiz its own words — and গঠন chapters are disabled from
+    // selection in the UI for exactly this reason.
     const generatablePool = pool.filter((f) => f.axis !== 'গঠন');
     const onlyGothonPool = pool.length > 0 && generatablePool.length === 0;
 
-    const examCount = onlyGothonPool ? Math.min(bank.length, count) : isMCQ ? Math.min(bank.length, Math.round(count * 0.2)) : 0;
+    const examCount =
+      sessionMode === 'chapter'
+        ? 0
+        : onlyGothonPool
+          ? Math.min(bank.length, count)
+          : isMCQ
+            ? Math.min(bank.length, Math.round(count * 0.2))
+            : 0;
     const generatedCount = count - examCount;
 
     let picked: ClassificationEntry[] = [];
@@ -366,7 +376,7 @@ export default function WordClassificationPage() {
       });
 
       const prioritizedPool = [...shuffle(cat1), ...shuffle(cat2), ...shuffle(cat3)];
-      const questions = buildSessionQuestions(prioritizedPool, size, entries, examBank, answerMode);
+      const questions = buildSessionQuestions(prioritizedPool, size, entries, examBank, answerMode, mode);
 
       setQuizQuestions(questions);
       setCurrentQuestion(0);

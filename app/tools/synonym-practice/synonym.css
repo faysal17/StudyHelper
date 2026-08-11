@@ -552,6 +552,16 @@
   transform: translateY(-1px);
 }
 
+.synonym-app .chunk-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.synonym-app .chunk-btn:disabled:hover {
+  border-color: rgba(201, 162, 75, 0.22);
+  transform: none;
+}
+
 .synonym-app .chunk-btn .cnum {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10.5px;

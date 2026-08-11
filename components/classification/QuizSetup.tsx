@@ -113,7 +113,7 @@ export default function QuizSetup({
   };
 
   const selectAllChapters = () => {
-    setSelectedChapterKeys(new Set(chapters.map((c) => c.key)));
+    setSelectedChapterKeys(new Set(chapters.filter((c) => c.axis !== 'গঠন').map((c) => c.key)));
   };
 
   const clearChapterSelection = () => {
@@ -247,9 +247,11 @@ export default function QuizSetup({
             <div key={axis} style={{ marginBottom: '10px' }}>
               <div className="setup-label" style={{ fontSize: '12px', opacity: 0.75 }}>
                 {axis}
+                {axis === 'গঠন' && ' (চ্যাপ্টার ভিত্তিক অনুশীলনের জন্য উপলব্ধ নয়)'}
               </div>
               <div className="chunk-grid">
                 {chaptersByAxis[axis].map((chapter) => {
+                  const isDisabled = axis === 'গঠন';
                   const isSelected = selectedChapterKeys.has(chapter.key);
                   const isDone = completedChapters.has(chapter.key);
                   const wordsList = chapter.entries.map((e) => e.word).join(', ');
@@ -258,6 +260,7 @@ export default function QuizSetup({
                       key={chapter.key}
                       className={`chunk-btn ${isSelected ? 'selected' : ''} ${isDone ? 'chunk-done' : ''}`}
                       onClick={() => toggleChapter(chapter.key)}
+                      disabled={isDisabled}
                     >
                       <span className="ccheck"></span>
                       <span className="cnum">{chapter.label}</span>
@@ -297,7 +300,7 @@ export default function QuizSetup({
             </button>
           </div>
           <div className="note">
-            প্রতিটি চ্যাপ্টারে সর্বোচ্চ ১৬টি শব্দ-তথ্য আছে, যাতে এক বসাতেই পড়ে ফেলা যায়। MCQ মোডে কিছু প্রশ্ন আসল BCS প্রশ্নব্যাংক থেকে আসবে।
+            প্রতিটি চ্যাপ্টারে সর্বোচ্চ ১৬টি শব্দ-তথ্য আছে, যাতে এক বসাতেই পড়ে ফেলা যায়। চ্যাপ্টার ভিত্তিক সেশনে শুধু নির্বাচিত চ্যাপ্টারের প্রশ্নই আসবে, BCS প্রশ্নব্যাংক থেকে কোনো প্রশ্ন মেশানো হবে না।
           </div>
         </div>
       )}
