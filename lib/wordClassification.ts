@@ -73,13 +73,23 @@ export function buildChapters(entries: ClassificationEntry[]): Chapter[] {
     const groupEntries = groups[groupKey];
     const numChunks = Math.ceil(groupEntries.length / CHAPTER_CHUNK_SIZE);
 
+    // Spread entries evenly across chunks instead of slicing at a fixed
+    // size, so a group like 18 entries becomes two 9-entry chapters rather
+    // than a 16 + a leftover 2. The first `remainder` chunks get one extra
+    // entry so all chunk sizes differ by at most one.
+    const baseSize = Math.floor(groupEntries.length / numChunks);
+    const remainder = groupEntries.length % numChunks;
+
+    let offset = 0;
     for (let i = 0; i < numChunks; i++) {
+      const size = baseSize + (i < remainder ? 1 : 0);
       chapters.push({
         key: `${groupKey}:${i}`,
         label: numChunks > 1 ? `${baseLabel} ${i + 1}` : baseLabel,
         axis: axis as Axis,
-        entries: groupEntries.slice(i * CHAPTER_CHUNK_SIZE, (i + 1) * CHAPTER_CHUNK_SIZE),
+        entries: groupEntries.slice(offset, offset + size),
       });
+      offset += size;
     }
   });
 
