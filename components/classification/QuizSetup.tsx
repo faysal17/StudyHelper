@@ -32,6 +32,7 @@ export default function QuizSetup({
     const saved = localStorage.getItem('bangla_classification_qcount');
     return saved ? parseInt(saved, 10) : 10;
   });
+  const [isStudyMode, setIsStudyMode] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('bangla_classification_axis', axisFilter);
@@ -51,6 +52,34 @@ export default function QuizSetup({
     if (pool.length === 0) return;
     onStart(pool, sessionSize, answerMode);
   };
+
+  const labelFor = (e: ClassificationEntry) =>
+    e.axis === 'উৎপত্তি' && e.subGroup === 'বিদেশি' && e.originLanguage
+      ? `${e.subGroup} (${e.originLanguage})`
+      : e.subGroup;
+
+  if (isStudyMode) {
+    return (
+      <div className="study-card">
+        <button className="back-link" onClick={() => setIsStudyMode(false)}>
+          ← সেটআপে ফিরি
+        </button>
+        <div className="study-words-container">
+          {pool.map((e) => (
+            <div key={`${e.word}-${e.axis}`} className="study-word-block">
+              <div className="study-word">{e.word}</div>
+              <div className="study-syns">
+                {e.axis} — {labelFor(e)}
+              </div>
+            </div>
+          ))}
+        </div>
+        <button className="start-btn" onClick={handleStart} disabled={pool.length === 0}>
+          অনুশীলন শুরু করি
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="setup-card">
@@ -111,9 +140,14 @@ export default function QuizSetup({
         />
       </div>
 
-      <button className="start-btn" onClick={handleStart} disabled={pool.length === 0}>
-        শুরু করি
-      </button>
+      <div className="chunk-btns-row">
+        <button className="start-btn secondary" onClick={() => setIsStudyMode(true)} disabled={pool.length === 0}>
+          শব্দগুলো পড়ি
+        </button>
+        <button className="start-btn" onClick={handleStart} disabled={pool.length === 0}>
+          শুরু করি
+        </button>
+      </div>
       <div className="note">
         নির্বাচিত অংশে {pool.length}টি শব্দ-তথ্য আছে। MCQ মোডে কিছু প্রশ্ন আসল BCS প্রশ্নব্যাংক থেকে আসবে।
       </div>
