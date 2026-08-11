@@ -70,6 +70,18 @@ export default function QuizSetup({
     localStorage.setItem('bangla_classification_selected_chapters', JSON.stringify(Array.from(selectedChapterKeys)));
   }, [selectedChapterKeys]);
 
+  // গঠন chapters aren't offered for chapter-wise study (see below), but a
+  // key saved from before that restriction existed could still be sitting
+  // in localStorage as "selected" — strip it out so it can't sneak into a
+  // session.
+  useEffect(() => {
+    setSelectedChapterKeys((prev) => {
+      const filtered = new Set(Array.from(prev).filter((key) => !key.startsWith('গঠন:')));
+      return filtered.size === prev.size ? prev : filtered;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pool = axisFilter === 'all' ? entries : entries.filter((e) => e.axis === axisFilter);
 
   const chapters = useMemo(() => buildChapters(entries), [entries]);
@@ -243,15 +255,16 @@ export default function QuizSetup({
           </div>
 
           <div className="setup-label">চ্যাপ্টার বেছে নাও (একাধিক নেওয়া যায়)</div>
-          {(['গঠন', 'অর্থ', 'উৎপত্তি'] as Axis[]).map((axis) => (
+          <div className="note" style={{ marginTop: 0, marginBottom: '10px' }}>
+            গঠন (মৌলিক/সাধিত) চ্যাপ্টার ভিত্তিক অনুশীলনে অন্তর্ভুক্ত নয় — এটি "স্বাভাবিক অনুশীলন" থেকে অনুশীলন করুন।
+          </div>
+          {(['অর্থ', 'উৎপত্তি'] as Axis[]).map((axis) => (
             <div key={axis} style={{ marginBottom: '10px' }}>
               <div className="setup-label" style={{ fontSize: '12px', opacity: 0.75 }}>
                 {axis}
-                {axis === 'গঠন' && ' (চ্যাপ্টার ভিত্তিক অনুশীলনের জন্য উপলব্ধ নয়)'}
               </div>
               <div className="chunk-grid">
                 {chaptersByAxis[axis].map((chapter) => {
-                  const isDisabled = axis === 'গঠন';
                   const isSelected = selectedChapterKeys.has(chapter.key);
                   const isDone = completedChapters.has(chapter.key);
                   const wordsList = chapter.entries.map((e) => e.word).join(', ');
@@ -260,7 +273,6 @@ export default function QuizSetup({
                       key={chapter.key}
                       className={`chunk-btn ${isSelected ? 'selected' : ''} ${isDone ? 'chunk-done' : ''}`}
                       onClick={() => toggleChapter(chapter.key)}
-                      disabled={isDisabled}
                     >
                       <span className="ccheck"></span>
                       <span className="cnum">{chapter.label}</span>
