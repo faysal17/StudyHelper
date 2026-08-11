@@ -79,6 +79,8 @@ export default function PlacementLayer({
               placement={placement}
               task={placement.task}
               routineColor={routine?.color}
+              startSlot={startSlot}
+              endSlot={endSlot}
               onRemove={onRemove}
               onResizeStart={routine ? undefined : startResize(placement)}
             />

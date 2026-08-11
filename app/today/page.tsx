@@ -167,6 +167,10 @@ export default function TodayPage() {
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    // Blur the dragged element before it unmounts (task moves out of the Due
+    // Today list into the timeline) — otherwise the browser's default
+    // focus-loss handling scrolls the page back up to the Due Today block.
+    (document.activeElement as HTMLElement | null)?.blur();
     setActiveDragTask(null);
     setMagnetTargetBlockId(null);
     const { active, over } = event;

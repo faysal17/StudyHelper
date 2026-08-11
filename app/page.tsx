@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import FocusTimerBlock from '@/components/FocusTimerBlock';
 import TaskCountersBlock from '@/components/TaskCountersBlock';
@@ -10,12 +10,19 @@ import NewStudyBlock from '@/components/NewStudyBlock';
 import RevisionBlock from '@/components/RevisionBlock';
 import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
-import { Task, UserSettings, FocusSession } from '@/lib/types';
+import UpcomingTaskNotification from '@/components/UpcomingTaskNotification';
+import { Task, UserSettings, FocusSession, DailyTaskPlacement, RoutineBlock } from '@/lib/types';
 import { fetchTasks, fetchUserSettings, fetchFocusSessions, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { fetchPlacementsForDate, fetchRoutineBlocks } from '@/lib/routines';
+import { getTodayDateString } from '@/lib/spacedRepetition';
+import { SLOT_MINUTES, slotsForRoutineBlock } from '@/lib/timeGrid';
 import { Loader2, Skull, AlertCircle, ZapOff } from 'lucide-react';
 import TaskCreatorModal from '@/components/TaskCreatorModal';
 import HunterEventModal from '@/components/HunterEventModal';
 import { getQuitTauntMessage } from '@/lib/gamification';
+
+const UPCOMING_WINDOW_MINUTES = 60;
+const dismissedStorageKey = (dateStr: string) => `studyhub_dismissed_upcoming_${dateStr}`;
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -25,11 +32,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
 
+  const [todayPlacements, setTodayPlacements] = useState<DailyTaskPlacement[]>([]);
+  const [routineBlocks, setRoutineBlocks] = useState<RoutineBlock[]>([]);
+  const [dismissedUpcomingIds, setDismissedUpcomingIds] = useState<Set<string>>(new Set());
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
   const [noteTaskTarget, setNoteTaskTarget] = useState<Task | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoad();
+  }, []);
+
+  // Recheck which task is "coming up" every minute while the dashboard stays open
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const checkAuthAndLoad = async () => {
@@ -52,14 +70,25 @@ export default function DashboardPage() {
     }
 
     try {
-      const [taskData, settingsData, sessionData] = await Promise.all([
+      const [taskData, settingsData, sessionData, routineData] = await Promise.all([
         fetchTasks(),
         fetchUserSettings(),
         fetchFocusSessions(),
+        fetchRoutineBlocks(),
       ]);
       setTasks(taskData);
       setUserSettings(settingsData);
       setSessions(sessionData);
+      setRoutineBlocks(routineData);
+
+      const todayStr = getTodayDateString(settingsData?.day_end_time || '00:00');
+      const placementData = await fetchPlacementsForDate(todayStr);
+      setTodayPlacements(placementData);
+
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(dismissedStorageKey(todayStr));
+        setDismissedUpcomingIds(stored ? new Set(JSON.parse(stored)) : new Set());
+      }
 
       if (settingsData?.show_weekly_rank_modal) {
         setWeeklyModalOpen(true);
@@ -69,6 +98,46 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const todayDateStr = useMemo(
+    () => getTodayDateString(userSettings?.day_end_time || '00:00'),
+    [userSettings?.day_end_time]
+  );
+
+  const upcomingTask = useMemo(() => {
+    void nowTick; // recompute every minute
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    let best: { placement: DailyTaskPlacement; minutesUntilStart: number } | null = null;
+    for (const placement of todayPlacements) {
+      if (!placement.task || dismissedUpcomingIds.has(placement.id)) continue;
+
+      let startSlot = placement.slot_index;
+      if (placement.routine_block_id) {
+        const block = routineBlocks.find((b) => b.id === placement.routine_block_id);
+        if (block) startSlot = slotsForRoutineBlock(block).startSlot;
+      }
+      const startMinutes = startSlot * SLOT_MINUTES;
+      const minutesUntilStart = startMinutes - nowMinutes;
+
+      if (minutesUntilStart < 0 || minutesUntilStart > UPCOMING_WINDOW_MINUTES) continue;
+      if (!best || minutesUntilStart < best.minutesUntilStart) {
+        best = { placement, minutesUntilStart };
+      }
+    }
+    return best;
+  }, [todayPlacements, routineBlocks, dismissedUpcomingIds, nowTick]);
+
+  const dismissUpcomingTask = (placementId: string) => {
+    setDismissedUpcomingIds((prev) => {
+      const next = new Set(prev).add(placementId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(dismissedStorageKey(todayDateStr), JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
   };
 
   const handleCloseWeeklyModal = async () => {
@@ -96,6 +165,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 w-full">
+      {/* Upcoming Today-Schedule Task Notification */}
+      {upcomingTask && (
+        <UpcomingTaskNotification
+          placement={upcomingTask.placement}
+          minutesUntilStart={upcomingTask.minutesUntilStart}
+          onDismiss={() => dismissUpcomingTask(upcomingTask.placement.id)}
+        />
+      )}
+
       {/* Dynamic Quitter & Low-XP Dashboard Taunt Banner */}
       {userSettings && showRankFeatures && isRecentQuitter && (
         <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 flex items-center justify-between gap-4 shadow-lg animate-in slide-in-from-top duration-300">
