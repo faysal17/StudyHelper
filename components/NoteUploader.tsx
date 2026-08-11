@@ -95,11 +95,16 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
 
       const originalSize = (selectedFile.size / (1024 * 1024)).toFixed(2);
 
+      const isFromPdf = pdfPageCount !== null;
       const compressedFile = await compressHandwrittenNote(selectedFile, {
-        maxSizeMB: 0.3,
+        // PDF pages are rendered text, not a coarse handwriting photo — the
+        // same 300KB budget that's fine for a phone snapshot forces heavy
+        // WebP quality loss on small print, so give PDFs a much bigger
+        // ceiling to keep the text legible.
+        maxSizeMB: isFromPdf ? 3 : 0.3,
         // PDF pages are stitched into one tall image, so allow a taller
         // ceiling than a single photo to keep multi-page text legible.
-        maxWidthOrHeight: pdfPageCount !== null ? 3200 : 1920,
+        maxWidthOrHeight: isFromPdf ? 3200 : 1920,
         useWebWorker: true,
         fileType: 'image/webp',
       });
@@ -194,7 +199,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
                 Click to select handwritten note image or PDF
               </p>
               <p className="text-[11px] text-zinc-500">
-                HEIC, JPEG, PNG, WebP, or PDF (auto-compressed to &lt;300KB WebP)
+                HEIC, JPEG, PNG, WebP, or PDF (auto-compressed to WebP)
               </p>
             </div>
           )}
