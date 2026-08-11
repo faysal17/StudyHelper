@@ -239,10 +239,15 @@ export default function WordClassificationPage() {
     };
   };
 
-  const buildFactQuestion = (fact: ClassificationEntry, allEntries: ClassificationEntry[], allLanguages: string[], isMCQ: boolean): Question => {
+  const buildFactQuestion = (fact: ClassificationEntry, allEntries: ClassificationEntry[], allLanguages: string[], isMCQ: boolean): Question | null => {
     const askLanguage = fact.subGroup === 'বিদেশি' && Math.random() < 0.5;
 
-    if (fact.axis === 'গঠন' || fact.axis === 'অর্থ') {
+    // গঠন axis only has 4 words each in মৌলিক/সাধিত, so generated questions
+    // (e.g. "কোনটি সাধিত শব্দ?" with just the 3 other pool words as options)
+    // are low quality. Real BCS exam questions cover this axis instead.
+    if (fact.axis === 'গঠন') return null;
+
+    if (fact.axis === 'অর্থ') {
       if (isMCQ) {
         return buildReverseQuestion(fact, fact.subGroup, allEntries, Math.random() < 0.25, false);
       }
@@ -277,15 +282,22 @@ export default function WordClassificationPage() {
     const isMCQ = answerMode === 'mcq';
     const allLanguages = Array.from(new Set(allEntries.filter((e) => e.originLanguage).map((e) => e.originLanguage as string)));
 
-    const examCount = isMCQ ? Math.min(bank.length, Math.round(count * 0.2)) : 0;
+    // গঠন-axis facts never produce a generated question (see buildFactQuestion),
+    // so if the pool is entirely গঠন facts (e.g. axis filter = গঠন / a গঠন
+    // chapter), fall back to covering the whole session with real exam
+    // questions instead of generated ones.
+    const generatablePool = pool.filter((f) => f.axis !== 'গঠন');
+    const onlyGothonPool = pool.length > 0 && generatablePool.length === 0;
+
+    const examCount = onlyGothonPool ? Math.min(bank.length, count) : isMCQ ? Math.min(bank.length, Math.round(count * 0.2)) : 0;
     const generatedCount = count - examCount;
 
     let picked: ClassificationEntry[] = [];
-    if (generatedCount <= pool.length) {
-      picked = shuffle(pool).slice(0, generatedCount);
-    } else if (pool.length > 0) {
+    if (generatedCount <= generatablePool.length) {
+      picked = shuffle(generatablePool).slice(0, generatedCount);
+    } else if (generatablePool.length > 0) {
       while (picked.length < generatedCount) {
-        let batch = shuffle(pool);
+        let batch = shuffle(generatablePool);
         if (picked.length > 0 && batch[0].word === picked[picked.length - 1].word && batch.length > 1) {
           [batch[0], batch[1]] = [batch[1], batch[0]];
         }
@@ -294,7 +306,9 @@ export default function WordClassificationPage() {
       picked = picked.slice(0, generatedCount);
     }
 
-    const generatedQuestions = picked.map((fact) => buildFactQuestion(fact, allEntries, allLanguages, isMCQ));
+    const generatedQuestions = picked
+      .map((fact) => buildFactQuestion(fact, allEntries, allLanguages, isMCQ))
+      .filter((q): q is Question => q !== null);
 
     const examQuestions: Question[] = shuffle(bank)
       .slice(0, examCount)
@@ -304,6 +318,7 @@ export default function WordClassificationPage() {
         shown: eq.prompt,
         correct: eq.options[eq.correctIndex],
         options: shuffle(eq.options),
+        datalist: eq.options,
       }));
 
     return shuffle([...generatedQuestions, ...examQuestions]);
