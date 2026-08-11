@@ -204,11 +204,16 @@ export default function WordClassificationPage() {
     wantNegate: boolean,
     isLanguage: boolean
   ): Question => {
+    // Distractors must stay within the same axis — e.g. a যৌগিক/রূঢ়ি/যোগরূঢ়
+    // (অর্থ axis) question should never pull তদ্ভব/দেশি (উৎপত্তি axis) words
+    // as wrong options, even though their subGroup/language legitimately
+    // differs from targetLabel.
+    const axisPool = allEntries.filter((e) => e.axis === fact.axis);
     const isMatch = (e: ClassificationEntry) =>
-      isLanguage ? e.originLanguage === targetLabel : e.axis === fact.axis && e.subGroup === targetLabel;
+      isLanguage ? e.originLanguage === targetLabel : e.subGroup === targetLabel;
 
-    const matchingOthers = allEntries.filter((e) => e.word !== fact.word && isMatch(e));
-    const nonMatching = allEntries.filter((e) => e.word !== fact.word && !isMatch(e));
+    const matchingOthers = axisPool.filter((e) => e.word !== fact.word && isMatch(e));
+    const nonMatching = axisPool.filter((e) => e.word !== fact.word && !isMatch(e));
     const negate = wantNegate && matchingOthers.length >= 2 && nonMatching.length > 0;
 
     if (negate) {
