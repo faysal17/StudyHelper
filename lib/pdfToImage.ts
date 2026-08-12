@@ -20,8 +20,12 @@ export async function convertPdfToImageFile(pdfFile: File): Promise<PdfConversio
   const numPages = pdf.numPages;
 
   const baseViewport = (await pdf.getPage(1)).getViewport({ scale: 1 });
+  // Browsers cap canvas height/area (commonly ~32k px tall), so for
+  // many-page PDFs the scale must be allowed to drop well below 1x —
+  // flooring it at 1x (as before) let long documents blow past that
+  // cap and made toBlob() fail with a null blob.
   const maxTotalHeightPx = 14000;
-  const targetScale = Math.min(2, Math.max(1, maxTotalHeightPx / (baseViewport.height * numPages)));
+  const targetScale = Math.min(2, Math.max(0.1, maxTotalHeightPx / (baseViewport.height * numPages)));
 
   const pageCanvases: HTMLCanvasElement[] = [];
   let totalHeight = 0;
