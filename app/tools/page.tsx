@@ -1,6 +1,6 @@
 'use client';
 
-import { Wrench, BookOpen, Shuffle, ExternalLink, ListTree } from 'lucide-react';
+import { Wrench, BookOpen, Shuffle, ExternalLink, ListTree, Newspaper } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ToolsPage() {
@@ -33,6 +33,16 @@ export default function ToolsPage() {
       status: 'Active Tool',
       badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
       href: '/tools/word-classification',
+      external: false,
+    },
+    {
+      id: 'newspaper-study',
+      title: 'Newspaper Study',
+      description: 'Archive newspaper article scans by date, browse them by year/month/week/day, and track pages read with comments.',
+      icon: <Newspaper className="w-5 h-5 text-orange-400" />,
+      status: 'Active Tool',
+      badgeBg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      href: '/tools/newspaper-study',
       external: false,
     },
   ];

@@ -71,6 +71,29 @@ export interface Task {
   notes?: Note[];
 }
 
+export interface NewspaperPage {
+  id: string;
+  pdf_id: string;
+  user_id: string;
+  page_number: number;
+  is_read: boolean;
+  comment: string | null;
+}
+
+export interface NewspaperPdf {
+  id: string;
+  user_id: string;
+  title: string;
+  pdf_url: string;
+  page_count: number;
+  year: number;
+  month: number;
+  week: number | null;
+  day: number | null;
+  created_at?: string;
+  pages?: NewspaperPage[];
+}
+
 export interface RevisionLog {
   id: string;
   task_id: string;
