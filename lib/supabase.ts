@@ -821,18 +821,28 @@ export async function deleteNote(id: string): Promise<void> {
 }
 
 export async function uploadNoteImage(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', file);
+  const presignRes = await fetch('/api/upload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName: file.name, contentType: file.type || 'image/webp' }),
+  });
+  if (!presignRes.ok) {
+    const body = await presignRes.json().catch(() => null);
+    throw new Error(body?.error || `Failed to get an R2 upload URL (status ${presignRes.status}).`);
+  }
+  const { uploadUrl, publicUrl } = await presignRes.json();
+  if (!uploadUrl || !publicUrl) throw new Error('R2 did not return an upload URL.');
 
-  const res = await fetch('/api/upload', { method: 'POST', body: formData });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error || `Upload to R2 failed (status ${res.status}).`);
+  const putRes = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'image/webp' },
+    body: file,
+  });
+  if (!putRes.ok) {
+    throw new Error(`Upload to R2 failed (status ${putRes.status}).`);
   }
 
-  const { url } = await res.json();
-  if (!url) throw new Error('Upload to R2 did not return a URL.');
-  return url;
+  return publicUrl;
 }
 
 export async function createNote(taskId: string, imageUrl: string): Promise<Note> {

@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadToR2, isR2Configured } from '@/lib/r2';
+import { createPresignedUploadUrl, isR2Configured } from '@/lib/r2';
 
 export async function POST(req: NextRequest) {
   if (!isR2Configured) {
     return NextResponse.json({ error: 'R2 is not configured' }, { status: 500 });
   }
 
-  const formData = await req.formData();
-  const file = formData.get('file');
+  const { fileName, contentType } = (await req.json()) as { fileName?: string; contentType?: string };
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  if (!fileName) {
+    return NextResponse.json({ error: 'No fileName provided' }, { status: 400 });
   }
 
-  const fileExt = file.name.split('.').pop() || 'webp';
-  const key = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const ext = fileName.split('.').pop() || 'webp';
+  const key = `${Date.now()}_${Math.random().toString(36).substring(2)}.${ext}`;
 
-  const publicUrl = await uploadToR2(key, buffer, file.type || 'image/webp');
+  const { uploadUrl, publicUrl } = await createPresignedUploadUrl(key, contentType || 'application/octet-stream');
 
-  return NextResponse.json({ url: publicUrl });
+  return NextResponse.json({ uploadUrl, publicUrl });
 }

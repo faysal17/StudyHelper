@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const accountId = process.env.R2_ACCOUNT_ID;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -17,19 +18,19 @@ const r2Client = isR2Configured
     })
   : null;
 
-export async function uploadToR2(key: string, body: Buffer, contentType: string): Promise<string> {
+export async function createPresignedUploadUrl(
+  key: string,
+  contentType: string
+): Promise<{ uploadUrl: string; publicUrl: string }> {
   if (!r2Client) throw new Error('R2 is not configured');
 
-  await r2Client.send(
-    new PutObjectCommand({
-      Bucket: R2_BUCKET_NAME,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    })
+  const uploadUrl = await getSignedUrl(
+    r2Client,
+    new PutObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key, ContentType: contentType }),
+    { expiresIn: 300 }
   );
 
-  return `${R2_PUBLIC_URL}/${key}`;
+  return { uploadUrl, publicUrl: `${R2_PUBLIC_URL}/${key}` };
 }
 
 export async function deleteFromR2(keys: string[]): Promise<void> {
