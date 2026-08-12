@@ -764,6 +764,23 @@ export async function completeTaskManually(task: Task, dayEndTime: string = '00:
   });
 }
 
+const R2_PUBLIC_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '').replace(/\/$/, '');
+
+async function deleteNoteImagesFromR2(urls: string[]): Promise<void> {
+  const r2Urls = urls.filter((url) => R2_PUBLIC_URL && url?.startsWith(`${R2_PUBLIC_URL}/`));
+  if (r2Urls.length === 0) return;
+
+  try {
+    await fetch('/api/storage/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls: r2Urls }),
+    });
+  } catch (err) {
+    console.error('Error clearing note images from R2 storage:', err);
+  }
+}
+
 export async function deleteTask(id: string): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
@@ -773,22 +790,10 @@ export async function deleteTask(id: string): Promise<void> {
         .eq('task_id', id);
 
       if (notes && notes.length > 0) {
-        const filePaths: string[] = notes
-          .map((n) => {
-            const url = n.image_url;
-            if (url && url.includes('/scanned-notes/')) {
-              return url.split('/scanned-notes/').pop() || '';
-            }
-            return '';
-          })
-          .filter(Boolean);
-
-        if (filePaths.length > 0) {
-          await supabase.storage.from('scanned-notes').remove(filePaths);
-        }
+        await deleteNoteImagesFromR2(notes.map((n) => n.image_url).filter(Boolean));
       }
     } catch (err) {
-      console.error('Error clearing note images from Supabase storage during task deletion:', err);
+      console.error('Error clearing note images during task deletion:', err);
     }
 
     await supabase.from('tasks').delete().eq('id', id);
@@ -804,14 +809,11 @@ export async function deleteNote(id: string): Promise<void> {
         .eq('id', id)
         .single();
 
-      if (note?.image_url && note.image_url.includes('/scanned-notes/')) {
-        const filePath = note.image_url.split('/scanned-notes/').pop();
-        if (filePath) {
-          await supabase.storage.from('scanned-notes').remove([filePath]);
-        }
+      if (note?.image_url) {
+        await deleteNoteImagesFromR2([note.image_url]);
       }
     } catch (err) {
-      console.error('Error clearing note image from Supabase storage during note deletion:', err);
+      console.error('Error clearing note image during note deletion:', err);
     }
 
     await supabase.from('notes').delete().eq('id', id);
@@ -819,17 +821,17 @@ export async function deleteNote(id: string): Promise<void> {
 }
 
 export async function uploadNoteImage(file: File): Promise<string> {
-  if (isSupabaseConfigured && supabase) {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage
-      .from('scanned-notes')
-      .upload(fileName, file, { contentType: file.type || 'image/webp' });
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
 
-    if (!uploadError) {
-      const { data } = supabase.storage.from('scanned-notes').getPublicUrl(fileName);
-      if (data?.publicUrl) return data.publicUrl;
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (res.ok) {
+      const { url } = await res.json();
+      if (url) return url;
     }
+  } catch (err) {
+    console.error('Error uploading note image to R2:', err);
   }
 
   return new Promise((resolve, reject) => {

@@ -215,22 +215,24 @@ CREATE POLICY "Users can update their own settings" ON public.user_settings
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- 5. Supabase Storage Bucket Policies for 'scanned-notes'
-INSERT INTO storage.buckets (id, name, public) 
-VALUES ('scanned-notes', 'scanned-notes', true)
-ON CONFLICT (id) DO NOTHING;
-
-DROP POLICY IF EXISTS "Allow public select on scanned-notes" ON storage.objects;
-DROP POLICY IF EXISTS "Allow authenticated read own scanned-notes" ON storage.objects;
-CREATE POLICY "Allow authenticated read own scanned-notes" ON storage.objects
-    FOR SELECT USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
-
-DROP POLICY IF EXISTS "Allow authenticated insert on scanned-notes" ON storage.objects;
-CREATE POLICY "Allow authenticated insert on scanned-notes" ON storage.objects
-    FOR INSERT WITH CHECK (bucket_id = 'scanned-notes' AND auth.uid() = owner);
-
-DROP POLICY IF EXISTS "Allow authenticated delete on scanned-notes" ON storage.objects;
-CREATE POLICY "Allow authenticated delete on scanned-notes" ON storage.objects
-    FOR DELETE USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
+-- Superseded: scanned note images now live in Cloudflare R2 (see lib/r2.ts,
+-- app/api/upload, app/api/storage/delete). Left here only in case of rollback.
+-- INSERT INTO storage.buckets (id, name, public)
+-- VALUES ('scanned-notes', 'scanned-notes', true)
+-- ON CONFLICT (id) DO NOTHING;
+--
+-- DROP POLICY IF EXISTS "Allow public select on scanned-notes" ON storage.objects;
+-- DROP POLICY IF EXISTS "Allow authenticated read own scanned-notes" ON storage.objects;
+-- CREATE POLICY "Allow authenticated read own scanned-notes" ON storage.objects
+--     FOR SELECT USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
+--
+-- DROP POLICY IF EXISTS "Allow authenticated insert on scanned-notes" ON storage.objects;
+-- CREATE POLICY "Allow authenticated insert on scanned-notes" ON storage.objects
+--     FOR INSERT WITH CHECK (bucket_id = 'scanned-notes' AND auth.uid() = owner);
+--
+-- DROP POLICY IF EXISTS "Allow authenticated delete on scanned-notes" ON storage.objects;
+-- CREATE POLICY "Allow authenticated delete on scanned-notes" ON storage.objects
+--     FOR DELETE USING (bucket_id = 'scanned-notes' AND auth.uid() = owner);
 
 -- 6. Bangla Vocabulary Table (Database Synced Dictionary)
 CREATE TABLE IF NOT EXISTS public.bangla_vocab (

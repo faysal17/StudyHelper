@@ -245,7 +245,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
           <span>
             {isCompressing
               ? 'Compressing handwritten note to WebP...'
-              : 'Uploading to Supabase Storage bucket (scanned-notes)...'}
+              : 'Uploading to Cloudflare R2...'}
           </span>
         </div>
       )}
