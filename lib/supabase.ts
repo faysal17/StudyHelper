@@ -821,25 +821,18 @@ export async function deleteNote(id: string): Promise<void> {
 }
 
 export async function uploadNoteImage(file: File): Promise<string> {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
+  const formData = new FormData();
+  formData.append('file', file);
 
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    if (res.ok) {
-      const { url } = await res.json();
-      if (url) return url;
-    }
-  } catch (err) {
-    console.error('Error uploading note image to R2:', err);
+  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || `Upload to R2 failed (status ${res.status}).`);
   }
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  const { url } = await res.json();
+  if (!url) throw new Error('Upload to R2 did not return a URL.');
+  return url;
 }
 
 export async function createNote(taskId: string, imageUrl: string): Promise<Note> {
