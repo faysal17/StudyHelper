@@ -68,6 +68,21 @@ export async function zipImagesToPdf(zipFile: File): Promise<PdfMergeResult> {
   const pdfDoc = await PDFDocument.create();
 
   for (const entry of entries) {
+    const isJpeg = /\.jpe?g$/i.test(entry.name);
+    const isPng = /\.png$/i.test(entry.name);
+
+    // Embed JPEG/PNG bytes as-is — re-encoding a photo as PNG (as the canvas
+    // fallback below does) turns lossy-compressed photos into much larger
+    // lossless files. Only fall back to the canvas roundtrip for formats
+    // pdf-lib can't embed directly (webp/gif/bmp).
+    if (isJpeg || isPng) {
+      const bytes = new Uint8Array(await entry.async('arraybuffer'));
+      const image = isJpeg ? await pdfDoc.embedJpg(bytes) : await pdfDoc.embedPng(bytes);
+      const page = pdfDoc.addPage([image.width, image.height]);
+      page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+      continue;
+    }
+
     const blob = await entry.async('blob');
     const { bytes, width, height } = await blobToPngBytes(blob);
     const image = await pdfDoc.embedPng(bytes);

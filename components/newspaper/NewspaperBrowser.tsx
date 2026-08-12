@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NewspaperPdf } from '@/lib/types';
 import { ChevronDown, ChevronRight, FileText, Trash2, Newspaper } from 'lucide-react';
 
@@ -79,6 +79,16 @@ export default function NewspaperBrowser({ pdfs, onOpenPdf, onDeletePdf }: Newsp
   const tree = useMemo(() => buildTree(pdfs), [pdfs]);
   const [expandedYears, setExpandedYears] = useState<Set<number>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const hasAutoExpanded = useRef(false);
+
+  // Open every year/month by default the first time the archive loads, so
+  // the user doesn't have to click through the hierarchy manually.
+  useEffect(() => {
+    if (hasAutoExpanded.current || tree.length === 0) return;
+    hasAutoExpanded.current = true;
+    setExpandedYears(new Set(tree.map((y) => y.year)));
+    setExpandedMonths(new Set(tree.flatMap((y) => y.months.map((m) => `${y.year}-${m.month}`))));
+  }, [tree]);
 
   const toggleYear = (year: number) => {
     setExpandedYears((prev) => {

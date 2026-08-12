@@ -80,8 +80,10 @@ export default function NewspaperStudyPage() {
     );
   }
 
+  const viewingPdf = viewingPdfId ? pdfs.find((p) => p.id === viewingPdfId) || null : null;
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+    <div className={viewingPdf ? 'w-full space-y-4 pb-6' : 'max-w-4xl mx-auto space-y-6 pb-12'}>
       <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
         <div className="flex items-center space-x-3">
           <div className="p-2.5 bg-zinc-900 border border-zinc-800 rounded-xl text-zinc-100 shadow-sm">
@@ -112,8 +114,8 @@ export default function NewspaperStudyPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
         </div>
-      ) : viewingPdfId ? (
-        <NewspaperViewer pdfId={viewingPdfId} onBack={() => setViewingPdfId(null)} />
+      ) : viewingPdf ? (
+        <NewspaperViewer pdf={viewingPdf} onBack={() => setViewingPdfId(null)} />
       ) : (
         <NewspaperBrowser pdfs={pdfs} onOpenPdf={setViewingPdfId} onDeletePdf={handleDeletePdf} />
       )}
