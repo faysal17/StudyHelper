@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { compressHandwrittenNote } from '@/lib/imageCompression';
 import { convertPdfToImageFile } from '@/lib/pdfToImage';
 import { uploadNoteImage, createNote } from '@/lib/supabase';
-import { UploadCloud, FileCheck, AlertCircle, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
+import { UploadCloud, AlertCircle, Loader2, Image as ImageIcon, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface NoteUploaderProps {
@@ -21,12 +20,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
   const [isConvertingHeic, setIsConvertingHeic] = useState(false);
   const [isConvertingPdf, setIsConvertingPdf] = useState(false);
   const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
-  const [isCompressing, setIsCompressing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [compressionStats, setCompressionStats] = useState<{
-    originalSizeMB: string;
-    compressedSizeMB: string;
-  } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   // Lock background scroll while this modal is open — otherwise the page
@@ -45,7 +39,6 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
     if (e.target.files && e.target.files[0]) {
       let file = e.target.files[0];
       setErrorMsg('');
-      setCompressionStats(null);
       setPdfPageCount(null);
 
       const isHeic =
@@ -102,44 +95,10 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
     if (!selectedFile) return;
 
     try {
-      setIsCompressing(true);
       setErrorMsg('');
-
-      const originalSize = (selectedFile.size / (1024 * 1024)).toFixed(2);
-
-      const isFromPdf = pdfPageCount !== null;
-      const compressedFile = await compressHandwrittenNote(selectedFile, {
-        // PDF pages are rendered text, not a coarse handwriting photo — the
-        // same 300KB budget that's fine for a phone snapshot forces heavy
-        // WebP quality loss on small print, so give PDFs a much bigger
-        // ceiling to keep the text legible.
-        maxSizeMB: isFromPdf ? 6 : 0.3,
-        // convertPdfToImageFile already sizes the stitched image (capping
-        // its own total height for very long documents) to keep per-page
-        // text legible. Re-applying a maxWidthOrHeight cap here constrains
-        // whichever side is longest — for a multi-page stitch that's
-        // always the height, so it was scaling width down proportionally
-        // too (an 11-page note ended up 226px wide). Only cap it for
-        // regular photos; let PDFs keep the dimensions already chosen.
-        maxWidthOrHeight: isFromPdf ? undefined : 1920,
-        // Let quality flex to hit the byte budget instead of silently
-        // shrinking dimensions further when a long multi-page doc doesn't
-        // fit under maxSizeMB — a bigger file beats illegible text.
-        alwaysKeepResolution: isFromPdf,
-        useWebWorker: true,
-        fileType: 'image/webp',
-      });
-
-      const compressedSize = (compressedFile.size / (1024 * 1024)).toFixed(2);
-      setCompressionStats({
-        originalSizeMB: originalSize,
-        compressedSizeMB: compressedSize,
-      });
-
-      setIsCompressing(false);
       setIsUploading(true);
 
-      const publicUrl = await uploadNoteImage(compressedFile);
+      const publicUrl = await uploadNoteImage(selectedFile);
       const note = await createNote(taskId, publicUrl);
 
       setIsUploading(false);
@@ -151,8 +110,7 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
       }
     } catch (err: any) {
       console.error('Note upload failed:', err);
-      setErrorMsg(err.message || 'Note compression or upload failed.');
-      setIsCompressing(false);
+      setErrorMsg(err.message || 'Note upload failed.');
       setIsUploading(false);
     }
   };
@@ -220,33 +178,17 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
                 Click to select handwritten note image or PDF
               </p>
               <p className="text-[11px] text-zinc-500">
-                HEIC, JPEG, PNG, WebP, or PDF (auto-compressed to WebP)
+                HEIC, JPEG, PNG, WebP, or PDF
               </p>
             </div>
           )}
         </label>
       </div>
 
-      {compressionStats && (
-        <div className="mb-4 p-3 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-300 flex items-center justify-between">
-          <div className="flex items-center space-x-1.5">
-            <FileCheck className="w-4 h-4 text-emerald-400" />
-            <span>Compressed</span>
-          </div>
-          <div className="font-mono text-[11px]">
-            {compressionStats.originalSizeMB} MB &rarr; <strong>{compressionStats.compressedSizeMB} MB</strong> (WebP)
-          </div>
-        </div>
-      )}
-
-      {(isCompressing || isUploading) && (
+      {isUploading && (
         <div className="mb-4 p-3 bg-zinc-950 rounded-lg border border-zinc-800 text-xs text-zinc-300 flex items-center space-x-3">
           <Loader2 className="w-4 h-4 animate-spin text-zinc-400 shrink-0" />
-          <span>
-            {isCompressing
-              ? 'Compressing handwritten note to WebP...'
-              : 'Uploading to Cloudflare R2...'}
-          </span>
+          <span>Uploading to Cloudflare R2...</span>
         </div>
       )}
 
@@ -261,11 +203,11 @@ export default function NoteUploader({ taskId, taskTitle, onSuccess, onClose }: 
         )}
         <button
           onClick={handleUpload}
-          disabled={!selectedFile || isConvertingHeic || isConvertingPdf || isCompressing || isUploading}
+          disabled={!selectedFile || isConvertingHeic || isConvertingPdf || isUploading}
           className="px-4 py-2 bg-zinc-100 text-zinc-950 font-semibold rounded-lg text-xs hover:bg-zinc-200 transition-all shadow-sm disabled:opacity-40 flex items-center space-x-2"
         >
           <UploadCloud className="w-3.5 h-3.5" />
-          <span>Compress & Upload</span>
+          <span>Upload</span>
         </button>
       </div>
     </div>

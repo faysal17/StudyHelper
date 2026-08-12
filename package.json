@@ -17,7 +17,6 @@
     "@supabase/supabase-js": "^2.45.6",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "browser-image-compression": "^2.0.2",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "heic2any": "^0.0.4",
