@@ -106,7 +106,7 @@ export default function NewspaperUploadModal({ onSuccess, onClose }: NewspaperUp
   const canUpload = Boolean(preparedFile) && !isProcessing && !isUploading;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
