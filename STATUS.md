@@ -48,7 +48,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, merged 2026-08-13 | See "M10 — done" section below. |
-| M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, awaiting review/merge | See "M11 — done" section below. |
+| M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, merged 2026-08-13 | See "M11 — done" section below. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Not started** | Not re-audited in depth (out of scope for a spot-check); no reason to believe it changed. |
@@ -93,8 +93,8 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10/M11 are done (M11 awaiting review/merge), in that order. Remaining,
-top-to-bottom from where it left off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10/M11 are done, in that order. Remaining, top-to-bottom from where it
+left off:
 
 1. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question: *(next up)*
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
@@ -129,10 +129,11 @@ top-to-bottom from where it left off:
 14. Proceed to M10.
 15. M10 verified and merged to `main`.
 16. Proceed to M11.
+17. M11 verified and merged to `main`.
 
-## M11 — done, awaiting review (2026-08-13)
+## M11 — done (2026-08-13)
 
-Fixed on `m11-focus-component-pattern` (not yet merged — waiting for your review), as four
+Fixed on `m11-focus-component-pattern`, merged to `main`, as four
 separate commits (three structural extractions, then the `updateTask()` behavior fix, per the
 "never mix a structural refactor with a behavior change" rule).
 
