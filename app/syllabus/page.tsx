@@ -520,6 +520,9 @@ export default function SyllabusPage() {
           initialSubjectId={studyTarget.subjectId}
           initialTopicId={studyTarget.topicId}
           initialSubtopicId={studyTarget.subtopicId}
+          preloadedSubjects={subjects}
+          preloadedTopics={topics}
+          preloadedSubtopics={subtopics}
         />
       )}
 

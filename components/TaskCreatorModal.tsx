@@ -17,6 +17,11 @@ interface TaskCreatorModalProps {
   initialTopicId?: string;
   initialSubtopicId?: string;
   initialTitle?: string;
+  // If the parent page already holds this data in state, pass it in to skip
+  // the corresponding fetch on open. Omit whichever ones the caller doesn't have.
+  preloadedSubjects?: Subject[];
+  preloadedTopics?: Topic[];
+  preloadedSubtopics?: Subtopic[];
 }
 
 export default function TaskCreatorModal({
@@ -27,6 +32,9 @@ export default function TaskCreatorModal({
   initialTopicId,
   initialSubtopicId,
   initialTitle,
+  preloadedSubjects,
+  preloadedTopics,
+  preloadedSubtopics,
 }: TaskCreatorModalProps) {
   const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState('');
@@ -52,14 +60,23 @@ export default function TaskCreatorModal({
     if (isOpen) {
       loadDropdownData();
     }
-  }, [isOpen, initialSubjectId, initialTopicId, initialSubtopicId, initialTitle]);
+  }, [
+    isOpen,
+    initialSubjectId,
+    initialTopicId,
+    initialSubtopicId,
+    initialTitle,
+    preloadedSubjects,
+    preloadedTopics,
+    preloadedSubtopics,
+  ]);
 
   const loadDropdownData = async () => {
     try {
       const [subData, topData, subtopData] = await Promise.all([
-        fetchSubjects(),
-        fetchTopics(),
-        fetchSubtopics(),
+        preloadedSubjects ?? fetchSubjects(),
+        preloadedTopics ?? fetchTopics(),
+        preloadedSubtopics ?? fetchSubtopics(),
       ]);
       setSubjects(subData);
       setTopics(topData);

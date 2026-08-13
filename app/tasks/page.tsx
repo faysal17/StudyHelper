@@ -278,6 +278,7 @@ export default function TasksPage() {
           setIsTaskModalOpen(false);
           loadData();
         }}
+        preloadedSubjects={subjects}
       />
 
       {/* Custom Confirmation Popup */}

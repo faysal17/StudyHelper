@@ -47,7 +47,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
-| M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
+| M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, awaiting review/merge | See "M10 — done" section below. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
@@ -83,22 +83,22 @@ per approval.
 ## Updated, re-prioritized milestone list carried forward
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
-performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7/M8/M9
-are done, in that order. Remaining, top-to-bottom from where it left off:
+performance → component structure & standards → zombie code) still holds.
+M1/M2/M3/M5/M6/M7/M8/M9/M10 are done (M10 awaiting review/merge), in that order. Remaining,
+top-to-bottom from where it left off:
 
-1. **M10** — Stop `TaskCreatorModal` refetching data the parent already has. *(next up)*
-2. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
+1. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`, *(next up)*
    `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
    elsewhere. Also fixes `updateTask()`'s missing error check (see above) since M11 touches its
    call sites anyway.
-3. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
+2. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-4. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-5. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-6. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
+3. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
+4. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
+5. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
    imports/`oldMomentum`).
-7. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-8. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+6. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+7. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
    it's tracked separately).
 
@@ -121,6 +121,43 @@ are done, in that order. Remaining, top-to-bottom from where it left off:
 11. M8 verified and merged to `main` (commit `2275edc`).
 12. Proceed to M9.
 13. M9 verified and merged to `main`.
+14. Proceed to M10.
+
+## M10 — done, awaiting review (2026-08-13)
+
+Fixed on `m10-task-creator-modal-refetch` (not yet merged — waiting for your review).
+
+Changes:
+
+- [components/TaskCreatorModal.tsx](components/TaskCreatorModal.tsx) — added optional
+  `preloadedSubjects`/`preloadedTopics`/`preloadedSubtopics` props. `loadDropdownData()` now uses
+  `preloadedX ?? fetchX()` per field, so it only fetches whichever pieces the caller didn't already
+  hand off, instead of unconditionally fetching all three on every open.
+- [app/syllabus/page.tsx](app/syllabus/page.tsx) — the "Quick Study" action (per-subtopic ⚡
+  button) already holds `subjects`, `topics`, and `subtopics` in page state for its own tree UI, so
+  its `TaskCreatorModal` call now passes all three as preloaded — this instance no longer fetches
+  anything on open, matching `AUDIT.md`'s exact finding for this call site.
+- [app/tasks/page.tsx](app/tasks/page.tsx) — this page's "Add Task" button only holds `subjects`
+  locally (not topics/subtopics, since the Tasks page never needed a topic/subtopic tree for its
+  own UI), so only `preloadedSubjects` is passed — cuts one of the three fetches.
+- **Deliberately left unchanged**: the Home page (`app/page.tsx`) and `components/Navbar.tsx` each
+  render their own standalone "Add Task" entry point but don't hold subjects/topics/subtopics in
+  state for any other reason — `AUDIT.md`'s finding only named the syllabus and tasks call sites
+  as having the data already loaded. Making Home/Navbar preemptively fetch that data just to hand
+  it to the modal would add a load-time fetch that doesn't exist today, which cuts against the
+  over-fetching concern this same audit raises elsewhere — so their modal instances still fetch
+  all three on open, same as before this change.
+
+Verified: typecheck clean, lint clean (same pre-existing warning set, only the line number for
+`TaskCreatorModal.tsx`'s `exhaustive-deps` warning shifted), production build clean. Live-checked
+against a production build by instrumenting `window.fetch` in the browser to log Supabase REST
+calls (the browser tool's network-request log doesn't appear to capture cross-origin `fetch()`
+calls, so this was the reliable way to confirm): opening the modal from the Tasks page logged only
+`topics`/`subtopics` calls (no `subjects` call); opening it from the Syllabus page's Quick Study
+action logged zero calls. Also did a full create-task round trip from the Syllabus entry point
+(temporary subtopic → modal opened pre-filled with subject/topic/subtopic → submitted → task
+appeared correctly on the Tasks page with the right subject/topic/target) and cleaned up the
+temporary task and subtopic afterward, confirming `createTask()` itself is unaffected.
 
 ## M9 — done (2026-08-13)
 
