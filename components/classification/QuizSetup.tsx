@@ -315,7 +315,7 @@ export default function QuizSetup({
 
           <div style={{ marginBottom: '10px' }}>
             <div className="setup-label" style={{ fontSize: '12px', opacity: 0.75 }}>
-              গঠন (চ্যাপ্টার ভিত্তিক অনুশীলনে অন্তর্ভুক্ত নয় — এটি "স্বাভাবিক অনুশীলন" থেকে অনুশীলন করুন)
+              গঠন (চ্যাপ্টার ভিত্তিক অনুশীলনে অন্তর্ভুক্ত নয় — এটি &quot;স্বাভাবিক অনুশীলন&quot; থেকে অনুশীলন করুন)
             </div>
             <div className="chunk-grid">
               {chaptersByAxis['গঠন'].map((chapter) => {
