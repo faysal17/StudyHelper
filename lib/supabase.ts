@@ -81,6 +81,20 @@ export async function getCurrentUserId(): Promise<string> {
   return DEFAULT_USER_ID;
 }
 
+export async function getCurrentUserEmail(): Promise<string | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data } = await supabase.auth.getUser();
+    return data?.user?.email ?? null;
+  }
+  return null;
+}
+
+export async function signOutUser(): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    await supabase.auth.signOut();
+  }
+}
+
 // Auth header for the /api/upload and /api/storage/delete route handlers,
 // which verify the caller's Supabase session server-side rather than
 // trusting an unauthenticated request.
@@ -525,6 +539,25 @@ export async function updateQuotesConfig(quotes: string[]): Promise<void> {
       updated_at: new Date().toISOString(),
     });
     if (error) throw error;
+  }
+}
+
+// Mirrors app/settings/page.tsx's pre-existing inline handler: fetches the
+// user via auth.getUser() and silently no-ops if there's no user, rather
+// than getCurrentUserId()'s throw-on-no-session. Kept as-is on relocation —
+// unifying it with the other updateXConfig functions' pattern would be a
+// behavior change, not part of this relocation.
+export async function updateWeekStartDayConfig(weekStartDay: string): Promise<void> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      const { error } = await supabase.from('user_settings').upsert({
+        user_id: userData.user.id,
+        week_start_day: weekStartDay,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+    }
   }
 }
 
@@ -1031,4 +1064,370 @@ export async function logRevisionScore(
   }
 
   return earnedXP;
+}
+
+// BANGLA VOCAB DATA API (used by lib/banglaVocab.ts, which owns the typed
+// BanglaWord shape and CSV/legacy-purge logic; these are the raw DB calls)
+
+export async function fetchBanglaVocabRows() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('bangla_vocab').select('*').order('created_at', { ascending: false });
+}
+
+export async function deleteBanglaVocabRowsByIds(ids: string[]): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  for (const id of ids) {
+    await supabase.from('bangla_vocab').delete().eq('id', id);
+  }
+}
+
+export async function insertBanglaVocabRow(record: {
+  user_id: string;
+  word: string;
+  meaning: string;
+  example: string;
+  interval: number;
+  ease_factor: number;
+  next_review: string;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('bangla_vocab').insert([record]).select().single();
+}
+
+export async function updateBanglaVocabRow(
+  id: string,
+  updates: { interval: number; ease_factor: number; last_reviewed?: string; next_review: string }
+): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  await supabase.from('bangla_vocab').update(updates).eq('id', id);
+}
+
+export async function deleteBanglaVocabRow(id: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  await supabase.from('bangla_vocab').delete().eq('id', id);
+}
+
+export async function insertBanglaVocabRows(
+  records: {
+    user_id: string;
+    word: string;
+    meaning: string;
+    example: string;
+    interval: number;
+    ease_factor: number;
+    next_review: string;
+  }[]
+) {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('bangla_vocab').insert(records).select();
+}
+
+export async function deleteBanglaVocabRowsByUserId(userId: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  await supabase.from('bangla_vocab').delete().eq('user_id', userId);
+}
+
+// NEWSPAPER STUDY DATA API (used by lib/newspaper.ts, which owns the typed
+// NewspaperPdf/NewspaperPage shapes and the R2 upload/delete orchestration)
+
+export async function insertNewspaperPdfRow(record: {
+  user_id: string;
+  title: string;
+  pdf_url: string;
+  page_count: number;
+  year: number;
+  month: number;
+  week: number | null;
+  day: number | null;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pdfs').insert([record]).select('*').single();
+}
+
+export async function insertNewspaperPageRows(
+  rows: { pdf_id: string; user_id: string; page_number: number }[]
+) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('newspaper_pages').insert(rows);
+}
+
+export async function selectNewspaperPdfs() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase
+    .from('newspaper_pdfs')
+    .select('*, pages:newspaper_pages(is_read)')
+    .order('year', { ascending: false })
+    .order('month', { ascending: false });
+}
+
+export async function selectNewspaperPdfById(pdfId: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pdfs').select('*').eq('id', pdfId).single();
+}
+
+export async function selectNewspaperPagesByPdfId(pdfId: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase
+    .from('newspaper_pages')
+    .select('*')
+    .eq('pdf_id', pdfId)
+    .order('page_number', { ascending: true });
+}
+
+export async function updateNewspaperPageReadStatus(pageId: string, isRead: boolean) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pages').update({ is_read: isRead }).eq('id', pageId);
+}
+
+export async function updateNewspaperPageComment(pageId: string, comment: string | null) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pages').update({ comment }).eq('id', pageId);
+}
+
+export async function selectNewspaperPdfUrlById(id: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pdfs').select('pdf_url').eq('id', id).single();
+}
+
+export async function deleteNewspaperPdfRow(id: string) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('newspaper_pdfs').delete().eq('id', id);
+}
+
+// ROUTINES & DAILY PLACEMENTS DATA API (used by lib/routines.ts, which owns
+// the typed RoutineBlock/DailyTaskPlacement shapes)
+
+// Mirrors lib/routines.ts's pre-existing local getCurrentUserId(): uses
+// auth.getUser() (not getSession()) and silently falls back to a placeholder
+// id instead of throwing. Deliberately kept distinct from this file's own
+// getCurrentUserId() above, which throws on no session — unifying the two
+// would be a behavior change, not part of this relocation.
+export async function getCurrentUserIdOrDefault(): Promise<string> {
+  if (isSupabaseConfigured && supabase) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user?.id) {
+      return userData.user.id;
+    }
+  }
+  return DEFAULT_USER_ID;
+}
+
+export async function selectRoutineBlocks() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('routine_blocks').select('*').order('start_time', { ascending: true });
+}
+
+export async function insertRoutineBlockRow(record: {
+  label: string;
+  color: string;
+  weekdays: string[];
+  start_time: string;
+  end_time: string;
+  start_date: string | null;
+  end_date: string | null;
+  user_id: string;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('routine_blocks').insert([record]).select('*').single();
+}
+
+export async function updateRoutineBlockRow(id: string, updates: Record<string, unknown>) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('routine_blocks').update(updates).eq('id', id);
+}
+
+export async function deleteRoutineBlockRow(id: string) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('routine_blocks').delete().eq('id', id);
+}
+
+export async function selectPlacementsForDate(dateStr: string) {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase
+    .from('daily_task_placements')
+    .select(
+      `
+        *,
+        task:tasks(*, topic:topics(*, subject:subjects(*)), subtopic:subtopics(*))
+      `
+    )
+    .eq('placement_date', dateStr);
+}
+
+export async function upsertTaskPlacementRow(record: {
+  user_id: string;
+  task_id: string;
+  placement_date: string;
+  slot_index: number;
+  routine_block_id: string | null;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase
+    .from('daily_task_placements')
+    .upsert([record], { onConflict: 'user_id,task_id,placement_date' })
+    .select('*')
+    .single();
+}
+
+export async function updatePlacementDurationRow(id: string, durationSlots: number) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('daily_task_placements').update({ duration_slots: durationSlots }).eq('id', id);
+}
+
+export async function deletePlacementRow(id: string) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('daily_task_placements').delete().eq('id', id);
+}
+
+// Shared by the classification/synonym QuizSummary components, which both
+// call supabase.auth.getUser() identically to attribute a just-finished quiz.
+export async function getCurrentAuthUser() {
+  if (!isSupabaseConfigured || !supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+// SYNONYM PRACTICE TOOL DATA API (used by app/tools/synonym-practice/page.tsx
+// and components/synonym/QuizSummary.tsx + Dashboard.tsx)
+
+export async function fetchSynonymWords() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('synonyms').select('word, alternatives, cluster').order('id', { ascending: true });
+}
+
+export async function fetchCompletedSynonymChunks() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('user_completed_chunks').select('chunk_index');
+}
+
+export async function fetchSynonymSrsForWords(words: string[]) {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('user_synonym_srs').select('word, synonym, box, next_review_at').in('word', words);
+}
+
+export async function fetchAllSynonymSrsRecords() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any, error: null };
+  return supabase.from('user_synonym_srs').select('word, synonym, box, next_review_at');
+}
+
+export async function fetchAllSynonymQuizAttempts() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any, error: null };
+  return supabase.from('quiz_attempts').select('score, total_questions');
+}
+
+export async function insertSynonymQuizAttempt(record: {
+  user_id: string;
+  mode: string;
+  score: number;
+  total_questions: number;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: null as any, error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('quiz_attempts').insert(record).select().single();
+}
+
+export async function upsertSynonymSrsRecords(
+  records: {
+    user_id: string;
+    word: string;
+    synonym: string;
+    box: number;
+    interval_days: number;
+    next_review_at: string;
+    last_reviewed_at: string;
+  }[]
+) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('user_synonym_srs').upsert(records, { onConflict: 'user_id,word,synonym' });
+}
+
+export async function insertIncorrectSynonymAnswers(
+  rows: {
+    user_id: string;
+    attempt_id: string;
+    shown_synonym: string;
+    correct_word: string;
+    user_provided_word: string;
+  }[]
+) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('incorrect_answers').insert(rows);
+}
+
+export async function markSynonymChunksCompleted(rows: { user_id: string; chunk_index: number }[]) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('user_completed_chunks').upsert(rows, { onConflict: 'user_id,chunk_index' });
+}
+
+// WORD CLASSIFICATION TOOL DATA API (used by components/classification/
+// QuizSummary.tsx + Dashboard.tsx)
+
+export async function fetchAllClassificationQuizAttempts() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any, error: null };
+  return supabase.from('quiz_attempts').select('score, total_questions, mode').like('mode', 'classification%');
+}
+
+export async function fetchAllClassificationSrsRecords() {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any, error: null };
+  return supabase.from('user_classification_srs').select('word, axis, box, next_review_at');
+}
+
+export async function insertClassificationQuizAttempt(record: {
+  user_id: string;
+  mode: string;
+  score: number;
+  total_questions: number;
+}) {
+  if (!isSupabaseConfigured || !supabase) {
+    return { error: new Error('Supabase database is not configured.') };
+  }
+  return supabase.from('quiz_attempts').insert(record);
+}
+
+export async function fetchClassificationSrsForWords(words: string[]) {
+  if (!isSupabaseConfigured || !supabase) return { data: null as any[] | null, error: null };
+  return supabase.from('user_classification_srs').select('word, axis, box, next_review_at').in('word', words);
+}
+
+export async function upsertClassificationSrsRecords(
+  records: {
+    user_id: string;
+    word: string;
+    axis: string;
+    box: number;
+    interval_days: number;
+    next_review_at: string;
+    last_reviewed_at: string;
+  }[]
+) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('user_classification_srs').upsert(records, { onConflict: 'user_id,word,axis' });
+}
+
+export async function markClassificationChunksCompleted(rows: { user_id: string; chunk_key: string }[]) {
+  if (!isSupabaseConfigured || !supabase) return { error: null };
+  return supabase.from('user_completed_classification_chunks').upsert(rows, { onConflict: 'user_id,chunk_key' });
 }

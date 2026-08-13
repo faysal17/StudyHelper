@@ -1,4 +1,14 @@
-import { isSupabaseConfigured, supabase, getCurrentUserId } from './supabase';
+import {
+  isSupabaseConfigured,
+  getCurrentUserId,
+  fetchBanglaVocabRows,
+  deleteBanglaVocabRowsByIds,
+  insertBanglaVocabRow,
+  updateBanglaVocabRow,
+  deleteBanglaVocabRow,
+  insertBanglaVocabRows,
+  deleteBanglaVocabRowsByUserId,
+} from './supabase';
 
 export interface BanglaWord {
   id: string;
@@ -21,12 +31,9 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
     localStorage.removeItem('bcs_bangla_vocab_list');
   }
 
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase
-        .from('bangla_vocab')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await fetchBanglaVocabRows();
 
       if (!error && data) {
         const formatted: BanglaWord[] = data
@@ -46,9 +53,7 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
         // Delete legacy predefined words from Supabase DB if present
         const legacyItems = data.filter((d: any) => LEGACY_IDS.has(d.id));
         if (legacyItems.length > 0) {
-          for (const leg of legacyItems) {
-            await supabase.from('bangla_vocab').delete().eq('id', leg.id);
-          }
+          await deleteBanglaVocabRowsByIds(legacyItems.map((d: any) => d.id));
         }
 
         return formatted;
@@ -65,7 +70,7 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
 export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created_at'>): Promise<BanglaWord> {
   const today = new Date().toISOString().split('T')[0];
 
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     return {
       id: `bv-${Date.now()}`,
       ...wordData,
@@ -74,21 +79,15 @@ export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created
   }
 
   const userId = await getCurrentUserId();
-  const { data, error } = await supabase
-    .from('bangla_vocab')
-    .insert([
-      {
-        user_id: userId,
-        word: wordData.word,
-        meaning: wordData.meaning,
-        example: wordData.example || '',
-        interval: wordData.interval || 1,
-        ease_factor: wordData.ease_factor || 2.5,
-        next_review: wordData.next_review || today,
-      },
-    ])
-    .select()
-    .single();
+  const { data, error } = await insertBanglaVocabRow({
+    user_id: userId,
+    word: wordData.word,
+    meaning: wordData.meaning,
+    example: wordData.example || '',
+    interval: wordData.interval || 1,
+    ease_factor: wordData.ease_factor || 2.5,
+    next_review: wordData.next_review || today,
+  });
 
   if (error) throw error;
 
@@ -107,17 +106,14 @@ export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created
 
 // DB Update: Update Spaced Repetition Stats in Database
 export async function updateBanglaWordDB(word: BanglaWord): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
-      await supabase
-        .from('bangla_vocab')
-        .update({
-          interval: word.interval,
-          ease_factor: word.ease_factor,
-          last_reviewed: word.last_reviewed,
-          next_review: word.next_review,
-        })
-        .eq('id', word.id);
+      await updateBanglaVocabRow(word.id, {
+        interval: word.interval,
+        ease_factor: word.ease_factor,
+        last_reviewed: word.last_reviewed,
+        next_review: word.next_review,
+      });
     } catch (err) {
       console.error('Error updating bangla word in DB:', err);
     }
@@ -126,9 +122,9 @@ export async function updateBanglaWordDB(word: BanglaWord): Promise<void> {
 
 // DB Delete: Delete Word from Database
 export async function deleteBanglaWordDB(id: string): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
-      await supabase.from('bangla_vocab').delete().eq('id', id);
+      await deleteBanglaVocabRow(id);
     } catch (err) {
       console.error('Error deleting bangla word from DB:', err);
     }
@@ -137,7 +133,7 @@ export async function deleteBanglaWordDB(id: string): Promise<void> {
 
 // DB Bulk Import: Batch Insert CSV Imported Words into Database
 export async function importBanglaWordsDB(words: Omit<BanglaWord, 'id' | 'created_at'>[]): Promise<BanglaWord[]> {
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
       const userId = await getCurrentUserId();
 
@@ -151,7 +147,7 @@ export async function importBanglaWordsDB(words: Omit<BanglaWord, 'id' | 'create
         next_review: w.next_review || new Date().toISOString().split('T')[0],
       }));
 
-      const { data, error } = await supabase.from('bangla_vocab').insert(recordsToInsert).select();
+      const { data, error } = await insertBanglaVocabRows(recordsToInsert);
       if (!error && data) {
         return data.map((d: any) => ({
           id: d.id,
@@ -223,10 +219,10 @@ export function getSampleBanglaCSV(): string {
 
 // DB Clear: Wipe all words from database
 export async function clearAllBanglaWordsDB(): Promise<void> {
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured) {
     try {
       const userId = await getCurrentUserId();
-      await supabase.from('bangla_vocab').delete().eq('user_id', userId);
+      await deleteBanglaVocabRowsByUserId(userId);
     } catch (err) {
       console.error('Error clearing bangla words from DB:', err);
     }
