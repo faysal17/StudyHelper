@@ -48,11 +48,11 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, merged 2026-08-13 | See "M10 — done" section below. |
-| M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
+| M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, awaiting review/merge | See "M11 — done" section below. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Not started** | Not re-audited in depth (out of scope for a spot-check); no reason to believe it changed. |
-| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Not started** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. |
+| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. |
 | M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Not started, still needs your input** | `deleteNote()` ([lib/supabase.ts:841](lib/supabase.ts)) still present, no call site found. `app/topics/page.tsx` unchanged. |
 
 ## New issue found during reconciliation (not in `AUDIT.md`, not yet in any milestone)
@@ -75,6 +75,15 @@ M5 fixed, but it's a `tasks` write, not one of the 8 named `user_settings` funct
 `updateTask` for manual-complete / spaced-repetition advancement — fix it there rather than as a
 separate milestone.
 
+**Correction (2026-08-13, while doing M11):** that premise was wrong. Traced every call site of
+`updateTask()` and it's called from exactly one place — `components/ImageOcclusionViewer.tsx:137`
+(the image-occlusion spaced-repetition review flow) — not anywhere in the Focus feature
+(`app/focus/page.tsx`, `components/FocusTimerBlock.tsx`, `components/FullscreenFocusModal.tsx`
+call `recordRatedFocusSession`/`recordSessionStop`, never `updateTask`). Fixed it as its own
+commit within the M11 branch anyway, since it was already approved to bundle with M11 and is a
+small, isolated, already-correctly-scoped fix — but flagging the location mismatch per the
+working rule to call out drift rather than silently let a wrong premise stand.
+
 ## Housekeeping note
 
 `docs/update-claude-md` branch was fully merged (identical to `main` tip) — deleted 2026-08-13
@@ -84,21 +93,17 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10 are done, in that order. Remaining, top-to-bottom from where it left
-off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10/M11 are done (M11 awaiting review/merge), in that order. Remaining,
+top-to-bottom from where it left off:
 
-1. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`, *(next up)*
-   `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
-   elsewhere. Also fixes `updateTask()`'s missing error check (see above) since M11 touches its
-   call sites anyway.
-2. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
+1. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question: *(next up)*
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-3. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-4. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-5. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
-   imports/`oldMomentum`).
-6. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-7. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+2. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
+3. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
+4. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
+   unused imports — `oldMomentum` already satisfied by M11).
+5. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+6. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
    it's tracked separately).
 
@@ -123,6 +128,98 @@ off:
 13. M9 verified and merged to `main`.
 14. Proceed to M10.
 15. M10 verified and merged to `main`.
+16. Proceed to M11.
+
+## M11 — done, awaiting review (2026-08-13)
+
+Fixed on `m11-focus-component-pattern` (not yet merged — waiting for your review), as four
+separate commits (three structural extractions, then the `updateTask()` behavior fix, per the
+"never mix a structural refactor with a behavior change" rule).
+
+**1. `components/FlipDigit.tsx`** — was byte-for-byte identical (confirmed via `diff`) between
+`app/focus/page.tsx` and `components/FullscreenFocusModal.tsx` (only a code comment differed).
+Moved to its own file; both call sites now import it.
+
+**2. `hooks/useFocusTimer.ts`** — the entire timer engine (state, localStorage persist/restore,
+tick loop + 10-minute pause-timeout checker, toggle/reset, finish/stop XP+rank-diff logic, XP/
+event-modal orchestration) was duplicated near-verbatim between `app/focus/page.tsx` and
+`components/FocusTimerBlock.tsx` — not just the finish/stop functions `AUDIT.md` named, since
+those functions share almost all of that state. Extracted the whole thing; each caller now owns
+only what's actually caller-specific:
+- `app/focus/page.tsx` (the dedicated fullscreen route) — owns `tasks` (its own fetch), quote
+  index, ego message; passes `isFullscreen: true` (pinned, this route *is* the fullscreen UI).
+- `components/FocusTimerBlock.tsx` (the Home-page compact card) — owns its own `isFullscreen`
+  toggle state (used only to restore the `FullscreenFocusModal` inline if a reload finds a
+  persisted session that was mid-fullscreen elsewhere; the "open fullscreen" button navigates to
+  `/focus` directly, it doesn't flip this flag) and `onSessionComplete`.
+- Two spots where the two original copies had quietly drifted, standardized during the merge:
+  - the paused-session restore guard was `pausedSeconds !== null` in one copy, `pausedSeconds > 0`
+    in the other — kept the stricter `> 0` check.
+  - `oldMomentum` was computed but never read in both copies of both `handleFinishRating` and
+    `handleStop`; `newMomentum` was also dead in `handleStop` specifically (only used in
+    `handleFinishRating`). Dropped both dead variables rather than copy-pasting them into the new
+    shared file — this is the same `oldMomentum` dead-code item `AUDIT.md`/`CLAUDE.md` already
+    flagged for M15, satisfied here as a side effect (see M15's row above).
+- `next.config.mjs` — added `eslint.dirs` including `hooks`. `next lint`'s default dirs
+  (`app`/`pages`/`components`/`lib`/`src`) don't cover a top-level `hooks/`; `npm run lint` was
+  silently not scanning the new file at all (confirmed: the same exhaustive-deps warnings the new
+  hook carries over from the two old files didn't show up under plain `npm run lint`, but did once
+  `eslint.dirs` was added) — without this fix the CI lint gate would never see this file.
+
+**3. `components/ModalShell.tsx`** — the portal + mounted-gate + backdrop-overlay boilerplate
+(`useState` mounted flag, `useEffect` to flip it, `if (!isOpen || !mounted) return null`,
+`createPortal(..., document.body)`) was hand-duplicated across `FocusRatingModal`,
+`QuitTauntModal`, `XPChangeModal`, `HunterEventModal`, and `FullscreenFocusModal` — the exact
+`ModalShell` gap `CLAUDE.md` already names. Extracted it; each modal now supplies only its own
+overlay classes (z-index/blur/background/animation genuinely differ between them) and its card
+markup as children. `HunterEventModal`'s and `FullscreenFocusModal`'s body-scroll-lock effect
+moved into `ModalShell` behind a `lockScroll` prop (the other three never locked scroll).
+`FullscreenFocusModal` keeps an early `if (!isOpen)` branch before its task-list filtering, but
+still always renders `ModalShell` underneath (with `isOpen={false}`) rather than skipping it —
+skipping it would reset `ModalShell`'s own mounted-state and cause a one-frame flicker each time
+the modal reopens, since its parent (`FocusTimerBlock`) re-renders every timer tick regardless.
+This extraction only applied the pattern within the Focus feature's own 5 modals, per the audit's
+"one module first" instruction — the other ~4 hand-duplicated modal-backdrop sites elsewhere in
+the codebase are unchanged, still awaiting the "confirm the pattern before applying it elsewhere"
+go-ahead.
+
+**4. `updateTask()` missing error check** — see the correction note above; this turned out to
+belong to the image-occlusion review flow, not the Focus feature, but was fixed here anyway as
+already agreed. Verified by code inspection (matches the exact `{ error } = await
+supabase...; if (error) throw error;` pattern M5 already used successfully 9 times elsewhere) and
+that the one call site already has a try/catch that aborts the finish-session flow correctly on a
+thrown error — not live-tested end-to-end, since exercising it requires a note with at least one
+overlay already created, disproportionate setup for a one-line change.
+
+Verified (extractions 1–3): typecheck clean, lint clean (same pre-existing warning set — the
+`exhaustive-deps` warnings for the old `FocusTimerBlock.tsx`/`app/focus/page.tsx` duplication
+correctly collapsed into fewer warnings on the new shared `hooks/useFocusTimer.ts` instead of
+disappearing), production build clean (`/focus` route's bundle dropped from 7.04 kB to 4.25 kB).
+Live-checked against a production build, logged in as the real test account (temporarily flipped
+`show_rank_features` on for the account — it was off — and flipped it back off afterward):
+- Compact `FocusTimerBlock` on Home: start/tick/stop, `QuitTauntModal` opens with the correct
+  rank-specific taunt message.
+- Fullscreen `/focus` route: `FlipDigit` renders and ticks correctly, ego-attack message appears
+  once active, "Exit Fullscreen" returns to Home.
+- Cross-component persistence: started a session on `/focus`, confirmed `fullscreen: true` was
+  written to `localStorage`, reloaded on `/` and confirmed `FocusTimerBlock` correctly restored
+  the running session *and* reopened `FullscreenFocusModal` inline (the restore-only path,
+  distinct from the "open fullscreen" button which navigates to `/focus` instead) — then closed
+  it and confirmed `fullscreen: false` was persisted.
+- Finish-rating flow: simulated an expired session via `localStorage`, confirmed
+  `FocusRatingModal` appears, claiming it awards XP correctly (`55/100` → `85/100`), opens
+  `XPChangeModal`, and closing it correctly does *not* chain into `HunterEventModal` when no
+  level/rank change occurred.
+- Level-up chaining: repeated the same simulated-finish once more to cross the level threshold
+  (`85/100` → rolled over to Level 2, `15/282`); confirmed `XPChangeModal` closes into
+  `HunterEventModal` showing "Claim Glory & Continue", and it closes cleanly with no other modal
+  following.
+- No console errors beyond the expected local-dev `@vercel/analytics`/`speed-insights` 404s.
+
+Note: the level-up test above is a real, permanent change to the test account's XP/level in the
+live Supabase DB (55 XP/Level 1/E-Rank → 15/282 XP/Level 2) — left as-is rather than reverted,
+consistent with how the project's own Playwright e2e suite already mutates this account's data as
+a matter of course.
 
 ## M10 — done (2026-08-13)
 

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Zap, TrendingDown, CheckCircle2, Sparkles, AlertTriangle } from 'lucide-react';
+import ModalShell from './ModalShell';
 
 interface XPChangeModalProps {
   isOpen: boolean;
@@ -13,6 +12,9 @@ interface XPChangeModalProps {
   newTotalXP?: number;
 }
 
+const OVERLAY_CLASSNAME =
+  'fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[999999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200';
+
 export default function XPChangeModal({
   isOpen,
   onClose,
@@ -21,18 +23,10 @@ export default function XPChangeModal({
   multiplier = 1.0,
   newTotalXP,
 }: XPChangeModalProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!isOpen || !mounted) return null;
-
   const isGain = amount >= 0;
 
-  return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[999999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
+  return (
+    <ModalShell isOpen={isOpen} overlayClassName={OVERLAY_CLASSNAME}>
       <div
         className={`bg-zinc-900 border ${
           isGain ? 'border-amber-500/40 shadow-amber-500/20' : 'border-red-500/40 shadow-red-500/20'
@@ -90,7 +84,6 @@ export default function XPChangeModal({
           <span>{isGain ? 'Awesome!' : 'Understood'}</span>
         </button>
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }

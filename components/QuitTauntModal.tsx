@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Skull, AlertTriangle, ArrowRight } from 'lucide-react';
 import { getQuitTauntMessage } from '@/lib/gamification';
+import ModalShell from './ModalShell';
 
 interface QuitTauntModalProps {
   isOpen: boolean;
@@ -13,6 +12,9 @@ interface QuitTauntModalProps {
   penaltyAmount: number;
 }
 
+const OVERLAY_CLASSNAME =
+  'fixed inset-0 z-[100000] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 !m-0 animate-in fade-in duration-200';
+
 export default function QuitTauntModal({
   isOpen,
   onClose,
@@ -20,18 +22,10 @@ export default function QuitTauntModal({
   isPenaltyApplied,
   penaltyAmount,
 }: QuitTauntModalProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!isOpen || !mounted) return null;
-
   const tauntMessage = getQuitTauntMessage(currentRank);
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100000] bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 !m-0 animate-in fade-in duration-200">
+  return (
+    <ModalShell isOpen={isOpen} overlayClassName={OVERLAY_CLASSNAME}>
       <div className="bg-zinc-900 border border-red-500/30 rounded-2xl p-6 max-w-md w-full text-center space-y-5 shadow-2xl relative">
         <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mx-auto shadow-inner">
           <Skull className="w-6 h-6" />
@@ -68,7 +62,6 @@ export default function QuitTauntModal({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }

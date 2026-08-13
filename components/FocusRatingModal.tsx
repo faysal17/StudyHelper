@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useState } from 'react';
 import { Star, Award, CheckCircle2, AlertTriangle } from 'lucide-react';
+import ModalShell from './ModalShell';
 
 interface FocusRatingModalProps {
   isOpen: boolean;
@@ -13,13 +13,6 @@ interface FocusRatingModalProps {
 export default function FocusRatingModal({ isOpen, targetMinutes, onRate }: FocusRatingModalProps) {
   const [hoveredStar, setHoveredStar] = useState<number>(0);
   const [selectedStar, setSelectedStar] = useState<number>(5);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!isOpen || !mounted) return null;
 
   const starLabels: Record<number, { text: string; xpBonus: string; color: string }> = {
     5: { text: 'Flawless Concentration!', xpBonus: '+100% XP Bonus (+30 XP)', color: 'text-amber-400' },
@@ -32,8 +25,8 @@ export default function FocusRatingModal({ isOpen, targetMinutes, onRate }: Focu
   const activeStar = hoveredStar || selectedStar;
   const currentInfo = starLabels[activeStar] || starLabels[5];
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100000] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0 animate-in fade-in duration-200">
+  return (
+    <ModalShell isOpen={isOpen}>
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-md w-full text-center space-y-6 shadow-2xl relative">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mx-auto shadow-inner">
           <Award className="w-6 h-6" />
@@ -80,7 +73,6 @@ export default function FocusRatingModal({ isOpen, targetMinutes, onRate }: Focu
           <span>Claim Session Rewards</span>
         </button>
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }
