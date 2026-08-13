@@ -244,9 +244,13 @@ export default function WordClassificationPage() {
     };
   };
 
-  const buildFactQuestion = (fact: ClassificationEntry, allEntries: ClassificationEntry[], allLanguages: string[], isMCQ: boolean): Question | null => {
-    const askLanguage = fact.subGroup === 'বিদেশি' && Math.random() < 0.5;
-
+  const buildFactQuestion = (
+    fact: ClassificationEntry,
+    allEntries: ClassificationEntry[],
+    allLanguages: string[],
+    isMCQ: boolean,
+    subGroupVariety: Record<Axis, number>
+  ): Question | null => {
     // গঠন axis only has 4 words each in মৌলিক/সাধিত, so generated questions
     // (e.g. "কোনটি সাধিত শব্দ?" with just the 3 other pool words as options)
     // are low quality. Real BCS exam questions cover this axis instead.
@@ -259,7 +263,14 @@ export default function WordClassificationPage() {
       return buildForwardQuestion(fact, false);
     }
 
-    // উৎপত্তি axis
+    // উৎপত্তি axis: if every fact in this session is বিদেশি (e.g. a
+    // chapter-wise session built entirely from বিদেশি chapters), "which
+    // class is this word?" is already known from the selection itself — so
+    // always ask the origin-language question instead, which is the actual
+    // non-trivial thing to test for these words.
+    const subGroupObvious = subGroupVariety[fact.axis] <= 1;
+    const askLanguage = fact.subGroup === 'বিদেশি' && (subGroupObvious || Math.random() < 0.5);
+
     if (askLanguage) {
       if (isMCQ) {
         return Math.random() < 0.5
@@ -321,8 +332,13 @@ export default function WordClassificationPage() {
       picked = picked.slice(0, generatedCount);
     }
 
+    const subGroupVariety: Record<Axis, number> = { 'গঠন': 0, 'অর্থ': 0, 'উৎপত্তি': 0 };
+    (['গঠন', 'অর্থ', 'উৎপত্তি'] as Axis[]).forEach((axis) => {
+      subGroupVariety[axis] = new Set(pool.filter((e) => e.axis === axis).map((e) => e.subGroup)).size;
+    });
+
     const generatedQuestions = picked
-      .map((fact) => buildFactQuestion(fact, allEntries, allLanguages, isMCQ))
+      .map((fact) => buildFactQuestion(fact, allEntries, allLanguages, isMCQ, subGroupVariety))
       .filter((q): q is Question => q !== null);
 
     const examQuestions: Question[] = shuffle(bank)
