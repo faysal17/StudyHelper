@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Layers, Calendar, CheckSquare, ListTree, Plus, LogOut, User, Settings as SettingsIcon, Wrench, ListTodo, Menu, X } from 'lucide-react';
-import { isSupabaseConfigured, supabase, fetchUserSettings } from '@/lib/supabase';
+import { isSupabaseConfigured, fetchUserSettings, getCurrentUserEmail, signOutUser } from '@/lib/supabase';
 import TaskCreatorModal from './TaskCreatorModal';
 import Tooltip from './Tooltip';
 
@@ -31,10 +31,10 @@ export default function Navbar() {
   }, [pathname]);
 
   const checkUser = async () => {
-    if (isSupabaseConfigured && supabase) {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user?.email) {
-        setUserEmail(data.user.email);
+    if (isSupabaseConfigured) {
+      const email = await getCurrentUserEmail();
+      if (email) {
+        setUserEmail(email);
       }
     } else {
       if (typeof window !== 'undefined') {
@@ -50,8 +50,8 @@ export default function Navbar() {
   };
 
   const handleSignOut = async () => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      await signOutUser();
     }
     if (typeof window !== 'undefined') {
       localStorage.removeItem('studyhub_user_session');

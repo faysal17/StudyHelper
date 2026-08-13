@@ -1,4 +1,17 @@
-import { isSupabaseConfigured, supabase, getAuthHeaders, getCurrentUserId } from './supabase';
+import {
+  isSupabaseConfigured,
+  getAuthHeaders,
+  getCurrentUserId,
+  insertNewspaperPdfRow,
+  insertNewspaperPageRows,
+  selectNewspaperPdfs,
+  selectNewspaperPdfById,
+  selectNewspaperPagesByPdfId,
+  updateNewspaperPageReadStatus,
+  updateNewspaperPageComment,
+  selectNewspaperPdfUrlById,
+  deleteNewspaperPdfRow,
+} from './supabase';
 import { NewspaperPdf, NewspaperPage } from './types';
 
 const R2_PUBLIC_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '').replace(/\/$/, '');
@@ -39,28 +52,22 @@ export interface CreateNewspaperPdfParams {
 }
 
 export async function createNewspaperPdf(params: CreateNewspaperPdfParams): Promise<NewspaperPdf> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     throw new Error('Supabase database is not configured.');
   }
 
   const userId = await getCurrentUserId();
 
-  const { data: pdf, error: pdfError } = await supabase
-    .from('newspaper_pdfs')
-    .insert([
-      {
-        user_id: userId,
-        title: params.title,
-        pdf_url: params.pdfUrl,
-        page_count: params.pageCount,
-        year: params.year,
-        month: params.month,
-        week: params.week ?? null,
-        day: params.day ?? null,
-      },
-    ])
-    .select('*')
-    .single();
+  const { data: pdf, error: pdfError } = await insertNewspaperPdfRow({
+    user_id: userId,
+    title: params.title,
+    pdf_url: params.pdfUrl,
+    page_count: params.pageCount,
+    year: params.year,
+    month: params.month,
+    week: params.week ?? null,
+    day: params.day ?? null,
+  });
 
   if (pdfError) throw pdfError;
 
@@ -70,19 +77,15 @@ export async function createNewspaperPdf(params: CreateNewspaperPdfParams): Prom
     page_number: i + 1,
   }));
 
-  const { error: pagesError } = await supabase.from('newspaper_pages').insert(pageRows);
+  const { error: pagesError } = await insertNewspaperPageRows(pageRows);
   if (pagesError) throw pagesError;
 
   return pdf as NewspaperPdf;
 }
 
 export async function listNewspaperPdfs(): Promise<NewspaperPdf[]> {
-  if (isSupabaseConfigured && supabase) {
-    const { data, error } = await supabase
-      .from('newspaper_pdfs')
-      .select('*, pages:newspaper_pages(is_read)')
-      .order('year', { ascending: false })
-      .order('month', { ascending: false });
+  if (isSupabaseConfigured) {
+    const { data, error } = await selectNewspaperPdfs();
 
     if (error) throw error;
     return (data || []) as NewspaperPdf[];
@@ -91,43 +94,32 @@ export async function listNewspaperPdfs(): Promise<NewspaperPdf[]> {
 }
 
 export async function getNewspaperPdfWithPages(pdfId: string): Promise<NewspaperPdf> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     throw new Error('Supabase database is not configured.');
   }
 
-  const { data: pdf, error: pdfError } = await supabase
-    .from('newspaper_pdfs')
-    .select('*')
-    .eq('id', pdfId)
-    .single();
+  const { data: pdf, error: pdfError } = await selectNewspaperPdfById(pdfId);
   if (pdfError) throw pdfError;
 
-  const { data: pages, error: pagesError } = await supabase
-    .from('newspaper_pages')
-    .select('*')
-    .eq('pdf_id', pdfId)
-    .order('page_number', { ascending: true });
+  const { data: pages, error: pagesError } = await selectNewspaperPagesByPdfId(pdfId);
   if (pagesError) throw pagesError;
 
   return { ...pdf, pages: (pages || []) as NewspaperPage[] } as NewspaperPdf;
 }
 
 export async function togglePageRead(pageId: string, isRead: boolean): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     throw new Error('Supabase database is not configured.');
   }
-  const { error } = await supabase.from('newspaper_pages').update({ is_read: isRead }).eq('id', pageId);
+  const { error } = await updateNewspaperPageReadStatus(pageId, isRead);
   if (error) throw error;
 }
 
 export async function updatePageComment(pageId: string, comment: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     throw new Error('Supabase database is not configured.');
   }
-  const { error } = await supabase
-    .from('newspaper_pages')
-    .update({ comment: comment.trim() === '' ? null : comment })
-    .eq('id', pageId);
+  const { error } = await updateNewspaperPageComment(pageId, comment.trim() === '' ? null : comment);
   if (error) throw error;
 }
 
@@ -145,21 +137,17 @@ async function deletePdfFromR2(url: string): Promise<void> {
 }
 
 export async function deleteNewspaperPdf(id: string): Promise<void> {
-  if (!isSupabaseConfigured || !supabase) {
+  if (!isSupabaseConfigured) {
     throw new Error('Supabase database is not configured.');
   }
 
-  const { data: pdf, error: fetchError } = await supabase
-    .from('newspaper_pdfs')
-    .select('pdf_url')
-    .eq('id', id)
-    .single();
+  const { data: pdf, error: fetchError } = await selectNewspaperPdfUrlById(id);
   if (fetchError) throw fetchError;
 
   if (pdf?.pdf_url) {
     await deletePdfFromR2(pdf.pdf_url);
   }
 
-  const { error: deleteError } = await supabase.from('newspaper_pdfs').delete().eq('id', id);
+  const { error: deleteError } = await deleteNewspaperPdfRow(id);
   if (deleteError) throw deleteError;
 }

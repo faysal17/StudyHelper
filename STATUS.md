@@ -130,6 +130,107 @@ left off:
 15. M10 verified and merged to `main`.
 16. Proceed to M11.
 17. M11 verified and merged to `main`.
+18. M12 structural question: `lib/supabase.ts` stays one file (not split into `lib/data/*.ts`) —
+    matches the current convention everywhere else, no import-path churn.
+19. `components/classification/Dashboard.tsx` and `components/synonym/Dashboard.tsx` — found
+    during M12, calling `supabase.from()` directly same as their sibling `QuizSummary` components
+    but never named in `AUDIT.md`/this file's M12 scope — folded into M12 rather than handled
+    separately.
+20. Deeper interactive live-check (bangla-vocab CRUD, newspaper upload, routines, the settings
+    save-click, synonym/classification quizzes) blocked on retrieving the test account password
+    from `.env.local` to type into the browser pane — the permission classifier denied it twice
+    (Bash and PowerShell) as credential exposure, correctly, since it would have put the plaintext
+    password in the assistant's own context. Rather than route around that, asked you directly:
+    you chose to accept typecheck/lint/build-clean + the Playwright smoke suite (9/9 passing,
+    covers login/Navbar/6 core pages) as sufficient verification for this milestone, given it's a
+    structural-only relocation with no intended behavior change.
+
+## M12 — done (2026-08-13)
+
+Fixed on `m12-consolidate-supabase-calls`, not yet merged. Physically relocated every
+`supabase.from()`/`supabase.auth` call that lived outside `lib/supabase.ts` into new exported
+functions there, so `lib/supabase.ts` is now actually the single place the Supabase client is
+touched from (per your M12 structural decision, added to the existing file rather than split into
+per-domain modules).
+
+**Scope**: the 8 files named in `AUDIT.md`/this file's table (`lib/banglaVocab.ts`,
+`lib/newspaper.ts`, `lib/routines.ts`, `app/settings/page.tsx`,
+`app/tools/synonym-practice/page.tsx`, `components/Navbar.tsx`,
+`components/classification/QuizSummary.tsx`, `components/synonym/QuizSummary.tsx`), plus
+`components/classification/Dashboard.tsx` and `components/synonym/Dashboard.tsx` (found during
+this milestone, folded in per go-ahead — see approval #19).
+
+**Approach — structural only, no behavior changes**: every new `lib/supabase.ts` function is a
+direct, self-contained relocation of the exact `supabase.from()`/`.auth` call it replaces —
+same guard conditions, same error-checked-vs-swallowed pattern as the original call site, same
+return shape. Nothing was "fixed" or normalized while moving it, including the inconsistencies
+`AUDIT.md` §6/§8 already flagged as separate, not-yet-approved cleanup:
+- `app/settings/page.tsx`'s week-start-day save (`updateWeekStartDayConfig`, new) still silently
+  no-ops if there's no signed-in user, instead of throwing like `getCurrentUserId()` does — this
+  was already the page's own behavior before the move (it used `auth.getUser()` directly, not
+  `getCurrentUserId()`), not a newly discovered bug, and not touched.
+- `lib/routines.ts`'s local user-id lookup (`getCurrentUserIdOrDefault`, new) still falls back to
+  the placeholder `'user-owner'` string on no session instead of throwing, distinct from this
+  file's `getCurrentUserId()` — same reasoning, preserved as-is, not unified.
+- `lib/banglaVocab.ts`'s `updateBanglaWordDB`/`deleteBanglaWordDB`/`clearAllBanglaWordsDB`/
+  `fetchBanglaWordsDB`/`importBanglaWordsDB` still swallow DB errors to `console.error` (only
+  `addBanglaWordDB` throws, per M5's scope) — unchanged.
+
+**New `lib/supabase.ts` functions added** (grouped by the section comments in the file):
+- Bangla vocab: `fetchBanglaVocabRows`, `deleteBanglaVocabRowsByIds`, `insertBanglaVocabRow`,
+  `updateBanglaVocabRow`, `deleteBanglaVocabRow`, `insertBanglaVocabRows`,
+  `deleteBanglaVocabRowsByUserId`.
+- Newspaper: `insertNewspaperPdfRow`, `insertNewspaperPageRows`, `selectNewspaperPdfs`,
+  `selectNewspaperPdfById`, `selectNewspaperPagesByPdfId`, `updateNewspaperPageReadStatus`,
+  `updateNewspaperPageComment`, `selectNewspaperPdfUrlById`, `deleteNewspaperPdfRow`.
+- Routines/placements: `getCurrentUserIdOrDefault`, `selectRoutineBlocks`,
+  `insertRoutineBlockRow`, `updateRoutineBlockRow`, `deleteRoutineBlockRow`,
+  `selectPlacementsForDate`, `upsertTaskPlacementRow`, `updatePlacementDurationRow`,
+  `deletePlacementRow`.
+- Settings: `updateWeekStartDayConfig`.
+- Navbar/auth: `getCurrentUserEmail`, `signOutUser`, `getCurrentAuthUser` (shared by both
+  `QuizSummary` components).
+- Synonym practice tool: `fetchSynonymWords`, `fetchCompletedSynonymChunks`,
+  `fetchSynonymSrsForWords` (shared by the practice page's session-start prioritization *and*
+  `QuizSummary`'s post-quiz SRS update, since both queried the same shape), `fetchAllSynonymSrsRecords`,
+  `fetchAllSynonymQuizAttempts`, `insertSynonymQuizAttempt`, `upsertSynonymSrsRecords`,
+  `insertIncorrectSynonymAnswers`, `markSynonymChunksCompleted`.
+- Word classification tool: `fetchAllClassificationQuizAttempts`, `fetchAllClassificationSrsRecords`,
+  `insertClassificationQuizAttempt`, `fetchClassificationSrsForWords`,
+  `upsertClassificationSrsRecords`, `markClassificationChunksCompleted`.
+
+**Deliberately left untouched**: `app/tools/synonym-practice/page.tsx`'s own `checkSession` effect
+(`supabase.auth.getSession()`) — that's the separate, already-documented M3-leftover-duplication
+(one of the "5 pages" noted in `CLAUDE.md`), not part of M12's scope per this file's earlier
+reconciliation note distinguishing the two.
+
+**Found during this milestone, not in `AUDIT.md`'s cited line numbers**: `AUDIT.md` §8 cited only
+2 line numbers per multi-call-site file (e.g. `app/tools/synonym-practice/page.tsx:88,104`), but
+several of the 8 named files had additional direct calls the audit's line references missed
+entirely — a third call in `synonym-practice/page.tsx`'s `handleStartSession` (line ~212, same
+`user_synonym_srs` shape as `QuizSummary`'s, now sharing `fetchSynonymSrsForWords`), and the full
+multi-step SRS read/write sequences inside both `QuizSummary` components weren't reducible to just
+their 2 cited lines each. `CLAUDE.md`'s own characterization of these files ("all call
+`supabase.from()`/`supabase.auth` directly instead of going through `lib/supabase.ts`") already
+covers this at the whole-file level, so fixing every call site in each of the 8 named files was
+treated as in-scope, not a further expansion needing separate approval — only the 2 wholly
+unnamed Dashboard.tsx files needed that (approval #19).
+
+**Verified**: `npm run typecheck` clean. `npm run lint` clean (identical pre-existing warning set —
+same `react-hooks/exhaustive-deps`/`no-img-element` warnings as before this change, no new ones).
+`npm run build` clean, route bundle sizes essentially unchanged (this was a pure code-motion
+refactor, not a behavior or bundle-shape change). `npm run test:e2e` (Playwright smoke suite
+against the production build): 9/9 passing — unauthenticated redirect, login, `/today` `/tasks`
+`/syllabus` `/rank` `/settings` `/tools` all loading without unexpected console errors (exercises
+the new `getCurrentUserEmail`/`signOutUser` via `Navbar`), and the full subject/topic create-delete
+flow. Deeper interactive verification (bangla-vocab CRUD, newspaper upload/read-toggle/comment/
+delete, routines create/update/delete, the settings week-start-day save-click, synonym/
+classification quiz-and-dashboard flows) was not performed this session — see approval #20 for why,
+and your decision to accept the above as sufficient given this milestone changes no behavior, only
+where each Supabase call physically lives.
+
+**Not yet merged** — stopping here for your review per the working rules, same as every prior
+milestone.
 
 ## M11 — done (2026-08-13)
 
