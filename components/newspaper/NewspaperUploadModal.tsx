@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getPdfPageCount, zipImagesToPdf } from '@/lib/pdfMerge';
 import { uploadNewspaperPdf, createNewspaperPdf } from '@/lib/newspaper';
 import { getLogicalTodayDate } from '@/lib/spacedRepetition';
@@ -18,6 +19,11 @@ const MONTH_NAMES = [
 
 export default function NewspaperUploadModal({ onSuccess, onClose }: NewspaperUploadModalProps) {
   const today = getLogicalTodayDate();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -105,8 +111,10 @@ export default function NewspaperUploadModal({ onSuccess, onClose }: NewspaperUp
 
   const canUpload = Boolean(preparedFile) && !isProcessing && !isUploading;
 
-  return (
-    <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-2xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -260,6 +268,7 @@ export default function NewspaperUploadModal({ onSuccess, onClose }: NewspaperUp
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
