@@ -47,7 +47,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
-| M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, awaiting review/merge | See "M10 — done" section below. |
+| M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, merged 2026-08-13 | See "M10 — done" section below. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
@@ -84,8 +84,8 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10 are done (M10 awaiting review/merge), in that order. Remaining,
-top-to-bottom from where it left off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10 are done, in that order. Remaining, top-to-bottom from where it left
+off:
 
 1. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`, *(next up)*
    `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
@@ -122,10 +122,11 @@ top-to-bottom from where it left off:
 12. Proceed to M9.
 13. M9 verified and merged to `main`.
 14. Proceed to M10.
+15. M10 verified and merged to `main`.
 
-## M10 — done, awaiting review (2026-08-13)
+## M10 — done (2026-08-13)
 
-Fixed on `m10-task-creator-modal-refetch` (not yet merged — waiting for your review).
+Fixed on `m10-task-creator-modal-refetch`, merged to `main`.
 
 Changes:
 
