@@ -1,130 +1,70 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Task, UserSettings } from '@/lib/types';
+import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { calculateLevelAndProgress, getEgoAttackMessage, calculateGlobalHunterRank } from '@/lib/gamification';
-import { calculateMomentum } from '@/lib/momentum';
-import { fetchUserSettings, fetchTasks, recordRatedFocusSession, recordSessionStop } from '@/lib/supabase';
-import { Play, Pause, Square, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame, ArrowLeft } from 'lucide-react';
+import { getEgoAttackMessage } from '@/lib/gamification';
+import { fetchTasks } from '@/lib/supabase';
+import { Play, Pause, Square, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 import FocusRatingModal from '@/components/FocusRatingModal';
 import QuitTauntModal from '@/components/QuitTauntModal';
-import HunterEventModal, { EventType } from '@/components/HunterEventModal';
+import HunterEventModal from '@/components/HunterEventModal';
 import XPChangeModal from '@/components/XPChangeModal';
 import FlipDigit from '@/components/FlipDigit';
-
-const TIMER_STORAGE_KEY = 'bcs_active_focus_session';
+import { useFocusTimer, TIMER_STORAGE_KEY } from '@/hooks/useFocusTimer';
 
 export default function FocusPage() {
   const router = useRouter();
-  const [targetMinutes, setTargetMinutes] = useState<number>(25);
-  const [secondsLeft, setSecondsLeft] = useState<number>(25 * 60);
-  const [isActive, setIsActive] = useState<boolean>(false);
-
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [egoMessage, setEgoMessage] = useState<string>('');
 
-  // Modal States
-  const [showRatingModal, setShowRatingModal] = useState<boolean>(false);
-  const [showQuitModal, setShowQuitModal] = useState<boolean>(false);
-  const [quitPenaltyInfo, setQuitPenaltyInfo] = useState<{ isPenalty: boolean; amount: number }>({
-    isPenalty: false,
-    amount: 0,
-  });
-
-  // XP Change Notification Modal State
-  const [xpModalOpen, setXpModalOpen] = useState(false);
-  const [xpChangeAmount, setXpChangeAmount] = useState(0);
-  const [xpReason, setXpReason] = useState('');
-  const [xpMultiplier, setXpMultiplier] = useState(1.0);
-  const [xpNewTotal, setXpNewTotal] = useState(0);
-
-  // Level / Rank Up Event Modal State
-  const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [activeEventType, setActiveEventType] = useState<EventType>('rank-up');
-  const [pendingEventModal, setPendingEventModal] = useState<EventType | null>(null);
-  const [eventOldPos, setEventOldPos] = useState(500);
-  const [eventNewPos, setEventNewPos] = useState(480);
-  const [eventOldRank, setEventOldRank] = useState('E-Rank');
-  const [eventNewRank, setEventNewRank] = useState('D-Rank');
-  const [eventOldLevel, setEventOldLevel] = useState(5);
-  const [eventNewLevel, setEventNewLevel] = useState(6);
-
-  const pauseStartRef = useRef<number | null>(null);
-  const endTimeRef = useRef<number | null>(null);
-
-  const persistSessionState = (
-    active: boolean,
-    targetMins: number,
-    endTimeVal: number | null,
-    secondsVal: number,
-    pauseStartVal: number | null
-  ) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(
-      TIMER_STORAGE_KEY,
-      JSON.stringify({
-        targetMins,
-        endTime: endTimeVal,
-        pausedSeconds: !active ? secondsVal : null,
-        active,
-        fullscreen: true,
-        pauseStart: pauseStartVal,
-      })
-    );
-  };
-
-  useEffect(() => {
-    Promise.all([fetchUserSettings(), fetchTasks()]).then(([s, t]) => {
+  const {
+    targetMinutes,
+    secondsLeft,
+    isActive,
+    userSettings,
+    toggleTimer,
+    resetTimer,
+    handleStop,
+    showRatingModal,
+    handleFinishRating,
+    showQuitModal,
+    setShowQuitModal,
+    quitPenaltyInfo,
+    xpModalOpen,
+    xpChangeAmount,
+    xpReason,
+    xpMultiplier,
+    xpNewTotal,
+    handleCloseXPModal,
+    eventModalOpen,
+    setEventModalOpen,
+    activeEventType,
+    eventOldRank,
+    eventNewRank,
+    eventOldLevel,
+    eventNewLevel,
+    eventOldPos,
+    eventNewPos,
+  } = useFocusTimer({
+    isFullscreen: true,
+    onUserSettingsLoaded: (s) => {
       if (s?.show_rank_features === false) {
         router.push('/');
         return;
       }
-      setUserSettings(s);
-      setTasks(t);
       if (s?.quotes && s.quotes.length > 0) {
         setCurrentQuoteIndex(Math.floor(Math.random() * s.quotes.length));
       }
-    });
+    },
+  });
 
-    if (typeof window !== 'undefined') {
-      const savedRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-      if (savedRaw) {
-        try {
-          const saved = JSON.parse(savedRaw);
-          if (saved && typeof saved === 'object') {
-            const { targetMins, endTime, pausedSeconds, active, pauseStart } = saved;
-            const mins = targetMins || 25;
-            setTargetMinutes(mins);
-
-            if (active && endTime) {
-              const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-              if (remaining > 0) {
-                setSecondsLeft(remaining);
-                endTimeRef.current = endTime;
-                setIsActive(true);
-              } else {
-                localStorage.removeItem(TIMER_STORAGE_KEY);
-                setSecondsLeft(0);
-                setShowRatingModal(true);
-              }
-            } else if (!active && pausedSeconds !== null && pausedSeconds !== undefined) {
-              setSecondsLeft(pausedSeconds);
-              setIsActive(false);
-              pauseStartRef.current = pauseStart || null;
-            }
-          }
-        } catch (err) {
-          console.error('Error restoring focus session:', err);
-        }
-      }
-    }
+  useEffect(() => {
+    fetchTasks().then(setTasks);
   }, []);
 
   useEffect(() => {
@@ -132,207 +72,6 @@ export default function FocusPage() {
       setEgoMessage(getEgoAttackMessage(userSettings?.current_rank || 'E-Rank', userSettings?.level || 1));
     }
   }, [isActive, userSettings]);
-
-  // Main Timer Loop
-  useEffect(() => {
-    let interval: any = null;
-
-    if (isActive) {
-      pauseStartRef.current = null;
-
-      const tick = () => {
-        if (!endTimeRef.current) return;
-        const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000));
-        setSecondsLeft(remaining);
-
-        if (remaining <= 0) {
-          endTimeRef.current = null;
-          setIsActive(false);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem(TIMER_STORAGE_KEY);
-          }
-          setShowRatingModal(true);
-        }
-      };
-
-      tick();
-      interval = setInterval(tick, 250);
-
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          tick();
-        }
-      };
-
-      window.addEventListener('visibilitychange', handleVisibilityChange);
-      window.addEventListener('focus', handleVisibilityChange);
-
-      return () => {
-        if (interval) clearInterval(interval);
-        window.removeEventListener('visibilitychange', handleVisibilityChange);
-        window.removeEventListener('focus', handleVisibilityChange);
-      };
-    } else if (!isActive && secondsLeft < targetMinutes * 60 && secondsLeft > 0) {
-      if (!pauseStartRef.current) {
-        pauseStartRef.current = Date.now();
-      }
-      interval = setInterval(() => {
-        const elapsedPausedSec = Math.floor((Date.now() - (pauseStartRef.current || Date.now())) / 1000);
-        if (elapsedPausedSec >= 600) {
-          if (interval) clearInterval(interval);
-          handleStop();
-        }
-      }, 3000);
-
-      return () => {
-        if (interval) clearInterval(interval);
-      };
-    }
-  }, [isActive]);
-
-  const toggleTimer = () => {
-    if (!isActive) {
-      const remainingSec = secondsLeft <= 0 ? targetMinutes * 60 : secondsLeft;
-      if (secondsLeft <= 0) {
-        setSecondsLeft(targetMinutes * 60);
-      }
-      const newEndTime = Date.now() + remainingSec * 1000;
-      endTimeRef.current = newEndTime;
-      pauseStartRef.current = null;
-      setIsActive(true);
-      persistSessionState(true, targetMinutes, newEndTime, remainingSec, null);
-    } else {
-      endTimeRef.current = null;
-      setIsActive(false);
-      persistSessionState(false, targetMinutes, null, secondsLeft, pauseStartRef.current);
-    }
-  };
-
-  const resetTimer = (mins: number = targetMinutes) => {
-    setIsActive(false);
-    endTimeRef.current = null;
-    pauseStartRef.current = null;
-    setTargetMinutes(mins);
-    setSecondsLeft(mins * 60);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(TIMER_STORAGE_KEY);
-    }
-  };
-
-  const handleFinishRating = async (stars: number) => {
-    setShowRatingModal(false);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(TIMER_STORAGE_KEY);
-    }
-
-    const oldLevel = userSettings?.level || 1;
-    const oldRank = userSettings?.current_rank || 'E-Rank';
-    const oldXP = userSettings?.xp || 0;
-    const oldMomentum = calculateMomentum(userSettings);
-    const oldGlobalPos = userSettings?.official_weekly_rank || 500;
-
-    const updated = await recordRatedFocusSession(targetMinutes, stars);
-    setUserSettings(updated);
-    resetTimer(targetMinutes);
-
-    const newLevel = updated.level || 1;
-    const newRank = updated.current_rank || 'E-Rank';
-    const newXP = updated.xp || 0;
-    const gainedXP = newXP - oldXP;
-    const newMomentum = calculateMomentum(updated);
-    const newGlobalPos = updated.official_weekly_rank || 500;
-
-    let eventType: EventType | null = null;
-    if (newRank !== oldRank && newLevel > oldLevel) {
-      eventType = 'rank-up';
-    } else if (newLevel > oldLevel) {
-      eventType = 'level-up';
-    }
-
-    if (eventType) {
-      setActiveEventType(eventType);
-      setPendingEventModal(eventType);
-      setEventOldRank(oldRank);
-      setEventNewRank(newRank);
-      setEventOldLevel(oldLevel);
-      setEventNewLevel(newLevel);
-      setEventOldPos(oldGlobalPos);
-      setEventNewPos(newGlobalPos);
-    }
-
-    if (gainedXP > 0) {
-      setXpChangeAmount(gainedXP);
-      setXpReason(`${targetMinutes}m Focus Session Completed (${stars} Stars)`);
-      setXpMultiplier(newMomentum.xpMultiplier);
-      setXpNewTotal(newXP);
-      setXpModalOpen(true);
-    } else if (eventType) {
-      setEventModalOpen(true);
-    }
-  };
-
-  const handleStop = async () => {
-    setIsActive(false);
-    endTimeRef.current = null;
-    pauseStartRef.current = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(TIMER_STORAGE_KEY);
-    }
-
-    const oldLevel = userSettings?.level || 1;
-    const oldRank = userSettings?.current_rank || 'E-Rank';
-    const oldXP = userSettings?.xp || 0;
-    const oldMomentum = calculateMomentum(userSettings);
-    const oldGlobalPos = userSettings?.official_weekly_rank || 500;
-
-    const { updatedSettings, isPenaltyApplied, penaltyAmount } = await recordSessionStop();
-    setUserSettings(updatedSettings);
-
-    const newLevel = updatedSettings.level || 1;
-    const newRank = updatedSettings.current_rank || 'E-Rank';
-    const newXP = updatedSettings.xp || 0;
-    const newMomentum = calculateMomentum(updatedSettings);
-    const newGlobalPos = updatedSettings.official_weekly_rank || 500;
-
-    setQuitPenaltyInfo({ isPenalty: isPenaltyApplied, amount: penaltyAmount });
-    setShowQuitModal(true);
-
-    let eventType: EventType | null = null;
-    if (newRank !== oldRank && newLevel < oldLevel) {
-      eventType = 'rank-down';
-    } else if (newLevel < oldLevel) {
-      eventType = 'level-down';
-    }
-
-    if (eventType) {
-      setActiveEventType(eventType);
-      setPendingEventModal(eventType);
-      setEventOldRank(oldRank);
-      setEventNewRank(newRank);
-      setEventOldLevel(oldLevel);
-      setEventNewLevel(newLevel);
-      setEventOldPos(oldGlobalPos);
-      setEventNewPos(newGlobalPos);
-    }
-
-    if (isPenaltyApplied && penaltyAmount > 0) {
-      setXpChangeAmount(-penaltyAmount);
-      setXpReason('Excess Session Stop Penalty');
-      setXpMultiplier(1.0);
-      setXpNewTotal(newXP);
-      setXpModalOpen(true);
-    }
-
-    resetTimer(targetMinutes);
-  };
-
-  const handleCloseXPModal = () => {
-    setXpModalOpen(false);
-    if (pendingEventModal) {
-      setEventModalOpen(true);
-      setPendingEventModal(null);
-    }
-  };
 
   const exitFocusPage = () => {
     if (!isActive && secondsLeft === targetMinutes * 60) {

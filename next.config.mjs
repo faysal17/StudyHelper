@@ -9,6 +9,11 @@ const r2PublicHostname = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // `next lint`'s default dirs don't include `hooks` — without this, the new
+  // hooks/ directory (added in M11) would silently escape the CI lint gate.
+  eslint: {
+    dirs: ['app', 'components', 'lib', 'hooks'],
+  },
   images: {
     remotePatterns: r2PublicHostname
       ? [
