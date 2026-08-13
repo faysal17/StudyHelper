@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured, fetchAllClassificationQuizAttempts, fetchAllClassificationSrsRecords } from '@/lib/supabase';
 import ClassificationBlock from './ClassificationBlock';
 import type { ClassificationEntry, RevisionItem } from '@/lib/wordClassification';
 
@@ -34,18 +34,13 @@ export default function Dashboard({
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      if (!isSupabaseConfigured || !supabase) return;
+      if (!isSupabaseConfigured) return;
 
-      const { data: attemptsData, error: attemptsError } = await supabase
-        .from('quiz_attempts')
-        .select('score, total_questions, mode')
-        .like('mode', 'classification%');
+      const { data: attemptsData, error: attemptsError } = await fetchAllClassificationQuizAttempts();
 
       if (attemptsError) throw attemptsError;
 
-      const { data: srsData, error: srsError } = await supabase
-        .from('user_classification_srs')
-        .select('word, axis, box, next_review_at');
+      const { data: srsData, error: srsError } = await fetchAllClassificationSrsRecords();
 
       if (srsError) throw srsError;
 

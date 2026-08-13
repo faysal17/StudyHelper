@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  isSupabaseConfigured,
+  getCurrentAuthUser,
+  insertClassificationQuizAttempt,
+  fetchClassificationSrsForWords,
+  upsertClassificationSrsRecords,
+  markClassificationChunksCompleted,
+} from '@/lib/supabase';
 import type { Axis } from '@/lib/wordClassification';
 
 type ClassificationUpdate = { word: string; axis: Axis; isCorrect: boolean };
@@ -45,19 +52,17 @@ export default function QuizSummary({
       setSaving(true);
       setError(null);
 
-      if (!isSupabaseConfigured || !supabase) {
+      if (!isSupabaseConfigured) {
         setSaving(false);
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentAuthUser();
       if (!user) {
         throw new Error('ব্যবহারকারী লগইন অবস্থায় নেই। ফলাফল সংরক্ষণ করা সম্ভব হয়নি।');
       }
 
-      const { error: attemptError } = await supabase.from('quiz_attempts').insert({
+      const { error: attemptError } = await insertClassificationQuizAttempt({
         user_id: user.id,
         mode: 'classification',
         score,
@@ -71,10 +76,7 @@ export default function QuizSummary({
       const wordsPlayed = [...new Set(updates.map((u) => u.word))];
 
       if (wordsPlayed.length > 0) {
-        const { data: srsRecords, error: srsFetchError } = await supabase
-          .from('user_classification_srs')
-          .select('word, axis, box, next_review_at')
-          .in('word', wordsPlayed);
+        const { data: srsRecords, error: srsFetchError } = await fetchClassificationSrsForWords(wordsPlayed);
 
         if (srsFetchError) throw srsFetchError;
 
@@ -128,9 +130,7 @@ export default function QuizSummary({
         }));
 
         if (srsInserts.length > 0) {
-          const { error: srsUpsertError } = await supabase
-            .from('user_classification_srs')
-            .upsert(srsInserts, { onConflict: 'user_id,word,axis' });
+          const { error: srsUpsertError } = await upsertClassificationSrsRecords(srsInserts);
 
           if (srsUpsertError) throw srsUpsertError;
         }
@@ -143,9 +143,7 @@ export default function QuizSummary({
           chunk_key: chunkKey,
         }));
 
-        const { error: completedError } = await supabase
-          .from('user_completed_classification_chunks')
-          .upsert(completedInserts, { onConflict: 'user_id,chunk_key' });
+        const { error: completedError } = await markClassificationChunksCompleted(completedInserts);
 
         if (completedError) throw completedError;
       }
