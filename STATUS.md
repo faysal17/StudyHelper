@@ -49,7 +49,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, merged 2026-08-13 | See "M10 — done" section below. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, merged 2026-08-13 | See "M11 — done" section below. |
-| M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
+| M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Done**, merged 2026-08-13 | See "M12 — done" section below. |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Not started** | Not re-audited in depth (out of scope for a spot-check); no reason to believe it changed. |
 | M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. |
@@ -144,10 +144,11 @@ left off:
     you chose to accept typecheck/lint/build-clean + the Playwright smoke suite (9/9 passing,
     covers login/Navbar/6 core pages) as sufficient verification for this milestone, given it's a
     structural-only relocation with no intended behavior change.
+21. M12 merged to `main`.
 
 ## M12 — done (2026-08-13)
 
-Fixed on `m12-consolidate-supabase-calls`, not yet merged. Physically relocated every
+Fixed on `m12-consolidate-supabase-calls`, merged to `main`. Physically relocated every
 `supabase.from()`/`supabase.auth` call that lived outside `lib/supabase.ts` into new exported
 functions there, so `lib/supabase.ts` is now actually the single place the Supabase client is
 touched from (per your M12 structural decision, added to the existing file rather than split into
@@ -228,9 +229,6 @@ delete, routines create/update/delete, the settings week-start-day save-click, s
 classification quiz-and-dashboard flows) was not performed this session — see approval #20 for why,
 and your decision to accept the above as sufficient given this milestone changes no behavior, only
 where each Supabase call physically lives.
-
-**Not yet merged** — stopping here for your review per the working rules, same as every prior
-milestone.
 
 ## M11 — done (2026-08-13)
 
