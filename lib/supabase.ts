@@ -607,15 +607,19 @@ export async function createSubject(name: string): Promise<Subject> {
   throw new Error('Supabase database is not configured.');
 }
 
-export async function deleteSubject(id: string): Promise<void> {
-  const topics = await fetchTopics();
-  const childTopicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
-  const subtopics = await fetchSubtopics();
-  const childSubtopics = subtopics.filter((st) => childTopicIds.includes(st.topic_id));
-  const completedCount = childSubtopics.filter((st) => st.status === 'completed').length;
+export async function deleteSubject(id: string, completedChildCount?: number): Promise<void> {
+  let count = completedChildCount;
+  if (count === undefined) {
+    const topics = await fetchTopics();
+    const childTopicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
+    const subtopics = await fetchSubtopics();
+    count = subtopics.filter(
+      (st) => childTopicIds.includes(st.topic_id) && st.status === 'completed'
+    ).length;
+  }
 
-  if (completedCount > 0) {
-    await awardXPAndSync(-30 * completedCount);
+  if (count > 0) {
+    await awardXPAndSync(-30 * count);
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -637,13 +641,15 @@ export async function createTopic(name: string, subjectId: string): Promise<Topi
   throw new Error('Supabase database is not configured.');
 }
 
-export async function deleteTopic(id: string): Promise<void> {
-  const subtopics = await fetchSubtopics();
-  const childSubtopics = subtopics.filter((st) => st.topic_id === id);
-  const completedCount = childSubtopics.filter((st) => st.status === 'completed').length;
+export async function deleteTopic(id: string, completedChildCount?: number): Promise<void> {
+  let count = completedChildCount;
+  if (count === undefined) {
+    const subtopics = await fetchSubtopics();
+    count = subtopics.filter((st) => st.topic_id === id && st.status === 'completed').length;
+  }
 
-  if (completedCount > 0) {
-    await awardXPAndSync(-30 * completedCount);
+  if (count > 0) {
+    await awardXPAndSync(-30 * count);
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -668,26 +674,28 @@ export async function createSubtopic(name: string, topicId: string): Promise<Sub
   throw new Error('Supabase database is not configured.');
 }
 
-export async function updateSubtopicStatus(id: string, status: SubtopicStatus): Promise<void> {
-  const subtopics = await fetchSubtopics();
-  const target = subtopics.find((st) => st.id === id);
+export async function updateSubtopicStatus(
+  id: string,
+  status: SubtopicStatus,
+  previousStatus: SubtopicStatus
+): Promise<UserSettings | undefined> {
+  let updatedSettings: UserSettings | undefined;
 
-  if (target && target.status !== 'completed' && status === 'completed') {
-    await awardXPAndSync(30);
-  } else if (target && target.status === 'completed' && status !== 'completed') {
-    await awardXPAndSync(-30);
+  if (previousStatus !== 'completed' && status === 'completed') {
+    updatedSettings = await awardXPAndSync(30);
+  } else if (previousStatus === 'completed' && status !== 'completed') {
+    updatedSettings = await awardXPAndSync(-30);
   }
 
   if (isSupabaseConfigured && supabase) {
     await supabase.from('subtopics').update({ status }).eq('id', id);
   }
+
+  return updatedSettings;
 }
 
-export async function deleteSubtopic(id: string): Promise<void> {
-  const subtopics = await fetchSubtopics();
-  const target = subtopics.find((st) => st.id === id);
-
-  if (target && target.status === 'completed') {
+export async function deleteSubtopic(id: string, wasCompleted: boolean): Promise<void> {
+  if (wasCompleted) {
     await awardXPAndSync(-30);
   }
 
