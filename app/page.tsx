@@ -13,7 +13,7 @@ import CalendarBlock from '@/components/CalendarBlock';
 import NoteUploader from '@/components/NoteUploader';
 import UpcomingTaskNotification from '@/components/UpcomingTaskNotification';
 import { Task, UserSettings, FocusSession, DailyTaskPlacement, RoutineBlock } from '@/lib/types';
-import { fetchTasks, fetchUserSettings, fetchFocusSessions, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { fetchTasksWithNoteSummary, fetchUserSettings, fetchFocusSessions, acknowledgeWeeklyRankModal, isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { fetchPlacementsForDate, fetchRoutineBlocks } from '@/lib/routines';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { SLOT_MINUTES, slotsForRoutineBlock } from '@/lib/timeGrid';
@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
     try {
       const [taskData, settingsData, sessionData, routineData] = await Promise.all([
-        fetchTasks(),
+        fetchTasksWithNoteSummary(),
         fetchUserSettings(),
         fetchFocusSessions(),
         fetchRoutineBlocks(),
