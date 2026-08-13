@@ -1,4 +1,4 @@
-import { isSupabaseConfigured, supabase } from './supabase';
+import { isSupabaseConfigured, supabase, getAuthHeaders } from './supabase';
 import { NewspaperPdf, NewspaperPage } from './types';
 
 const DEFAULT_USER_ID = 'user-owner';
@@ -17,8 +17,8 @@ async function getCurrentUserId(): Promise<string> {
 export async function uploadNewspaperPdf(file: File): Promise<string> {
   const presignRes = await fetch('/api/upload', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileName: file.name, contentType: file.type || 'application/pdf' }),
+    headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+    body: JSON.stringify({ contentType: file.type || 'application/pdf', fileSize: file.size }),
   });
   if (!presignRes.ok) {
     const body = await presignRes.json().catch(() => null);
@@ -147,7 +147,7 @@ async function deletePdfFromR2(url: string): Promise<void> {
 
   const res = await fetch('/api/storage/delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
     body: JSON.stringify({ urls: [url] }),
   });
   if (!res.ok) {

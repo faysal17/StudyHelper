@@ -18,15 +18,35 @@ const r2Client = isR2Configured
     })
   : null;
 
+// What the app actually uploads: note-image scans and newspaper PDFs.
+// Mapped to a fixed extension so the object key never derives from a
+// client-supplied filename.
+export const ALLOWED_UPLOAD_CONTENT_TYPES: Record<string, string> = {
+  'image/webp': 'webp',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+  'application/pdf': 'pdf',
+};
+
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB
+
 export async function createPresignedUploadUrl(
   key: string,
-  contentType: string
+  contentType: string,
+  contentLength: number
 ): Promise<{ uploadUrl: string; publicUrl: string }> {
   if (!r2Client) throw new Error('R2 is not configured');
 
   const uploadUrl = await getSignedUrl(
     r2Client,
-    new PutObjectCommand({ Bucket: R2_BUCKET_NAME, Key: key, ContentType: contentType }),
+    new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+      ContentLength: contentLength,
+    }),
     { expiresIn: 300 }
   );
 

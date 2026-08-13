@@ -71,6 +71,16 @@ async function getCurrentUserId(): Promise<string> {
   return DEFAULT_USER_ID;
 }
 
+// Auth header for the /api/upload and /api/storage/delete route handlers,
+// which verify the caller's Supabase session server-side rather than
+// trusting an unauthenticated request.
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured || !supabase) return {};
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 // USER SETTINGS & GAMIFICATION SYNC
 
 export function calculateWeekFocusSeconds(weeklyLog: Record<string, number>, todayStr: string): number {
@@ -773,7 +783,7 @@ async function deleteNoteImagesFromR2(urls: string[]): Promise<void> {
   try {
     await fetch('/api/storage/delete', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
       body: JSON.stringify({ urls: r2Urls }),
     });
   } catch (err) {
@@ -823,8 +833,8 @@ export async function deleteNote(id: string): Promise<void> {
 export async function uploadNoteImage(file: File): Promise<string> {
   const presignRes = await fetch('/api/upload', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileName: file.name, contentType: file.type || 'image/webp' }),
+    headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+    body: JSON.stringify({ contentType: file.type || 'image/webp', fileSize: file.size }),
   });
   if (!presignRes.ok) {
     const body = await presignRes.json().catch(() => null);
