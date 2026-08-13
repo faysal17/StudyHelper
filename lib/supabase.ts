@@ -916,6 +916,23 @@ export async function uploadNoteImage(file: File): Promise<string> {
   return publicUrl;
 }
 
+// Fetches a single note (with its overlays) directly by id, including its task_id
+// — for views that only need one note, instead of deep-joining every task to find it.
+export async function fetchNoteById(id: string): Promise<Note | null> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*, overlays(*)')
+      .eq('id', id)
+      .single();
+
+    if (!error && data) {
+      return data;
+    }
+  }
+  return null;
+}
+
 export async function createNote(taskId: string, imageUrl: string): Promise<Note> {
   if (isSupabaseConfigured && supabase) {
     const userId = await getCurrentUserId();

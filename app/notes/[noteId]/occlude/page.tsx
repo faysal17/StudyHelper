@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Note, Task } from '@/lib/types';
-import { fetchTasks } from '@/lib/supabase';
+import { Note } from '@/lib/types';
+import { fetchNoteById } from '@/lib/supabase';
 import ImageOcclusionCreator from '@/components/ImageOcclusionCreator';
 import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -25,16 +25,10 @@ export default function OccludeNotePage() {
   const loadNoteDetails = async () => {
     setLoading(true);
     try {
-      const allTasks = await fetchTasks();
-      for (const t of allTasks) {
-        if (t.notes) {
-          const match = t.notes.find((n) => n.id === noteId);
-          if (match) {
-            setNote(match);
-            setTaskId(t.id);
-            break;
-          }
-        }
+      const fetchedNote = await fetchNoteById(noteId);
+      if (fetchedNote) {
+        setNote(fetchedNote);
+        setTaskId(fetchedNote.task_id);
       }
     } catch (err) {
       console.error('Error fetching note for occlusion:', err);
