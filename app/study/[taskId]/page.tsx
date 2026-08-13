@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'next/navigation';
 import { Task } from '@/lib/types';
 import { fetchTaskById } from '@/lib/supabase';
@@ -80,19 +81,21 @@ export default function StudyTaskPage() {
           </button>
         </div>
 
-        {showUploader && (
-          <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
-            <NoteUploader
-              taskId={task.id}
-              taskTitle={task.title}
-              onClose={() => setShowUploader(false)}
-              onSuccess={() => {
-                setShowUploader(false);
-                loadTaskData();
-              }}
-            />
-          </div>
-        )}
+        {showUploader &&
+          createPortal(
+            <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
+              <NoteUploader
+                taskId={task.id}
+                taskTitle={task.title}
+                onClose={() => setShowUploader(false)}
+                onSuccess={() => {
+                  setShowUploader(false);
+                  loadTaskData();
+                }}
+              />
+            </div>,
+            document.body
+          )}
       </div>
     );
   }

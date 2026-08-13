@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Task, Subject } from '@/lib/types';
 import { fetchTasks, fetchSubjects, deleteTask } from '@/lib/supabase';
 import {
@@ -252,15 +253,17 @@ export default function TasksPage() {
         </div>
       )}
 
-      {noteTaskTarget && (
-        <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
-          <NoteUploader
-            taskId={noteTaskTarget.id}
-            taskTitle={noteTaskTarget.title}
-            onClose={() => setNoteTaskTarget(null)}
-          />
-        </div>
-      )}
+      {noteTaskTarget &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
+            <NoteUploader
+              taskId={noteTaskTarget.id}
+              taskTitle={noteTaskTarget.title}
+              onClose={() => setNoteTaskTarget(null)}
+            />
+          </div>,
+          document.body
+        )}
 
       <TaskCreatorModal
         isOpen={isTaskModalOpen}

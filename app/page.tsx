@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import FocusTimerBlock from '@/components/FocusTimerBlock';
 import TaskCountersBlock from '@/components/TaskCountersBlock';
@@ -247,15 +248,17 @@ export default function DashboardPage() {
       )}
 
       {/* Note Uploader Modal */}
-      {noteTaskTarget && (
-        <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
-          <NoteUploader
-            taskId={noteTaskTarget.id}
-            taskTitle={noteTaskTarget.title}
-            onClose={() => setNoteTaskTarget(null)}
-          />
-        </div>
-      )}
+      {noteTaskTarget &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 !m-0">
+            <NoteUploader
+              taskId={noteTaskTarget.id}
+              taskTitle={noteTaskTarget.title}
+              onClose={() => setNoteTaskTarget(null)}
+            />
+          </div>,
+          document.body
+        )}
 
       {/* Task Creator Modal */}
       <TaskCreatorModal
