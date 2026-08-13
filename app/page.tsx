@@ -142,9 +142,14 @@ export default function DashboardPage() {
 
   const handleCloseWeeklyModal = async () => {
     setWeeklyModalOpen(false);
-    await acknowledgeWeeklyRankModal();
-    if (userSettings) {
-      setUserSettings({ ...userSettings, show_weekly_rank_modal: false });
+    try {
+      await acknowledgeWeeklyRankModal();
+      if (userSettings) {
+        setUserSettings({ ...userSettings, show_weekly_rank_modal: false });
+      }
+    } catch (err) {
+      // Non-critical: worst case the modal reappears next visit.
+      console.error('Error acknowledging weekly rank modal:', err);
     }
   };
 

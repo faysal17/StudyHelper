@@ -147,7 +147,14 @@ export default function DDayBlock({ settings, onSettingsUpdate }: DDayBlockProps
     const sanitizedDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     const newTitle = editTitle.trim() || 'Target Goal Date';
 
-    await updateDDayConfig(sanitizedDate, newTitle);
+    try {
+      await updateDDayConfig(sanitizedDate, newTitle);
+    } catch (err) {
+      console.error('Error saving D-Day target:', err);
+      setErrorMsg('Failed to save — please try again.');
+      return;
+    }
+
     setTargetDate(sanitizedDate);
     setTargetTitle(newTitle);
     setIsEditing(false);

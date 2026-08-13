@@ -158,6 +158,12 @@ ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_week_start_date D
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS last_vocab_xp_date DATE DEFAULT NULL;
 ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_rank_features BOOLEAN DEFAULT TRUE;
 
+-- Referenced by application code (lib/supabase.ts, lib/types.ts, app/page.tsx)
+-- since the weekly-rank feature was added, but never migrated here — every
+-- user_settings upsert has been failing with PGRST204 "column not found in
+-- schema cache" as a result (AUDIT.md section 6 / milestone M5).
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_weekly_rank_modal BOOLEAN DEFAULT FALSE;
+
 -- 3. Enable Row Level Security (RLS) on All Tables
 
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;

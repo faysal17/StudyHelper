@@ -61,12 +61,22 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   show_rank_features: true,
 };
 
-async function getCurrentUserId(): Promise<string> {
+// Reads the persisted/cached session instead of auth.getUser() (which makes
+// a network round-trip to revalidate the JWT). auth.getUser() calls made
+// shortly after a page load could race the client's own session hydration
+// and resolve with no user even though a valid session existed, silently
+// falling back to DEFAULT_USER_ID — a string, not a UUID, which every
+// user_id column rejects outright. When Supabase is configured, an absent
+// session is now a hard error instead of a silent substitution.
+export async function getCurrentUserId(): Promise<string> {
   if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user?.id) {
-      return userData.user.id;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const userId = data?.session?.user?.id;
+    if (!userId) {
+      throw new Error('You must be signed in to do that.');
     }
+    return userId;
   }
   return DEFAULT_USER_ID;
 }
@@ -210,7 +220,13 @@ export async function fetchUserSettings(): Promise<UserSettings> {
       const sanitized = sanitizeUserSettings(data, sessionData || []);
       if (sanitized._needsPersist) {
         const { _needsPersist, ...toSave } = sanitized;
-        await supabase.from('user_settings').upsert({ ...toSave, user_id: userId });
+        // Best-effort: this is a background rollover sync riding along on a
+        // read, so a failure here shouldn't break the read path — but it
+        // must not vanish silently either, unlike before.
+        const { error: persistError } = await supabase
+          .from('user_settings')
+          .upsert({ ...toSave, user_id: userId });
+        if (persistError) console.error('Error persisting settings rollover:', persistError);
       }
       delete sanitized._needsPersist;
       return sanitized;
@@ -222,7 +238,8 @@ export async function fetchUserSettings(): Promise<UserSettings> {
       last_active_date: getTodayDateString(DEFAULT_USER_SETTINGS.day_end_time || '00:00'),
     };
 
-    await supabase.from('user_settings').upsert(defaultSettings);
+    const { error: createError } = await supabase.from('user_settings').upsert(defaultSettings);
+    if (createError) console.error('Error creating default settings row:', createError);
     return defaultSettings;
   }
 
@@ -256,7 +273,8 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
   };
 
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    const { error } = await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    if (error) console.error('Error persisting XP update:', error);
   }
 
   return { ...current, ...updated };
@@ -265,23 +283,25 @@ export async function awardXPAndSync(addedXP: number): Promise<UserSettings> {
 export async function updateWeekendDaysConfig(weekendDays: string[]): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       weekend_days: weekendDays,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function updateStudyTargetsConfig(weekdayMins: number, weekendMins: number): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       weekday_target_minutes: weekdayMins,
       weekend_target_minutes: weekendMins,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
@@ -381,7 +401,8 @@ export async function recordSessionStop(): Promise<{ updatedSettings: UserSettin
   };
 
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    const { error } = await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    if (error) console.error('Error persisting session-stop update:', error);
   }
 
   const updatedSettings = { ...current, ...updated };
@@ -451,7 +472,8 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
   };
 
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    const { error } = await supabase.from('user_settings').upsert({ ...updated, user_id: current.user_id });
+    if (error) console.error('Error persisting rated focus session update:', error);
   }
 
   return { ...current, ...updated };
@@ -460,67 +482,73 @@ export async function recordRatedFocusSession(minutes: number, stars: number): P
 export async function updateDDayConfig(targetDate: string, targetTitle: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       target_date: targetDate,
       target_title: targetTitle,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function acknowledgeWeeklyRankModal(): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       show_weekly_rank_modal: false,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function updateDayEndTimeConfig(dayEndTime: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       day_end_time: dayEndTime,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function updateQuotesConfig(quotes: string[]): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       quotes,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function updateShowRankFeaturesConfig(showRankFeatures: boolean): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       show_rank_features: showRankFeatures,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 
 export async function updateLastVocabXPDate(dateStr: string): Promise<void> {
   const userId = await getCurrentUserId();
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: userId,
       last_vocab_xp_date: dateStr,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   }
 }
 

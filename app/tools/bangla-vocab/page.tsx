@@ -24,6 +24,8 @@ export default function BanglaVocabPage() {
   const [newWord, setNewWord] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
   const [newExample, setNewExample] = useState('');
+  const [addWordError, setAddWordError] = useState('');
+  const [isAddingWord, setIsAddingWord] = useState(false);
 
   // Study Flashcard Mode State
   const [dueWords, setDueWords] = useState<BanglaWord[]>([]);
@@ -59,20 +61,29 @@ export default function BanglaVocabPage() {
     if (!newWord.trim() || !newMeaning.trim()) return;
     const today = new Date().toISOString().split('T')[0];
 
-    const added = await addBanglaWordDB({
-      word: newWord.trim(),
-      meaning: newMeaning.trim(),
-      example: newExample.trim(),
-      interval: 1,
-      ease_factor: 2.5,
-      next_review: today,
-    });
+    setIsAddingWord(true);
+    setAddWordError('');
+    try {
+      const added = await addBanglaWordDB({
+        word: newWord.trim(),
+        meaning: newMeaning.trim(),
+        example: newExample.trim(),
+        interval: 1,
+        ease_factor: 2.5,
+        next_review: today,
+      });
 
-    setWords([added, ...words]);
-    setNewWord('');
-    setNewMeaning('');
-    setNewExample('');
-    setShowAddModal(false);
+      setWords([added, ...words]);
+      setNewWord('');
+      setNewMeaning('');
+      setNewExample('');
+      setShowAddModal(false);
+    } catch (err) {
+      console.error('Error adding bangla word:', err);
+      setAddWordError('Failed to save this word — please try again.');
+    } finally {
+      setIsAddingWord(false);
+    }
   };
 
   const handleDeleteWord = async (id: string) => {
@@ -200,11 +211,16 @@ export default function BanglaVocabPage() {
       let reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Already Claimed Today`;
 
       if (lastClaimedDate !== todayStr) {
-        earned = 10;
-        await updateLastVocabXPDate(todayStr);
-        await awardXPAndSync(earned);
-        reasonStr = `Bangla Vocab Daily Review Completed (${nextCount} Words)`;
-        setDailyBonusClaimed(true);
+        try {
+          await updateLastVocabXPDate(todayStr);
+          earned = 10;
+          reasonStr = `Bangla Vocab Daily Review Completed (${nextCount} Words)`;
+          setDailyBonusClaimed(true);
+          await awardXPAndSync(earned);
+        } catch (err) {
+          console.error('Error awarding daily vocab XP bonus:', err);
+          reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Could Not Be Saved`;
+        }
       }
 
       if (typeof window !== 'undefined') {
@@ -596,6 +612,10 @@ export default function BanglaVocabPage() {
               </div>
             </div>
 
+            {addWordError && (
+              <p className="text-[11px] text-red-400 text-center">{addWordError}</p>
+            )}
+
             <div className="flex items-center justify-end space-x-2 pt-2">
               <button
                 onClick={() => setShowAddModal(false)}
@@ -605,9 +625,10 @@ export default function BanglaVocabPage() {
               </button>
               <button
                 onClick={handleAddWord}
-                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all"
+                disabled={isAddingWord}
+                className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-950 font-bold text-xs hover:bg-zinc-200 transition-all disabled:opacity-50"
               >
-                Sync to Database
+                {isAddingWord ? 'Saving...' : 'Sync to Database'}
               </button>
             </div>
           </div>

@@ -1,6 +1,4 @@
-import { isSupabaseConfigured, supabase } from './supabase';
-
-const DEFAULT_USER_ID = 'user-owner';
+import { isSupabaseConfigured, supabase, getCurrentUserId } from './supabase';
 
 export interface BanglaWord {
   id: string;
@@ -66,52 +64,45 @@ export async function fetchBanglaWordsDB(): Promise<BanglaWord[]> {
 // DB Insert: Save Single Word to Database
 export async function addBanglaWordDB(wordData: Omit<BanglaWord, 'id' | 'created_at'>): Promise<BanglaWord> {
   const today = new Date().toISOString().split('T')[0];
-  let createdWord: BanglaWord = {
-    id: `bv-${Date.now()}`,
-    ...wordData,
-    created_at: new Date().toISOString(),
-  };
 
-  if (isSupabaseConfigured && supabase) {
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id || DEFAULT_USER_ID;
-
-      const { data, error } = await supabase
-        .from('bangla_vocab')
-        .insert([
-          {
-            user_id: userId,
-            word: wordData.word,
-            meaning: wordData.meaning,
-            example: wordData.example || '',
-            interval: wordData.interval || 1,
-            ease_factor: wordData.ease_factor || 2.5,
-            next_review: wordData.next_review || today,
-          },
-        ])
-        .select()
-        .single();
-
-      if (!error && data) {
-        createdWord = {
-          id: data.id,
-          word: data.word,
-          meaning: data.meaning,
-          example: data.example || '',
-          interval: data.interval || 1,
-          ease_factor: data.ease_factor || 2.5,
-          last_reviewed: data.last_reviewed || undefined,
-          next_review: data.next_review || today,
-          created_at: data.created_at,
-        };
-      }
-    } catch (err) {
-      console.error('Error adding bangla word to DB:', err);
-    }
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      id: `bv-${Date.now()}`,
+      ...wordData,
+      created_at: new Date().toISOString(),
+    };
   }
 
-  return createdWord;
+  const userId = await getCurrentUserId();
+  const { data, error } = await supabase
+    .from('bangla_vocab')
+    .insert([
+      {
+        user_id: userId,
+        word: wordData.word,
+        meaning: wordData.meaning,
+        example: wordData.example || '',
+        interval: wordData.interval || 1,
+        ease_factor: wordData.ease_factor || 2.5,
+        next_review: wordData.next_review || today,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    word: data.word,
+    meaning: data.meaning,
+    example: data.example || '',
+    interval: data.interval || 1,
+    ease_factor: data.ease_factor || 2.5,
+    last_reviewed: data.last_reviewed || undefined,
+    next_review: data.next_review || today,
+    created_at: data.created_at,
+  };
 }
 
 // DB Update: Update Spaced Repetition Stats in Database
@@ -148,8 +139,7 @@ export async function deleteBanglaWordDB(id: string): Promise<void> {
 export async function importBanglaWordsDB(words: Omit<BanglaWord, 'id' | 'created_at'>[]): Promise<BanglaWord[]> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id || DEFAULT_USER_ID;
+      const userId = await getCurrentUserId();
 
       const recordsToInsert = words.map((w) => ({
         user_id: userId,
@@ -235,8 +225,7 @@ export function getSampleBanglaCSV(): string {
 export async function clearAllBanglaWordsDB(): Promise<void> {
   if (isSupabaseConfigured && supabase) {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id || DEFAULT_USER_ID;
+      const userId = await getCurrentUserId();
       await supabase.from('bangla_vocab').delete().eq('user_id', userId);
     } catch (err) {
       console.error('Error clearing bangla words from DB:', err);

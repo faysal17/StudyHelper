@@ -1,18 +1,7 @@
-import { isSupabaseConfigured, supabase, getAuthHeaders } from './supabase';
+import { isSupabaseConfigured, supabase, getAuthHeaders, getCurrentUserId } from './supabase';
 import { NewspaperPdf, NewspaperPage } from './types';
 
-const DEFAULT_USER_ID = 'user-owner';
 const R2_PUBLIC_URL = (process.env.NEXT_PUBLIC_R2_PUBLIC_URL || '').replace(/\/$/, '');
-
-async function getCurrentUserId(): Promise<string> {
-  if (isSupabaseConfigured && supabase) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user?.id) {
-      return userData.user.id;
-    }
-  }
-  return DEFAULT_USER_ID;
-}
 
 export async function uploadNewspaperPdf(file: File): Promise<string> {
   const presignRes = await fetch('/api/upload', {

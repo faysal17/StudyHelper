@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
 import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, updateShowRankFeaturesConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, Calendar, Target, Shield } from 'lucide-react';
+import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, AlertCircle, Calendar, Target, Shield } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 
 export default function SettingsPage() {
@@ -30,6 +30,12 @@ export default function SettingsPage() {
   const [successTargets, setSuccessTargets] = useState(false);
   const [successRankFeatures, setSuccessRankFeatures] = useState(false);
 
+  const [errorTime, setErrorTime] = useState(false);
+  const [errorQuotes, setErrorQuotes] = useState(false);
+  const [errorWeekend, setErrorWeekend] = useState(false);
+  const [errorTargets, setErrorTargets] = useState(false);
+  const [errorRankFeatures, setErrorRankFeatures] = useState(false);
+
   useEffect(() => {
     loadSettings();
   }, []);
@@ -50,6 +56,7 @@ export default function SettingsPage() {
     const nextValue = !showRankFeatures;
     setShowRankFeatures(nextValue);
     setSavingRankFeatures(true);
+    setErrorRankFeatures(false);
     try {
       await updateShowRankFeaturesConfig(nextValue);
       setSuccessRankFeatures(true);
@@ -57,6 +64,8 @@ export default function SettingsPage() {
     } catch (err) {
       console.error('Error updating rank features config:', err);
       setShowRankFeatures(!nextValue);
+      setErrorRankFeatures(true);
+      setTimeout(() => setErrorRankFeatures(false), 4000);
     } finally {
       setSavingRankFeatures(false);
     }
@@ -64,6 +73,7 @@ export default function SettingsPage() {
 
   const handleSaveDayEndTime = async () => {
     setSavingTime(true);
+    setErrorTime(false);
     try {
       await updateDayEndTimeConfig(dayEndTime);
       await loadSettings();
@@ -71,6 +81,8 @@ export default function SettingsPage() {
       setTimeout(() => setSuccessTime(false), 2500);
     } catch (err) {
       console.error('Error updating day end time:', err);
+      setErrorTime(true);
+      setTimeout(() => setErrorTime(false), 4000);
     } finally {
       setSavingTime(false);
     }
@@ -88,16 +100,18 @@ export default function SettingsPage() {
 
   const handleSaveWeekendConfig = async () => {
     setSavingWeekend(true);
+    setErrorWeekend(false);
     try {
       await updateWeekendDaysConfig(weekendDays);
       if (isSupabaseConfigured && supabase) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData?.user) {
-          await supabase.from('user_settings').upsert({
+          const { error } = await supabase.from('user_settings').upsert({
             user_id: userData.user.id,
             week_start_day: weekStartDay,
             updated_at: new Date().toISOString(),
           });
+          if (error) throw error;
         }
       }
       await loadSettings();
@@ -105,6 +119,8 @@ export default function SettingsPage() {
       setTimeout(() => setSuccessWeekend(false), 2500);
     } catch (err) {
       console.error('Error updating weekend config:', err);
+      setErrorWeekend(true);
+      setTimeout(() => setErrorWeekend(false), 4000);
     } finally {
       setSavingWeekend(false);
     }
@@ -112,6 +128,7 @@ export default function SettingsPage() {
 
   const handleSaveStudyTargets = async () => {
     setSavingTargets(true);
+    setErrorTargets(false);
     try {
       await updateStudyTargetsConfig(weekdayTargetMins, weekendTargetMins);
       await loadSettings();
@@ -119,6 +136,8 @@ export default function SettingsPage() {
       setTimeout(() => setSuccessTargets(false), 2500);
     } catch (err) {
       console.error('Error updating study targets:', err);
+      setErrorTargets(true);
+      setTimeout(() => setErrorTargets(false), 4000);
     } finally {
       setSavingTargets(false);
     }
@@ -136,12 +155,15 @@ export default function SettingsPage() {
 
   const handleSaveQuotes = async () => {
     setSavingQuotes(true);
+    setErrorQuotes(false);
     try {
       await updateQuotesConfig(quotes);
       setSuccessQuotes(true);
       setTimeout(() => setSuccessQuotes(false), 2500);
     } catch (err) {
       console.error('Error updating quotes:', err);
+      setErrorQuotes(true);
+      setTimeout(() => setErrorQuotes(false), 4000);
     } finally {
       setSavingQuotes(false);
     }
@@ -196,6 +218,11 @@ export default function SettingsPage() {
               <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
             </span>
           )}
+          {errorRankFeatures && (
+            <span className="text-xs font-mono text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" /> Failed to save
+            </span>
+          )}
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
@@ -234,6 +261,11 @@ export default function SettingsPage() {
           {successTargets && (
             <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+          {errorTargets && (
+            <span className="text-xs font-mono text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" /> Failed to save
             </span>
           )}
         </div>
@@ -290,6 +322,11 @@ export default function SettingsPage() {
           {successWeekend && (
             <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+          {errorWeekend && (
+            <span className="text-xs font-mono text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" /> Failed to save
             </span>
           )}
         </div>
@@ -360,6 +397,11 @@ export default function SettingsPage() {
               <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
             </span>
           )}
+          {errorTime && (
+            <span className="text-xs font-mono text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" /> Failed to save
+            </span>
+          )}
         </div>
 
         <p className="text-xs text-zinc-400 leading-relaxed">
@@ -396,6 +438,11 @@ export default function SettingsPage() {
           {successQuotes && (
             <span className="text-xs font-mono text-emerald-400 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> Saved!
+            </span>
+          )}
+          {errorQuotes && (
+            <span className="text-xs font-mono text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" /> Failed to save
             </span>
           )}
         </div>
