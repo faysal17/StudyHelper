@@ -45,7 +45,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M5 | Fallback-always-executes bug + migration | Root-caused, both halves confirmed live-firing | **Done** | `getCurrentUserId()` ([lib/supabase.ts:71-82](lib/supabase.ts)) now throws instead of substituting `'user-owner'` when Supabase is configured but no session exists; only falls back when Supabase isn't configured at all (demo mode — correct, matches audit's recommended fix). All 8 named `user_settings` upsert functions now check `error` and throw. `addBanglaWordDB` ([lib/banglaVocab.ts:65-95](lib/banglaVocab.ts)) throws on DB error instead of fabricating a fake-success `bv-${Date.now()}` object. Migration applied: `ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_weekly_rank_modal ...` present in [supabase_schema.sql:165](supabase_schema.sql), and per `CLAUDE.md` already run against the live DB. |
 | M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Done**, merged 2026-08-13 | All 6 sites now `createPortal(..., document.body)`. Verified live: modal renders as a `<body>` sibling, not nested under the navbar's stacking context, and its rect exactly matches the viewport. See commit `a9a1fea`. |
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
-| M8 | Split `fetchTasks()`'s deep join | — | **Not started** | Unchanged. |
+| M8 | Split `fetchTasks()`'s deep join | — | **Done**, on `m8-split-fetch-tasks`, awaiting review | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Not started** | Unchanged. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
@@ -83,26 +83,25 @@ per approval.
 ## Updated, re-prioritized milestone list carried forward
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
-performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7 are
+performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7/M8 are
 done, in that order. Remaining, top-to-bottom from where it left off:
 
-1. **M8** — Split `fetchTasks()`'s always-deep-joined query. *(next up)*
-2. **M9** — Debounce Tasks search.
-3. **M10** — Stop `TaskCreatorModal` refetching data the parent already has.
-4. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
+1. **M9** — Debounce Tasks search. *(next up)*
+2. **M10** — Stop `TaskCreatorModal` refetching data the parent already has.
+3. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
    `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
    elsewhere. Also fixes `updateTask()`'s missing error check (see above) since M11 touches its
    call sites anyway.
-5. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
+4. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-6. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-7. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-8. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
+5. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
+6. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
+7. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
    imports/`oldMomentum`).
-9. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-10. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
-    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
-    it's tracked separately).
+8. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+9. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+   sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
+   it's tracked separately).
 
 ## Approvals received (2026-08-13)
 
@@ -114,6 +113,49 @@ done, in that order. Remaining, top-to-bottom from where it left off:
 6. M7 verified; bangla-vocab refetch fix (found during M7) folded into M7 rather than a separate
    milestone.
 7. M7 (including the bangla-vocab fold-in) merged to `main`.
+8. Proceed to M8.
+9. M8 split design: 3-tier split (Today/Focus get no notes join; Home/Task Library get a slim
+   note-id + overlay-id-only join instead of the audit's assumed "no notes at all"; detail/study/
+   occlude views keep the full deep join).
+10. Occlude page's fetch-all-tasks-to-find-one-note pattern (found during M8, not in `AUDIT.md`'s
+    scope) folded into M8 rather than a separate milestone.
+
+## M8 — done (2026-08-13), awaiting merge approval
+
+On `m8-split-fetch-tasks` (commits `835900f`, `1eb9bdc`), not yet merged to `main`.
+
+**Plan deviation from `AUDIT.md`/this file's original phrasing**: the audit assumed Tasks/Today/
+Focus could all drop the notes/overlays join entirely. Tracing actual usage showed that's only
+true for Today and Focus — Task Library (`app/tasks/page.tsx`) and Home (`app/page.tsx`, not
+named in the audit at all — it feeds `NewStudyBlock`/`RevisionBlock`/`CalendarBlock`) both read
+note-existence and overlay-count to decide which action button to show (Upload Note / Overlays /
+Study), so dropping notes there would have broken that UI. Confirmed via grep that none of the
+four consuming components ever read anything from a note/overlay beyond `.id` and
+`overlays.length` — never geometry (`x_coord`/`y_coord`/etc.) or `image_url`.
+
+Changes:
+
+- [lib/supabase.ts](lib/supabase.ts) `fetchTasks()` now selects no `notes` join at all (was the
+  full `notes(*, overlays(*))` deep join on every call, regardless of caller). Used unchanged by
+  `app/today/page.tsx` and `app/focus/page.tsx` — confirmed neither reads `.notes` anywhere.
+- New `fetchTasksWithNoteSummary()` in the same file adds `notes:notes(id, overlays(id))` — note
+  existence + overlay *count* via array length, no overlay geometry or `image_url`. Used by
+  `app/page.tsx` and `app/tasks/page.tsx`.
+- `fetchTaskById()` (task detail/study view) is unchanged — already correctly scoped to one task
+  with the full deep join, since that view actually renders overlay geometry.
+- **Folded in per go-ahead**: `app/notes/[noteId]/occlude/page.tsx` was calling `fetchTasks()`
+  (fetching every task, deep-joined) and looping client-side to find the one note matching the
+  route's `noteId` — found while tracing `fetchTasks()`'s call sites, not in `AUDIT.md`. New
+  `fetchNoteById()` in [lib/supabase.ts](lib/supabase.ts) queries the `notes` table directly by id
+  (with its `overlays(*)`) and reads `task_id` straight off the row instead of searching for it.
+
+Verified: typecheck/lint/build clean (only pre-existing lint warnings, same set as before this
+change). Live-checked against a production build (`next start`, logged in as the real test
+account) on all 5 former `fetchTasks()` call sites: Home and Task Library both still show the
+correct note/overlay-count badges and action buttons for the one seeded task; the occlude page
+resolves the note and its task correctly via the new direct lookup; Today and Focus both load
+without errors on the lightweight no-notes query (Focus's redirect to `/` on that account is the
+existing, unrelated `show_rank_features` gate — not caused by this change).
 
 ## M7 — done (2026-08-13)
 
