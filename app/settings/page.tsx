@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/lib/types';
-import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, updateShowRankFeaturesConfig, isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { fetchUserSettings, updateDayEndTimeConfig, updateQuotesConfig, updateWeekendDaysConfig, updateStudyTargetsConfig, updateShowRankFeaturesConfig, updateWeekStartDayConfig } from '@/lib/supabase';
 import { Settings, Clock, Quote, Plus, Trash2, Save, CheckCircle2, AlertCircle, Calendar, Target, Shield } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 
@@ -103,17 +103,7 @@ export default function SettingsPage() {
     setErrorWeekend(false);
     try {
       await updateWeekendDaysConfig(weekendDays);
-      if (isSupabaseConfigured && supabase) {
-        const { data: userData } = await supabase.auth.getUser();
-        if (userData?.user) {
-          const { error } = await supabase.from('user_settings').upsert({
-            user_id: userData.user.id,
-            week_start_day: weekStartDay,
-            updated_at: new Date().toISOString(),
-          });
-          if (error) throw error;
-        }
-      }
+      await updateWeekStartDayConfig(weekStartDay);
       await loadSettings();
       setSuccessWeekend(true);
       setTimeout(() => setSuccessWeekend(false), 2500);
