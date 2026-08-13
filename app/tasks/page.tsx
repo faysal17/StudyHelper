@@ -27,6 +27,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedPriority, setSelectedPriority] = useState<string>('all');
 
@@ -39,6 +40,11 @@ export default function TasksPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const loadData = async () => {
     setLoading(true);
@@ -67,9 +73,9 @@ export default function TasksPage() {
 
   const filteredTasks = tasks.filter((t) => {
     const matchesSearch =
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.topic?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.subject?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      t.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      t.topic?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      t.subject?.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
 
     const matchesSubject =
       selectedSubject === 'all' ||
