@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, fetchSynonymWords, fetchCompletedSynonymChunks, fetchSynonymSrsForWords } from '@/lib/supabase';
 import Dashboard from '@/components/synonym/Dashboard';
 import QuizSetup from '@/components/synonym/QuizSetup';
 import QuizActive from '@/components/synonym/QuizActive';
@@ -83,9 +83,9 @@ export default function SynonymPracticePage() {
   const fetchSynonyms = async () => {
     try {
       setLoadingWords(true);
-      if (!isSupabaseConfigured || !supabase) return;
+      if (!isSupabaseConfigured) return;
 
-      const { data, error } = await supabase.from('synonyms').select('word, alternatives, cluster').order('id', { ascending: true });
+      const { data, error } = await fetchSynonymWords();
 
       if (error) throw error;
 
@@ -100,8 +100,8 @@ export default function SynonymPracticePage() {
 
   const fetchCompletedChapters = async () => {
     try {
-      if (!isSupabaseConfigured || !supabase) return;
-      const { data, error } = await supabase.from('user_completed_chunks').select('chunk_index');
+      if (!isSupabaseConfigured) return;
+      const { data, error } = await fetchCompletedSynonymChunks();
 
       if (error) throw error;
 
@@ -206,13 +206,10 @@ export default function SynonymPracticePage() {
   ) => {
     try {
       setLoadingWords(true);
-      if (!isSupabaseConfigured || !supabase) return;
+      if (!isSupabaseConfigured) return;
 
       const poolWords = pool.map((w) => w[0]);
-      const { data: srsRecords, error } = await supabase
-        .from('user_synonym_srs')
-        .select('word, synonym, box, next_review_at')
-        .in('word', poolWords);
+      const { data: srsRecords, error } = await fetchSynonymSrsForWords(poolWords);
 
       if (error) throw error;
 

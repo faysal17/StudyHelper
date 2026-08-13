@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured, fetchAllSynonymQuizAttempts, fetchAllSynonymSrsRecords } from '@/lib/supabase';
 import SynonymBlock from './SynonymBlock';
 
 type WordEntry = [string, string[], string];
@@ -37,17 +37,13 @@ export default function Dashboard({
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      if (!isSupabaseConfigured || !supabase) return;
+      if (!isSupabaseConfigured) return;
 
-      const { data: attemptsData, error: attemptsError } = await supabase
-        .from('quiz_attempts')
-        .select('score, total_questions');
+      const { data: attemptsData, error: attemptsError } = await fetchAllSynonymQuizAttempts();
 
       if (attemptsError) throw attemptsError;
 
-      const { data: srsData, error: srsError } = await supabase
-        .from('user_synonym_srs')
-        .select('word, synonym, box, next_review_at');
+      const { data: srsData, error: srsError } = await fetchAllSynonymSrsRecords();
 
       if (srsError) throw srsError;
 

@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import {
+  isSupabaseConfigured,
+  getCurrentAuthUser,
+  insertSynonymQuizAttempt,
+  fetchSynonymSrsForWords,
+  upsertSynonymSrsRecords,
+  insertIncorrectSynonymAnswers,
+  markSynonymChunksCompleted,
+} from '@/lib/supabase';
 
 type SynonymUpdate = { word: string; synonym: string; isCorrect: boolean };
 type ResultEntry = {
@@ -43,28 +51,22 @@ export default function QuizSummary({
       setSaving(true);
       setError(null);
 
-      if (!isSupabaseConfigured || !supabase) {
+      if (!isSupabaseConfigured) {
         setSaving(false);
         return;
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await getCurrentAuthUser();
       if (!user) {
         throw new Error('ব্যবহারকারী লগইন অবস্থায় নেই। ফলাফল সংরক্ষণ করা সম্ভব হয়নি।');
       }
 
-      const { data: attemptData, error: attemptError } = await supabase
-        .from('quiz_attempts')
-        .insert({
-          user_id: user.id,
-          mode: mode,
-          score: score,
-          total_questions: total,
-        })
-        .select()
-        .single();
+      const { data: attemptData, error: attemptError } = await insertSynonymQuizAttempt({
+        user_id: user.id,
+        mode: mode,
+        score: score,
+        total_questions: total,
+      });
 
       if (attemptError) throw attemptError;
 
@@ -72,10 +74,7 @@ export default function QuizSummary({
 
       const synonymUpdates = results.flatMap((r) => r.synonymUpdates || []);
       const wordsPlayed = [...new Set(synonymUpdates.map((u) => u.word))];
-      const { data: srsRecords, error: srsFetchError } = await supabase
-        .from('user_synonym_srs')
-        .select('word, synonym, box, next_review_at')
-        .in('word', wordsPlayed);
+      const { data: srsRecords, error: srsFetchError } = await fetchSynonymSrsForWords(wordsPlayed);
 
       if (srsFetchError) throw srsFetchError;
 
@@ -132,9 +131,7 @@ export default function QuizSummary({
       }));
 
       if (srsInserts.length > 0) {
-        const { error: srsUpsertError } = await supabase
-          .from('user_synonym_srs')
-          .upsert(srsInserts, { onConflict: 'user_id,word,synonym' });
+        const { error: srsUpsertError } = await upsertSynonymSrsRecords(srsInserts);
 
         if (srsUpsertError) throw srsUpsertError;
       }
@@ -149,7 +146,7 @@ export default function QuizSummary({
           user_provided_word: r.chosen,
         }));
 
-        const { error: wrongError } = await supabase.from('incorrect_answers').insert(wrongInserts);
+        const { error: wrongError } = await insertIncorrectSynonymAnswers(wrongInserts);
 
         if (wrongError) throw wrongError;
       }
@@ -161,9 +158,7 @@ export default function QuizSummary({
           chunk_index: chunkIdx,
         }));
 
-        const { error: completedError } = await supabase
-          .from('user_completed_chunks')
-          .upsert(completedInserts, { onConflict: 'user_id,chunk_index' });
+        const { error: completedError } = await markSynonymChunksCompleted(completedInserts);
 
         if (completedError) throw completedError;
       }
