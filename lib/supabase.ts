@@ -815,7 +815,8 @@ export async function createTask(taskData: {
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<void> {
   if (isSupabaseConfigured && supabase) {
-    await supabase.from('tasks').update(updates).eq('id', id);
+    const { error } = await supabase.from('tasks').update(updates).eq('id', id);
+    if (error) throw error;
   }
 }
 
