@@ -46,7 +46,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Done**, merged 2026-08-13 | All 6 sites now `createPortal(..., document.body)`. Verified live: modal renders as a `<body>` sibling, not nested under the navbar's stacking context, and its rect exactly matches the viewport. See commit `a9a1fea`. |
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
-| M9 | Debounce Tasks search | — | **Done**, awaiting review/merge | See "M9 — done" section below. |
+| M9 | Debounce Tasks search | — | **Done**, merged 2026-08-13 | See "M9 — done" section below. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
@@ -84,8 +84,7 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7/M8/M9
-are done (M9 awaiting review/merge), in that order. Remaining, top-to-bottom from where it left
-off:
+are done, in that order. Remaining, top-to-bottom from where it left off:
 
 1. **M10** — Stop `TaskCreatorModal` refetching data the parent already has. *(next up)*
 2. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
@@ -121,10 +120,11 @@ off:
     scope) folded into M8 rather than a separate milestone.
 11. M8 verified and merged to `main` (commit `2275edc`).
 12. Proceed to M9.
+13. M9 verified and merged to `main`.
 
-## M9 — done, awaiting review (2026-08-13)
+## M9 — done (2026-08-13)
 
-Fixed on `m9-debounce-tasks-search` (not yet merged — waiting for your review).
+Fixed on `m9-debounce-tasks-search`, merged to `main`.
 
 Changes:
 
