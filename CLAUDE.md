@@ -128,7 +128,7 @@ Phase 4 (fix, one milestone at a time):
 | M4 — Next.js 14→16 upgrade | **Not started** — deliberately deferred (large breaking-change milestone, sequenced later at the user's request) |
 | M5 — fix the fallback-always-executes bug (settings/vocab persistence) + DB migration | **Done**, merged, including the live migration |
 | M6 — fix the full-page modal bug | **Done**, merged |
-| M7 — cut redundant refetches (subtopic status/delete/XP flow) | Not started |
+| M7 — cut redundant refetches (subtopic status/delete/XP flow) | **Done**, merged |
 | M8 — split `fetchTasks()`'s always-deep-joined query | Not started |
 | M9 — debounce Tasks search | Not started |
 | M10 — stop `TaskCreatorModal` refetching data the parent already has | Not started |

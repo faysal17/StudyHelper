@@ -108,3 +108,32 @@ completed in that order. Continuing top-to-bottom from where it left off:
 1. Proceed to Phase B, starting with M6, on its own branch.
 2. `updateTask()` error-check fix folded into M11.
 3. Stale `docs/update-claude-md` branch deleted.
+4. M6 verified and merged to `main`.
+5. Proceed to M7.
+
+## New issue found during M7 (not in `AUDIT.md`, not folded in, needs a decision)
+
+**[app/tools/bangla-vocab/page.tsx:206-230](app/tools/bangla-vocab/page.tsx)** has the same
+redundant-refetch shape M7 just fixed in the syllabus flow — `fetchUserSettings()` is called,
+then (conditionally) `awardXPAndSync()` internally re-fetches settings again, then the page calls
+`fetchUserSettings()` a third time. Up to 3 reads for one "finish vocab session" action. This
+wasn't named in `AUDIT.md`'s §2 (only the subtopic-status/delete/XP flow was), and it's a
+different file/feature, so it wasn't folded into M7. Flagging for a decision on where it goes —
+options are a small addendum to M7-scope work, or its own follow-up milestone.
+
+## M7 — done (2026-08-13)
+
+Fixed on `m7-cut-redundant-refetches` (commit `e693474`), merge pending your review. Changes:
+`updateSubtopicStatus`, `deleteSubject`, `deleteTopic`, `deleteSubtopic` in
+[lib/supabase.ts](lib/supabase.ts) now take the caller's already-loaded previous-status/
+completed-count instead of re-fetching it internally; `updateSubtopicStatus` returns the settings
+from `awardXPAndSync` so [app/syllabus/page.tsx](app/syllabus/page.tsx)'s toggle handler doesn't
+need a second `fetchUserSettings()` call. `deleteSubject`/`deleteTopic`'s new count param is
+optional (falls back to the old fetch) because `app/topics/page.tsx` also calls them without
+holding subtopics locally — see the commit message for the full reasoning, including why
+`awardXPAndSync`'s own internal settings fetch was deliberately left in place (it does real
+day-rollover reconciliation, not just a redundant read).
+
+Verified: typecheck/lint/build clean; live-checked the full toggle/delete/XP cycle against the
+production build, confirmed correct XP award/deduction and that a page reload shows persisted
+server state matching (net XP change across the test sequence was zero, as expected).
