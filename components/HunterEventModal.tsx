@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Shield, Award, ArrowUp, ArrowDown, Sparkles, Skull, CheckCircle2, Laugh } from 'lucide-react';
 import ParticleEffects from './ParticleEffects';
+import ModalShell from './ModalShell';
 
 export type EventType = 'rank-up' | 'rank-down' | 'level-up' | 'level-down' | 'weekly-transition';
+
+const OVERLAY_CLASSNAME =
+  'fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[999999] bg-zinc-950/90 backdrop-blur-xl flex items-center justify-center p-4 text-zinc-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200';
 
 interface HunterEventModalProps {
   isOpen: boolean;
@@ -30,29 +32,10 @@ export default function HunterEventModal({
   oldGlobalPosition = 450,
   newGlobalPosition = 380,
 }: HunterEventModalProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  if (!isOpen || !mounted) return null;
-
   const isCelebration = eventType === 'rank-up' || eventType === 'level-up';
 
-  return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[999999] bg-zinc-950/90 backdrop-blur-xl flex items-center justify-center p-4 text-zinc-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+  return (
+    <ModalShell isOpen={isOpen} overlayClassName={OVERLAY_CLASSNAME} lockScroll>
       <ParticleEffects
         mode={isCelebration ? 'confetti-fireworks' : 'emoji-rain'}
         isActive={isOpen}
@@ -184,7 +167,6 @@ export default function HunterEventModal({
           <span>{isCelebration ? 'Claim Glory & Continue' : 'Accept Roast & Continue'}</span>
         </button>
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }

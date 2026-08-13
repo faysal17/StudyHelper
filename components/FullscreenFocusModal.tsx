@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
 import { getEgoAttackMessage } from '@/lib/gamification';
 import { Play, Pause, Square, RotateCcw, Minimize2, Quote, Sparkles, Target, CheckCircle2, Flame } from 'lucide-react';
 import CustomSelect from './CustomSelect';
 import FlipDigit from './FlipDigit';
+import ModalShell from './ModalShell';
 
 interface FullscreenFocusModalProps {
   isOpen: boolean;
@@ -25,6 +25,9 @@ interface FullscreenFocusModalProps {
   currentLevel?: number;
 }
 
+const OVERLAY_CLASSNAME =
+  'fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/98 backdrop-blur-3xl flex flex-col justify-between p-4 sm:p-6 lg:p-8 text-zinc-100 overflow-hidden select-none animate-in fade-in zoom-in-95 duration-200';
+
 export default function FullscreenFocusModal({
   isOpen,
   onClose,
@@ -40,26 +43,9 @@ export default function FullscreenFocusModal({
   currentRank = 'E-Rank',
   currentLevel = 1,
 }: FullscreenFocusModalProps) {
-  const [mounted, setMounted] = useState(false);
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [egoMessage, setEgoMessage] = useState<string>('');
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Lock body scroll to prevent page scrollbars when fullscreen mode is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
 
   useEffect(() => {
     if (quotes && quotes.length > 0) {
@@ -74,7 +60,15 @@ export default function FullscreenFocusModal({
     }
   }, [isActive, currentRank, currentLevel]);
 
-  if (!isOpen || !mounted) return null;
+  // Skip the task-list filtering/derivation entirely while closed — this component is always
+  // rendered by its parent (regardless of isOpen), and the parent re-renders every timer tick.
+  if (!isOpen) {
+    return (
+      <ModalShell isOpen={false} overlayClassName={OVERLAY_CLASSNAME} lockScroll>
+        {null}
+      </ModalShell>
+    );
+  }
 
   const today = getTodayDateString(dayEndTime);
 
@@ -120,8 +114,8 @@ export default function FullscreenFocusModal({
       ? quotes[currentQuoteIndex]
       : 'Focus on being productive instead of busy.';
 
-  return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] bg-zinc-950/98 backdrop-blur-3xl flex flex-col justify-between p-4 sm:p-6 lg:p-8 text-zinc-100 overflow-hidden select-none animate-in fade-in zoom-in-95 duration-200">
+  return (
+    <ModalShell isOpen={isOpen} overlayClassName={OVERLAY_CLASSNAME} lockScroll>
       {/* TOP HEADER BAR: Motivational Quote + Exit Fullscreen + Stationary Ego Badge */}
       <div className="w-full flex flex-col items-center gap-3 shrink-0 z-20">
         <div className="w-full flex items-center justify-between gap-4 max-w-5xl mx-auto">
@@ -259,7 +253,6 @@ export default function FullscreenFocusModal({
           />
         </div>
       </div>
-    </div>,
-    document.body
+    </ModalShell>
   );
 }
