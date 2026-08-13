@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import AuthGate from '@/components/AuthGate';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
@@ -29,7 +30,7 @@ export default function RootLayout({
       >
         <Navbar />
         <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 py-8">
-          {children}
+          <AuthGate>{children}</AuthGate>
         </main>
         <footer className="border-t border-zinc-800/60 py-6 text-center text-xs text-zinc-500 mt-16">
           <p>Learning Hub &bull; Spaced Repetition Task Manager</p>
