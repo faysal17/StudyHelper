@@ -207,8 +207,10 @@ export default function WordClassificationPage() {
     // Distractors must stay within the same axis — e.g. a যৌগিক/রূঢ়ি/যোগরূঢ়
     // (অর্থ axis) question should never pull তদ্ভব/দেশি (উৎপত্তি axis) words
     // as wrong options, even though their subGroup/language legitimately
-    // differs from targetLabel.
-    const axisPool = allEntries.filter((e) => e.axis === fact.axis);
+    // differs from targetLabel. For a language question, further narrow to
+    // বিদেশি words only — a তৎসম/তদ্ভব/দেশি word isn't a genuine "which
+    // language" distractor, it's just obviously non-foreign.
+    const axisPool = allEntries.filter((e) => e.axis === fact.axis && (!isLanguage || e.subGroup === 'বিদেশি'));
     const isMatch = (e: ClassificationEntry) =>
       isLanguage ? e.originLanguage === targetLabel : e.subGroup === targetLabel;
 
