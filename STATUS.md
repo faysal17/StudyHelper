@@ -46,7 +46,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Done**, merged 2026-08-13 | All 6 sites now `createPortal(..., document.body)`. Verified live: modal renders as a `<body>` sibling, not nested under the navbar's stacking context, and its rect exactly matches the viewport. See commit `a9a1fea`. |
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
 | M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
-| M9 | Debounce Tasks search | — | **Not started** | Unchanged. |
+| M9 | Debounce Tasks search | — | **Done**, awaiting review/merge | See "M9 — done" section below. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Not started** | Same 7 files still call `supabase.from()`/`supabase.auth` directly (confirmed `app/settings/page.tsx:107` still does its own `auth.getUser()` + direct upsert, bypassing `lib/supabase.ts` entirely — this is the M12 issue, distinct from the M3 leftover-duplication note above). |
@@ -83,23 +83,23 @@ per approval.
 ## Updated, re-prioritized milestone list carried forward
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
-performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7/M8 are
-done, in that order. Remaining, top-to-bottom from where it left off:
+performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7/M8/M9
+are done (M9 awaiting review/merge), in that order. Remaining, top-to-bottom from where it left
+off:
 
-1. **M9** — Debounce Tasks search. *(next up)*
-2. **M10** — Stop `TaskCreatorModal` refetching data the parent already has.
-3. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
+1. **M10** — Stop `TaskCreatorModal` refetching data the parent already has. *(next up)*
+2. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
    `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
    elsewhere. Also fixes `updateTask()`'s missing error check (see above) since M11 touches its
    call sites anyway.
-4. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
+3. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-5. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-6. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-7. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
+4. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
+5. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
+6. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
    imports/`oldMomentum`).
-8. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-9. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+7. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+8. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
    it's tracked separately).
 
@@ -120,6 +120,33 @@ done, in that order. Remaining, top-to-bottom from where it left off:
 10. Occlude page's fetch-all-tasks-to-find-one-note pattern (found during M8, not in `AUDIT.md`'s
     scope) folded into M8 rather than a separate milestone.
 11. M8 verified and merged to `main` (commit `2275edc`).
+12. Proceed to M9.
+
+## M9 — done, awaiting review (2026-08-13)
+
+Fixed on `m9-debounce-tasks-search` (not yet merged — waiting for your review).
+
+Changes:
+
+- [app/tasks/page.tsx](app/tasks/page.tsx) — the search filter (`filteredTasks`) previously read
+  `searchQuery` directly, so every keystroke re-ran the full `tasks.filter()` pass and re-rendered
+  the task grid. Added a separate `debouncedSearchQuery` state, updated from `searchQuery` via a
+  `useEffect` + 250ms `setTimeout` (cleared on each keystroke), and pointed the filter at the
+  debounced value instead. The input itself (`value={searchQuery}`) still updates on every
+  keystroke so typing feels instant — only the filter/re-render is delayed.
+- No server-side query was involved to begin with (`fetchTasksWithNoteSummary()` runs once on
+  mount; the search only filters the already-fetched in-memory array) — confirmed this by reading
+  the full page before making the change, so the fix here is scoped to cutting redundant
+  filter/render work per keystroke, per `AUDIT.md`'s actual finding, not adding debounce to a
+  network call that doesn't exist.
+
+Verified: typecheck clean, lint clean (no new warnings — only the same pre-existing
+`react-hooks/exhaustive-deps`/`no-img-element` warnings elsewhere), production build clean.
+Live-checked against a production build (`next build && next start`, logged in as the real test
+account): typing a non-matching query correctly shows the empty state, clearing/typing a matching
+topic name (`সন্ধি`) correctly re-shows the task, no console errors introduced (only the expected
+local-dev 404s from `@vercel/analytics`/`@vercel/speed-insights`, which no-op outside a real
+Vercel deployment per `CLAUDE.md`).
 
 ## M8 — done (2026-08-13)
 
