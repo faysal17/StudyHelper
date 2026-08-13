@@ -20,11 +20,15 @@ than assuming the plan is still accurate. No files were modified except this one
 
 ## Git state
 
-- Working tree: clean, up to date with `origin/main`, no stash.
-- One extra branch, `docs/update-claude-md` — verified with `git merge-base --is-ancestor`: it
-  points at the exact same commit as `main` tip (`a312f99`). It's a fully-merged/stale leftover,
-  not unmerged work. Safe to delete as housekeeping; not blocking anything.
-- No other local or remote branches, no uncommitted changes anywhere.
+- Working tree: clean, no stash. As of this reconciliation, local `main` is **9 commits ahead of
+  `origin/main`** (the M6 and M7 milestone work — `docs/update-claude-md` housekeeping,
+  `m6-portal-modals`, and `m7-cut-redundant-refetches`, each merged with `--no-ff`) — not yet
+  pushed.
+- `docs/update-claude-md` branch (the one flagged as a fully-merged stale leftover at the original
+  reconciliation) was deleted 2026-08-13 per approval. `m6-portal-modals` and
+  `m7-cut-redundant-refetches` still exist locally as merged branches; safe to delete as
+  housekeeping whenever convenient.
+- No uncommitted changes anywhere.
 
 ## Reconciliation of `AUDIT.md`'s plan
 
@@ -39,8 +43,8 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M3 | Consistent route guard | RLS structurally undermined by inconsistent per-page checks | **Done** | [components/AuthGate.tsx](components/AuthGate.tsx) wraps `{children}` in `app/layout.tsx`, gates every route except `/login` on `getSession()`. **Leftover not cleaned up**: 5 pages (`app/page.tsx`, `app/today/page.tsx`, `app/today/routine/page.tsx`, `app/tools/newspaper-study/page.tsx`, `app/tools/synonym-practice/page.tsx`) still run their own pre-existing local session check too — confirmed still present. Harmless (AuthGate already redirects first), but the duplication itself is real and un-tracked as its own milestone (see below). |
 | M4 | Next 14→16 upgrade | Deferred, tracked separately | **Not started** | No change. Still 2 majors behind; still the 3 high-severity `npm audit` findings from the original audit. |
 | M5 | Fallback-always-executes bug + migration | Root-caused, both halves confirmed live-firing | **Done** | `getCurrentUserId()` ([lib/supabase.ts:71-82](lib/supabase.ts)) now throws instead of substituting `'user-owner'` when Supabase is configured but no session exists; only falls back when Supabase isn't configured at all (demo mode — correct, matches audit's recommended fix). All 8 named `user_settings` upsert functions now check `error` and throw. `addBanglaWordDB` ([lib/banglaVocab.ts:65-95](lib/banglaVocab.ts)) throws on DB error instead of fabricating a fake-success `bv-${Date.now()}` object. Migration applied: `ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_weekly_rank_modal ...` present in [supabase_schema.sql:165](supabase_schema.sql), and per `CLAUDE.md` already run against the live DB. |
-| M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Not started** | No portal-related changes found in any of these files since the audit. |
-| M7 | Redundant refetches (subtopic status/delete/XP) | — | **Not started** | `updateSubtopicStatus`/`awardXPAndSync`/`deleteSubject`/`deleteTopic` refetch patterns unchanged. |
+| M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Done**, merged 2026-08-13 | All 6 sites now `createPortal(..., document.body)`. Verified live: modal renders as a `<body>` sibling, not nested under the navbar's stacking context, and its rect exactly matches the viewport. See commit `a9a1fea`. |
+| M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
 | M8 | Split `fetchTasks()`'s deep join | — | **Not started** | Unchanged. |
 | M9 | Debounce Tasks search | — | **Not started** | Unchanged. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
@@ -79,27 +83,24 @@ per approval.
 ## Updated, re-prioritized milestone list carried forward
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
-performance → component structure & standards → zombie code) still holds, and M1/M2/M3/M5 were
-completed in that order. Continuing top-to-bottom from where it left off:
+performance → component structure & standards → zombie code) still holds. M1/M2/M3/M5/M6/M7 are
+done, in that order. Remaining, top-to-bottom from where it left off:
 
-1. **M6** — Fix the full-page modal bug (`NewspaperUploadModal`, `FocusRatingModal`,
-   `QuitTauntModal`, 3x `NoteUploader` backdrop → `createPortal`).
-2. **M7** — Cut redundant refetches in the subtopic-status/delete/XP flow.
-3. **M8** — Split `fetchTasks()`'s always-deep-joined query.
-4. **M9** — Debounce Tasks search.
-5. **M10** — Stop `TaskCreatorModal` refetching data the parent already has.
-6. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
+1. **M8** — Split `fetchTasks()`'s always-deep-joined query. *(next up)*
+2. **M9** — Debounce Tasks search.
+3. **M10** — Stop `TaskCreatorModal` refetching data the parent already has.
+4. **M11** — Establish target component pattern on the Focus feature (`FlipDigit`,
    `useFocusTimer` hook, `ModalShell`) — confirm the resulting pattern with you before applying
    elsewhere. Also fixes `updateTask()`'s missing error check (see above) since M11 touches its
    call sites anyway.
-7. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
+5. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question:
    keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-8. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-9. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-10. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
-    imports/`oldMomentum`).
-11. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-12. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+6. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
+7. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
+8. **M15** — Remove confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`, unused
+   imports/`oldMomentum`).
+9. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+10. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
     sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
     it's tracked separately).
 
@@ -138,7 +139,3 @@ Verified: typecheck/lint/build clean (only pre-existing lint warnings). Live-che
 against a production build — the syllabus subtopic-status/delete/XP cycle, and a bangla-vocab
 review-session completion — confirming correct XP award/deduction, correct UI state, no console
 errors, and persisted server state matching after a reload.
-
-Verified: typecheck/lint/build clean; live-checked the full toggle/delete/XP cycle against the
-production build, confirmed correct XP award/deduction and that a page reload shows persisted
-server state matching (net XP change across the test sequence was zero, as expected).
