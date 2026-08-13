@@ -45,7 +45,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M5 | Fallback-always-executes bug + migration | Root-caused, both halves confirmed live-firing | **Done** | `getCurrentUserId()` ([lib/supabase.ts:71-82](lib/supabase.ts)) now throws instead of substituting `'user-owner'` when Supabase is configured but no session exists; only falls back when Supabase isn't configured at all (demo mode — correct, matches audit's recommended fix). All 8 named `user_settings` upsert functions now check `error` and throw. `addBanglaWordDB` ([lib/banglaVocab.ts:65-95](lib/banglaVocab.ts)) throws on DB error instead of fabricating a fake-success `bv-${Date.now()}` object. Migration applied: `ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS show_weekly_rank_modal ...` present in [supabase_schema.sql:165](supabase_schema.sql), and per `CLAUDE.md` already run against the live DB. |
 | M6 | Full-page modal bug | `NewspaperUploadModal`, `FocusRatingModal`, `QuitTauntModal`, 3x `NoteUploader` backdrop | **Done**, merged 2026-08-13 | All 6 sites now `createPortal(..., document.body)`. Verified live: modal renders as a `<body>` sibling, not nested under the navbar's stacking context, and its rect exactly matches the viewport. See commit `a9a1fea`. |
 | M7 | Redundant refetches (subtopic status/delete/XP) | — | **Done**, merged 2026-08-13 | `updateSubtopicStatus`/`deleteSubject`/`deleteTopic`/`deleteSubtopic` now take caller-supplied state instead of re-fetching; also folded in the same fix for the bangla-vocab XP flow (found during M7, not in original audit scope). See "M7 — done" section below and commits `e693474`/`edf0e48`. |
-| M8 | Split `fetchTasks()`'s deep join | — | **Done**, on `m8-split-fetch-tasks`, awaiting review | See "M8 — done" section below. |
+| M8 | Split `fetchTasks()`'s deep join | — | **Done**, merged 2026-08-13 | See "M8 — done" section below. |
 | M9 | Debounce Tasks search | — | **Not started** | Unchanged. |
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Not started** | Unchanged. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Not started** | `app/focus/page.tsx` and `components/FocusTimerBlock.tsx` still each have their own `FlipDigit` and duplicated finish/stop XP logic. No `ModalShell` component exists; the 9 hand-duplicated modal-backdrop sites are unchanged. |
@@ -119,10 +119,11 @@ done, in that order. Remaining, top-to-bottom from where it left off:
    occlude views keep the full deep join).
 10. Occlude page's fetch-all-tasks-to-find-one-note pattern (found during M8, not in `AUDIT.md`'s
     scope) folded into M8 rather than a separate milestone.
+11. M8 verified and merged to `main` (commit `2275edc`).
 
-## M8 — done (2026-08-13), awaiting merge approval
+## M8 — done (2026-08-13)
 
-On `m8-split-fetch-tasks` (commits `835900f`, `1eb9bdc`), not yet merged to `main`.
+Fixed on `m8-split-fetch-tasks` (commits `835900f`, `1eb9bdc`), merged to `main`.
 
 **Plan deviation from `AUDIT.md`/this file's original phrasing**: the audit assumed Tasks/Today/
 Focus could all drop the notes/overlays join entirely. Tracing actual usage showed that's only
