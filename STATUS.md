@@ -110,29 +110,34 @@ completed in that order. Continuing top-to-bottom from where it left off:
 3. Stale `docs/update-claude-md` branch deleted.
 4. M6 verified and merged to `main`.
 5. Proceed to M7.
-
-## New issue found during M7 (not in `AUDIT.md`, not folded in, needs a decision)
-
-**[app/tools/bangla-vocab/page.tsx:206-230](app/tools/bangla-vocab/page.tsx)** has the same
-redundant-refetch shape M7 just fixed in the syllabus flow — `fetchUserSettings()` is called,
-then (conditionally) `awardXPAndSync()` internally re-fetches settings again, then the page calls
-`fetchUserSettings()` a third time. Up to 3 reads for one "finish vocab session" action. This
-wasn't named in `AUDIT.md`'s §2 (only the subtopic-status/delete/XP flow was), and it's a
-different file/feature, so it wasn't folded into M7. Flagging for a decision on where it goes —
-options are a small addendum to M7-scope work, or its own follow-up milestone.
+6. M7 verified; bangla-vocab refetch fix (found during M7) folded into M7 rather than a separate
+   milestone.
+7. M7 (including the bangla-vocab fold-in) merged to `main`.
 
 ## M7 — done (2026-08-13)
 
-Fixed on `m7-cut-redundant-refetches` (commit `e693474`), merge pending your review. Changes:
-`updateSubtopicStatus`, `deleteSubject`, `deleteTopic`, `deleteSubtopic` in
-[lib/supabase.ts](lib/supabase.ts) now take the caller's already-loaded previous-status/
-completed-count instead of re-fetching it internally; `updateSubtopicStatus` returns the settings
-from `awardXPAndSync` so [app/syllabus/page.tsx](app/syllabus/page.tsx)'s toggle handler doesn't
-need a second `fetchUserSettings()` call. `deleteSubject`/`deleteTopic`'s new count param is
-optional (falls back to the old fetch) because `app/topics/page.tsx` also calls them without
-holding subtopics locally — see the commit message for the full reasoning, including why
-`awardXPAndSync`'s own internal settings fetch was deliberately left in place (it does real
-day-rollover reconciliation, not just a redundant read).
+Fixed on `m7-cut-redundant-refetches` (commits `e693474`, `e8a1da0`, `edf0e48`), merged to `main`.
+Changes:
+
+- `updateSubtopicStatus`, `deleteSubject`, `deleteTopic`, `deleteSubtopic` in
+  [lib/supabase.ts](lib/supabase.ts) now take the caller's already-loaded previous-status/
+  completed-count instead of re-fetching it internally; `updateSubtopicStatus` returns the
+  settings from `awardXPAndSync` so [app/syllabus/page.tsx](app/syllabus/page.tsx)'s toggle
+  handler doesn't need a second `fetchUserSettings()` call. `deleteSubject`/`deleteTopic`'s new
+  count param is optional (falls back to the old fetch) because `app/topics/page.tsx` also calls
+  them without holding subtopics locally — see the commit message for the full reasoning,
+  including why `awardXPAndSync`'s own internal settings fetch was deliberately left in place (it
+  does real day-rollover reconciliation, not just a redundant read).
+- **Folded in per go-ahead**: the same redundant-refetch shape found during M7 in
+  [app/tools/bangla-vocab/page.tsx:206-230](app/tools/bangla-vocab/page.tsx) (`fetchUserSettings()`
+  → conditional `awardXPAndSync()` internal re-fetch → a third unconditional `fetchUserSettings()`)
+  — fixed the same way, by using `awardXPAndSync`'s return value directly and reusing the initial
+  fetch as a fallback when no bonus was awarded.
+
+Verified: typecheck/lint/build clean (only pre-existing lint warnings). Live-checked both flows
+against a production build — the syllabus subtopic-status/delete/XP cycle, and a bangla-vocab
+review-session completion — confirming correct XP award/deduction, correct UI state, no console
+errors, and persisted server state matching after a reload.
 
 Verified: typecheck/lint/build clean; live-checked the full toggle/delete/XP cycle against the
 production build, confirmed correct XP award/deduction and that a page reload shows persisted
