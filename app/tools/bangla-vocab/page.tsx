@@ -209,6 +209,7 @@ export default function BanglaVocabPage() {
 
       let earned = 0;
       let reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Already Claimed Today`;
+      let updatedSettings = userSettings;
 
       if (lastClaimedDate !== todayStr) {
         try {
@@ -216,7 +217,7 @@ export default function BanglaVocabPage() {
           earned = 10;
           reasonStr = `Bangla Vocab Daily Review Completed (${nextCount} Words)`;
           setDailyBonusClaimed(true);
-          await awardXPAndSync(earned);
+          updatedSettings = await awardXPAndSync(earned);
         } catch (err) {
           console.error('Error awarding daily vocab XP bonus:', err);
           reasonStr = `Bangla Vocab Review (${nextCount} Words) - Daily Bonus Could Not Be Saved`;
@@ -227,7 +228,6 @@ export default function BanglaVocabPage() {
         localStorage.removeItem('bcs_last_bangla_vocab_xp_date');
       }
 
-      const updatedSettings = await fetchUserSettings();
       const momentum = calculateMomentum(updatedSettings);
 
       setEarnedXP(earned);

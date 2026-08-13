@@ -13,7 +13,6 @@ import {
   deleteSubject,
   deleteTopic,
   deleteSubtopic,
-  fetchUserSettings,
 } from '@/lib/supabase';
 import { calculateMomentum } from '@/lib/momentum';
 import {
@@ -165,11 +164,10 @@ export default function SyllabusPage() {
       prev.map((st) => (st.id === id ? { ...st, status: nextStatus } : st))
     );
 
-    await updateSubtopicStatus(id, nextStatus);
+    const updatedSettings = await updateSubtopicStatus(id, nextStatus, currentStatus);
 
-    if (nextStatus === 'completed') {
-      const updatedSettings = await fetchUserSettings();
-      if (updatedSettings?.show_rank_features !== false) {
+    if (nextStatus === 'completed' && updatedSettings) {
+      if (updatedSettings.show_rank_features !== false) {
         const momentum = calculateMomentum(updatedSettings);
         setEarnedXP(30);
         setXpReason('Syllabus Subtopic Completed!');
@@ -186,17 +184,24 @@ export default function SyllabusPage() {
 
     try {
       if (type === 'subject') {
-        await deleteSubject(id);
-        setSubjects((prev) => prev.filter((s) => s.id !== id));
         const topicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
+        const completedCount = subtopics.filter(
+          (st) => topicIds.includes(st.topic_id) && st.status === 'completed'
+        ).length;
+        await deleteSubject(id, completedCount);
+        setSubjects((prev) => prev.filter((s) => s.id !== id));
         setTopics((prev) => prev.filter((t) => t.subject_id !== id));
         setSubtopics((prev) => prev.filter((st) => !topicIds.includes(st.topic_id)));
       } else if (type === 'topic') {
-        await deleteTopic(id);
+        const completedCount = subtopics.filter(
+          (st) => st.topic_id === id && st.status === 'completed'
+        ).length;
+        await deleteTopic(id, completedCount);
         setTopics((prev) => prev.filter((t) => t.id !== id));
         setSubtopics((prev) => prev.filter((st) => st.topic_id !== id));
       } else if (type === 'subtopic') {
-        await deleteSubtopic(id);
+        const target = subtopics.find((st) => st.id === id);
+        await deleteSubtopic(id, target?.status === 'completed');
         setSubtopics((prev) => prev.filter((st) => st.id !== id));
       }
     } catch (err) {
