@@ -706,15 +706,40 @@ export async function deleteSubtopic(id: string, wasCompleted: boolean): Promise
 
 // TASK DATA API
 
+const TASK_SELECT = `
+  *,
+  topic:topics(*, subject:subjects(*)),
+  subtopic:subtopics(*)
+`;
+
+// No notes/overlays join — for views (Today, Focus) that never read a task's notes.
 export async function fetchTasks(): Promise<Task[]> {
   if (isSupabaseConfigured && supabase) {
     const { data, error } = await supabase
       .from('tasks')
+      .select(TASK_SELECT)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      return data.map((t: any) => ({
+        ...t,
+        subject: t.topic?.subject || undefined,
+      }));
+    }
+  }
+  return [];
+}
+
+// Same as fetchTasks(), plus per-task note existence + overlay count (id only, no
+// overlay geometry) — for views that render an Upload Note / Overlays / Study action
+// per task (Home, Task Library) but never draw the overlay shapes themselves.
+export async function fetchTasksWithNoteSummary(): Promise<Task[]> {
+  if (isSupabaseConfigured && supabase) {
+    const { data, error } = await supabase
+      .from('tasks')
       .select(`
-        *,
-        topic:topics(*, subject:subjects(*)),
-        subtopic:subtopics(*),
-        notes:notes(*, overlays(*))
+        ${TASK_SELECT},
+        notes:notes(id, overlays(id))
       `)
       .order('created_at', { ascending: false });
 

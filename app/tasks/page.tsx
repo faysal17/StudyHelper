@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Task, Subject } from '@/lib/types';
-import { fetchTasks, fetchSubjects, deleteTask } from '@/lib/supabase';
+import { fetchTasksWithNoteSummary, fetchSubjects, deleteTask } from '@/lib/supabase';
 import {
   CheckSquare,
   Search,
@@ -43,7 +43,7 @@ export default function TasksPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tData, sData] = await Promise.all([fetchTasks(), fetchSubjects()]);
+      const [tData, sData] = await Promise.all([fetchTasksWithNoteSummary(), fetchSubjects()]);
       setTasks(tData);
       setSubjects(sData);
     } catch (err) {
