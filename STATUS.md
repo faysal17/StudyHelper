@@ -99,9 +99,9 @@ taken out of order per your request). Remaining, top-to-bottom from where it lef
 1. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    the last milestone from `AUDIT.md`'s original plan.
 
-**New, not-yet-triaged item found during M15**: the subject/topic CRUD smoke test fails at
-subject *creation* (not touched by M15/M16) — see "M15 — done" below for detail. Not yet
-assigned a milestone number; needs your input on priority/whether to investigate.
+**Investigated and fixed, outside the milestone plan** (2026-08-14, your instruction after M15):
+the subject/topic CRUD smoke test failure — root-caused to a real bug in
+`app/syllabus/page.tsx`, fixed on `fix-syllabus-create-load-race`. See below for detail.
 
 **M14 — skipped, not done.** Your call: `any` usage is a pure compile-time type-safety gap, not
 a live bug — `typecheck`/`lint`/`build` all already pass clean with it in place, and nothing in
@@ -169,6 +169,52 @@ alongside the other confirmed-dead-code cleanup, or happy to do it now if you'd 
     covers login/Navbar/6 core pages) as sufficient verification for this milestone, given it's a
     structural-only relocation with no intended behavior change.
 21. M12 merged to `main`.
+
+## Syllabus create/initial-load race — fixed (2026-08-14)
+
+Outside the milestone plan — you asked me to investigate the subject/topic CRUD smoke-test
+failure flagged in "M15 — done" below. Fixed on `fix-syllabus-create-load-race` (commit
+`bcab791`), pending merge to `main`.
+
+**Root cause, confirmed with hard evidence, not just code-reading**: extracted the failed test
+run's Playwright trace (`trace.zip`, network events) and found the create-subject `POST
+/rest/v1/subjects` and the initial-load's `GET /rest/v1/subtopics` (the slowest of
+`loadSyllabusData()`'s three parallel fetches) resolved within 1ms of each other:
+
+| Time | Event |
+|---|---|
+| `43.220` | Test navigates to `/syllabus` |
+| `43.286` | Initial load fires 3 parallel fetches: `subjects`, `topics`, `subtopics` |
+| `43.373` | Test fills + clicks "Add Subject" → `POST /rest/v1/subjects` |
+| `43.485` | Both the `POST` and the `subtopics` `GET` resolve, ~same instant |
+
+[app/syllabus/page.tsx](app/syllabus/page.tsx)'s three creation forms (subject/topic/subtopic)
+were interactive immediately on mount — the page's `loading` flag only gated the tree-display
+section below them, not the forms above. `loadSyllabusData()`'s `Promise.all` and
+`handleCreateSubject`'s optimistic `setSubjects((prev) => [...prev, created])` both independently
+call `setSubjects()`; whichever resolves last wins. In the failed run, the initial load's
+`setSubjects(sData)` (queried before the insert committed) resolved after the optimistic update
+and silently overwrote it — the create had already succeeded and persisted correctly in the
+database the whole time, it just vanished from the UI. Same shape bug for `topics`/`subtopics`
+creation, not just `subjects`.
+
+**Why this surfaced now and not in M7-M13's prior "9/9 passing" runs**: the test account has
+accumulated roughly a dozen orphaned `Smoke Subject <timestamp>` rows from this session's earlier
+stale-server-artifact failures (see "M15 — done" below). More rows means a slower `subtopics`
+deep-join fetch, which widens the race window enough to reliably collide with a fast
+Playwright-driven create. A cleaner account was likely just lucky before, not immune.
+
+**Fix**: added `|| loading` to all three forms' submit-button `disabled` conditions — same gate
+the tree-display section already uses, so creation simply can't happen until the initial load has
+settled. Minimal, one file, no other behavior change.
+
+**Verified**: `typecheck`/`lint`/`build` all clean (identical pre-existing warnings, no new ones).
+Re-ran the full Playwright smoke suite clean (no leftover server process this time): **9/9
+passing**, including the previously-failing CRUD test.
+
+**Not done**: cleanup of the orphaned `Smoke Subject <timestamp>` rows still sitting in the live
+test account from earlier failed runs. Out of scope for this fix; flagging again in case you want
+it done separately.
 
 ## M16 — done (2026-08-14)
 
