@@ -2,8 +2,8 @@
 
 import { Fragment, useState, useRef, useEffect } from 'react';
 import { Overlay } from '@/lib/types';
-import { saveOverlays } from '@/lib/supabase';
-import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle } from 'lucide-react';
+import { saveOverlays, deleteNote } from '@/lib/supabase';
+import { Save, Trash2, Layers, ArrowLeft, CheckCircle, HelpCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -56,6 +56,9 @@ export default function ImageOcclusionCreator({
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const [isDeletingNote, setIsDeletingNote] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   // Rendered pixel size of the container, used to tell whether a box is too
   // small to host its controls internally (see COMPACT_* thresholds below).
@@ -290,6 +293,23 @@ export default function ImageOcclusionCreator({
     }
   };
 
+  const handleDeleteNote = async () => {
+    if (!confirm('Delete this note? The scanned image and all its overlays will be permanently removed.')) {
+      return;
+    }
+
+    try {
+      setIsDeletingNote(true);
+      setDeleteError('');
+      await deleteNote(noteId);
+      router.push('/tasks');
+    } catch (err) {
+      console.error('Error deleting note:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete this note.');
+      setIsDeletingNote(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Toolbar */}
@@ -313,6 +333,16 @@ export default function ImageOcclusionCreator({
         </div>
 
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleDeleteNote}
+            disabled={isDeletingNote}
+            title="Delete this note and its scanned image"
+            className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-red-400 text-xs font-medium disabled:opacity-40 transition-colors flex items-center space-x-1"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{isDeletingNote ? 'Deleting...' : 'Delete Note'}</span>
+          </button>
+
           <button
             onClick={handleClearAll}
             disabled={boxes.length === 0}
@@ -341,6 +371,13 @@ export default function ImageOcclusionCreator({
           </button>
         </div>
       </div>
+
+      {deleteError && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{deleteError}</span>
+        </div>
+      )}
 
       {/* Interactive Drawing Box Container */}
       <div className="glass-panel p-4 rounded-xl border border-zinc-800 relative">
