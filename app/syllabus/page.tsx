@@ -268,7 +268,7 @@ export default function SyllabusPage() {
           />
           <button
             type="submit"
-            disabled={isSubmitting || !newSubjectName.trim()}
+            disabled={isSubmitting || loading || !newSubjectName.trim()}
             className="w-full py-2 bg-purple-500/20 border border-purple-500/30 text-purple-300 hover:bg-purple-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -297,7 +297,7 @@ export default function SyllabusPage() {
           />
           <button
             type="submit"
-            disabled={isSubmitting || !newTopicName.trim() || !selectedSubjectIdForTopic}
+            disabled={isSubmitting || loading || !newTopicName.trim() || !selectedSubjectIdForTopic}
             className="w-full py-2 bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -329,7 +329,7 @@ export default function SyllabusPage() {
           />
           <button
             type="submit"
-            disabled={isSubmitting || !newSubtopicName.trim() || !selectedTopicIdForSubtopic}
+            disabled={isSubmitting || loading || !newSubtopicName.trim() || !selectedTopicIdForSubtopic}
             className="w-full py-2 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/30 font-semibold text-xs rounded-lg transition-all flex items-center justify-center space-x-1"
           >
             <Plus className="w-3.5 h-3.5" />
