@@ -8,8 +8,8 @@ the remaining fix plan, see [AUDIT.md](AUDIT.md).
 ## Tech stack
 
 - **Framework**: Next.js 14.2 (App Router), React 18.3, TypeScript 5.6 (`strict: true`)
-- **Styling**: Tailwind CSS 3.4. `clsx` and `tailwind-merge` are dependencies but currently
-  **unused** anywhere in the codebase (dead deps — flagged in AUDIT.md, not yet resolved).
+- **Styling**: Tailwind CSS 3.4, plain Tailwind class strings (no `clsx`/`tailwind-merge` — both
+  were unused dead deps and removed, M13).
 - **Backend**: Supabase (Postgres + Auth), accessed client-side via `@supabase/supabase-js`
   using the default localStorage-persisted session (not `@supabase/ssr` / cookie-based auth).
 - **File storage**: Cloudflare R2 (S3-compatible, via `@aws-sdk/client-s3`), reached only through
@@ -134,7 +134,7 @@ Phase 4 (fix, one milestone at a time):
 | M10 — stop `TaskCreatorModal` refetching data the parent already has | Not started |
 | M11 — establish target component pattern on the Focus feature, then apply elsewhere | Not started |
 | M12 — consolidate direct Supabase calls into the data-access layer | Not started |
-| M13 — resolve `clsx`/`tailwind-merge` (remove or adopt) | Not started |
+| M13 — resolve `clsx`/`tailwind-merge` (remove or adopt) | **Done** on branch (removed, unused), awaiting review/merge |
 | M14 — replace `any` usage with existing `lib/types.ts` interfaces | Not started |
 | M15 — remove confirmed-dead code | Not started |
 | M16 — `app/topics/page.tsx` / `lib/supabase.ts:deleteNote()` (needs user input, not auto-removed) | Not started |
@@ -162,10 +162,6 @@ project conventions:
 
 ## Where things are undecided
 
-- Whether `lib/supabase.ts` should stay one large file or split into per-domain modules (e.g.
-  `lib/data/tasks.ts`, `lib/data/settings.ts`) is an open question for M12, not yet decided.
-- Whether to remove `clsx`/`tailwind-merge` or actually adopt them for the ~25 files mixing
-  inline `style` objects with Tailwind classes is an open question for M13, not yet decided.
 - No decision has been made yet on `app/topics/page.tsx` (unreachable in-app but a valid direct
   route) or `lib/supabase.ts:deleteNote()` (no call site found) — M16 needs your input on whether
   these are safe to delete or are half-built features to keep/finish.
