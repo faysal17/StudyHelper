@@ -51,9 +51,9 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, merged 2026-08-13 | See "M11 — done" section below. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Done**, merged 2026-08-13 | See "M12 — done" section below. |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Done**, merged 2026-08-14 | See "M13 — done" section below. |
-| M14 | Replace `any` with `lib/types.ts` interfaces | — | **Not started** | Not re-audited in depth (out of scope for a spot-check); no reason to believe it changed. |
-| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. |
-| M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Not started, still needs your input** | `deleteNote()` ([lib/supabase.ts:841](lib/supabase.ts)) still present, no call site found. `app/topics/page.tsx` unchanged. |
+| M14 | Replace `any` with `lib/types.ts` interfaces | — | **Skipped, by decision** | Scoped out to 23 occurrences (16 named + 7 same-class), then skipped entirely — confirmed pure type-safety gap, no runtime/behavior impact, deferred indefinitely rather than done. |
+| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. Also now has a new item found during M16 — see above. |
+| M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Done**, on branch `m16-topics-page-deletenote`, 2026-08-14 | See "M16 — done" section below. |
 
 ## New issue found during reconciliation (not in `AUDIT.md`, not yet in any milestone)
 
@@ -93,19 +93,40 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10/M11/M12/M13 are done, in that order. Remaining, top-to-bottom from
-where it left off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10/M11/M12/M13/M16 are done, in that order (M14 skipped, M16 taken
+out of order per your request). Remaining, top-to-bottom from where it left off:
 
-1. **M14** — Replace `any` usage with `lib/types.ts` interfaces. *(next up)*
-2. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
-   unused imports — `oldMomentum` already satisfied by M11).
-3. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-4. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+1. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
+   unused imports — `oldMomentum` already satisfied by M11). Also now covers a new item found
+   while doing M16 (see below).
+2. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
    it's tracked separately).
 
+**M14 — skipped, not done.** Your call: `any` usage is a pure compile-time type-safety gap, not
+a live bug — `typecheck`/`lint`/`build` all already pass clean with it in place, and nothing in
+the app behaves differently with or without it. Can be picked up later if wanted; no code changed
+for this milestone.
+
+## New item found during M16, not yet actioned
+
+`deleteSubject()`/`deleteTopic()` in [lib/supabase.ts](lib/supabase.ts) each take an *optional*
+completed-count param specifically because `app/topics/page.tsx` used to call them without it
+(see M7's write-up below) — `app/syllabus/page.tsx` always passes it. Now that M16 removed
+`app/topics/page.tsx`, nothing calls either function without the count param, so the fallback
+"re-fetch the count myself" branch inside each is dead code my own M16 change just created.
+Small, low-risk, mechanical (make the param required, delete the fallback branch) — flagging
+per the "call out scope expansion" rule rather than silently fixing it. Natural fit for M15
+alongside the other confirmed-dead-code cleanup, or happy to do it now if you'd rather.
+
 ## Approvals received (2026-08-14)
 
+23. Skip M14 (`any` cleanup) — confirmed no runtime/behavior impact either way, deferred
+    indefinitely rather than done now.
+24. Do M16 next (ahead of M15), with both decisions below.
+25. `app/topics/page.tsx`: delete it (fully superseded by `/syllabus`).
+26. `deleteNote()`: finish the feature — wire it up to a real "Delete Note" button rather than
+    deleting the function or leaving it unused.
 22. M13 direction: remove `clsx`/`tailwind-merge` rather than adopt them.
 
 ## Approvals received (2026-08-13)
@@ -146,6 +167,73 @@ where it left off:
     covers login/Navbar/6 core pages) as sufficient verification for this milestone, given it's a
     structural-only relocation with no intended behavior change.
 21. M12 merged to `main`.
+
+## M16 — done (2026-08-14)
+
+Fixed on `m16-topics-page-deletenote` (commits `a83e9c9`, `74b9b82`, `d046fee`), pending merge to
+`main`. Three separate commits, per the "never mix a structural refactor with a behavior change"
+rule: removal, then a bug fix the new UI depends on, then the new UI itself.
+
+**Investigation, before either decision was made**: traced both items past what `AUDIT.md`
+originally established.
+- `app/topics/page.tsx` — confirmed its `createSubject`/`createTopic`/`deleteSubject`/
+  `deleteTopic` calls are the exact same functions [app/syllabus/page.tsx](app/syllabus/page.tsx)
+  already calls from its own inline tree UI — nothing on `/topics` isn't already available on
+  `/syllabus`. Combined with `AUDIT.md`'s original "no nav link targets `/topics`" finding
+  (still true), this is a superseded duplicate, not a half-built or uniquely-necessary page.
+- `lib/supabase.ts:deleteNote()` — read it in full: correctly implemented (deletes the R2 image
+  via `deleteNoteImagesFromR2`, then the DB row), not leftover refactor debris. Checked
+  [components/NoteUploader.tsx](components/NoteUploader.tsx) and the rest of the note-viewing UI
+  for any "delete this note" entry point — none exists; task deletion has its own separate,
+  inline note-image-cleanup logic that doesn't call this function. Concluded this is a genuinely
+  half-built feature (backend written, UI never added), not dead code.
+
+Presented both findings and the distinction between them to you; you chose **delete** for
+`app/topics/page.tsx` and **finish the feature** for `deleteNote()`.
+
+**1. Removed `app/topics/page.tsx`** (commit `a83e9c9`). Also removed the now-dead
+`pathname === '/topics'` half of the active-tab check in both the desktop and mobile nav blocks
+of [components/Navbar.tsx](components/Navbar.tsx) — left as `pathname === '/syllabus'` only,
+since `/topics` no longer resolves to anything a `pathname` could ever equal.
+
+**2. Fixed `deleteNote()`'s missing error check** (commit `74b9b82`). Same bug class as
+`AUDIT.md` §6 (the class M5/M11 already fixed elsewhere): the final
+`supabase.from('notes').delete()` call never checked its response, so a failed delete was
+indistinguishable from a successful one. Not previously flagged because nothing called this
+function yet — but wiring it to a real button (next commit) meant a silent failure would have
+sent the user back to `/tasks` believing the note was gone when it wasn't. Now throws on error,
+matching the `{ error } = await ...; if (error) throw error;` pattern used ~10 times elsewhere in
+the file.
+
+Noted but **not fixed**: `deleteTask()` ([lib/supabase.ts:889](lib/supabase.ts)) has the
+identical missing-error-check gap, immediately above `deleteNote()` in the same file. Out of
+scope here — flagging rather than silently expanding into it.
+
+**3. Wired `deleteNote()` to a "Delete Note" button** (commit `d046fee`), in
+[components/ImageOcclusionCreator.tsx](components/ImageOcclusionCreator.tsx)'s header toolbar
+(the note/overlay editor at `/notes/[noteId]/occlude`) — the one screen a user is already looking
+at a single note on its own. `confirm()` → `deleteNote(noteId)` → `router.push('/tasks')` on
+success; a red inline error banner (matching the existing pattern in `NoteUploader.tsx`/the old
+`app/topics/page.tsx`) on failure, instead of navigating away as if it worked.
+
+**New item found while doing this, not yet actioned** — see the "New item found during M16"
+section above: `deleteSubject()`/`deleteTopic()`'s optional completed-count parameter existed
+specifically to support `app/topics/page.tsx`'s call pattern; with that page now gone, the
+fallback branch inside each function is newly-dead code. Flagged for M15 rather than folded in.
+
+Verified: `npm run typecheck` clean (after clearing a stale `.next/types` cache that still
+referenced the deleted route — expected, not a real error). `npm run lint` clean, identical
+pre-existing warning set, `/topics`'s own warnings gone with the file. `npm run build` clean —
+route table confirms `/topics` no longer exists as a build output at all. Confirmed live against
+the dev server: `GET /topics` now returns a real `404` (server log), not a redirect-to-login or
+stale cached page.
+
+**Not done**: an interactive logged-in click-test of the actual "Delete Note" button (create a
+note, click delete, confirm it's gone from Supabase/R2). Same blocker as M12's approval #20 —
+exercising it requires the test account's password, which I won't type into a form myself under
+any circumstance, including with your authorization. If you want this exercised before merging,
+either run it yourself against the dev server, or let me know and I'll rely on typecheck/lint/
+build-clean plus the code read above as sufficient, same tradeoff M12 made.
 
 ## M13 — done (2026-08-14)
 

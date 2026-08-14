@@ -90,8 +90,9 @@ the remaining fix plan, see [AUDIT.md](AUDIT.md).
 - **TypeScript `any`**: used inconsistently — absent from core `lib/` files (`r2.ts`,
   `pdfMerge.ts`, `spacedRepetition.ts`) but present in ~19 files, concentrated in the
   classification/synonym `Dashboard.tsx` components and `lib/banglaVocab.ts`, despite typed
-  interfaces already existing in `lib/types.ts` that could replace them. Not yet cleaned up
-  (M14).
+  interfaces already existing in `lib/types.ts` that could replace them. **Deliberately skipped**
+  (M14) — confirmed pure compile-time gap with no runtime/behavior impact, deferred indefinitely
+  rather than fixed.
 
 ## Lint / test / CI — actually configured
 
@@ -129,15 +130,15 @@ Phase 4 (fix, one milestone at a time):
 | M5 — fix the fallback-always-executes bug (settings/vocab persistence) + DB migration | **Done**, merged, including the live migration |
 | M6 — fix the full-page modal bug | **Done**, merged |
 | M7 — cut redundant refetches (subtopic status/delete/XP flow) | **Done**, merged |
-| M8 — split `fetchTasks()`'s always-deep-joined query | Not started |
-| M9 — debounce Tasks search | Not started |
-| M10 — stop `TaskCreatorModal` refetching data the parent already has | Not started |
-| M11 — establish target component pattern on the Focus feature, then apply elsewhere | Not started |
-| M12 — consolidate direct Supabase calls into the data-access layer | Not started |
-| M13 — resolve `clsx`/`tailwind-merge` (remove or adopt) | **Done** on branch (removed, unused), awaiting review/merge |
-| M14 — replace `any` usage with existing `lib/types.ts` interfaces | Not started |
-| M15 — remove confirmed-dead code | Not started |
-| M16 — `app/topics/page.tsx` / `lib/supabase.ts:deleteNote()` (needs user input, not auto-removed) | Not started |
+| M8 — split `fetchTasks()`'s always-deep-joined query | **Done**, merged |
+| M9 — debounce Tasks search | **Done**, merged |
+| M10 — stop `TaskCreatorModal` refetching data the parent already has | **Done**, merged |
+| M11 — establish target component pattern on the Focus feature, then apply elsewhere | **Done**, merged |
+| M12 — consolidate direct Supabase calls into the data-access layer | **Done**, merged |
+| M13 — resolve `clsx`/`tailwind-merge` (remove or adopt) | **Done**, merged (removed, unused) |
+| M14 — replace `any` usage with existing `lib/types.ts` interfaces | **Skipped** by decision — pure compile-time gap, no runtime/behavior impact |
+| M15 — remove confirmed-dead code | Not started (now also covers a `deleteSubject`/`deleteTopic` fallback branch made dead by M16 — see `STATUS.md`) |
+| M16 — `app/topics/page.tsx` / `lib/supabase.ts:deleteNote()` (needs user input, not auto-removed) | **Done** on branch, awaiting review/merge — deleted the page (superseded by `/syllabus`), finished `deleteNote()` into a real "Delete Note" button |
 
 Phase 5 (write this file) — in progress; this is that file, kept up to date as milestones land
 rather than written once at the end.
@@ -162,6 +163,6 @@ project conventions:
 
 ## Where things are undecided
 
-- No decision has been made yet on `app/topics/page.tsx` (unreachable in-app but a valid direct
-  route) or `lib/supabase.ts:deleteNote()` (no call site found) — M16 needs your input on whether
-  these are safe to delete or are half-built features to keep/finish.
+- Nothing currently open. M16's two items were resolved 2026-08-14: `app/topics/page.tsx` was
+  deleted (superseded by `/syllabus`), and `deleteNote()` was wired up to a real "Delete Note"
+  button rather than removed. See `STATUS.md`'s "M16 — done" section for detail.
