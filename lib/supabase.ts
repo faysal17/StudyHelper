@@ -585,10 +585,6 @@ export async function updateLastVocabXPDate(dateStr: string): Promise<void> {
   }
 }
 
-export async function recordFocusSession(minutes: number): Promise<UserSettings> {
-  return recordRatedFocusSession(minutes, 4);
-}
-
 // SUBJECT, TOPIC, SUBTOPIC DATA API
 
 export async function fetchSubjects(): Promise<Subject[]> {
@@ -640,19 +636,9 @@ export async function createSubject(name: string): Promise<Subject> {
   throw new Error('Supabase database is not configured.');
 }
 
-export async function deleteSubject(id: string, completedChildCount?: number): Promise<void> {
-  let count = completedChildCount;
-  if (count === undefined) {
-    const topics = await fetchTopics();
-    const childTopicIds = topics.filter((t) => t.subject_id === id).map((t) => t.id);
-    const subtopics = await fetchSubtopics();
-    count = subtopics.filter(
-      (st) => childTopicIds.includes(st.topic_id) && st.status === 'completed'
-    ).length;
-  }
-
-  if (count > 0) {
-    await awardXPAndSync(-30 * count);
+export async function deleteSubject(id: string, completedChildCount: number): Promise<void> {
+  if (completedChildCount > 0) {
+    await awardXPAndSync(-30 * completedChildCount);
   }
 
   if (isSupabaseConfigured && supabase) {
@@ -674,15 +660,9 @@ export async function createTopic(name: string, subjectId: string): Promise<Topi
   throw new Error('Supabase database is not configured.');
 }
 
-export async function deleteTopic(id: string, completedChildCount?: number): Promise<void> {
-  let count = completedChildCount;
-  if (count === undefined) {
-    const subtopics = await fetchSubtopics();
-    count = subtopics.filter((st) => st.topic_id === id && st.status === 'completed').length;
-  }
-
-  if (count > 0) {
-    await awardXPAndSync(-30 * count);
+export async function deleteTopic(id: string, completedChildCount: number): Promise<void> {
+  if (completedChildCount > 0) {
+    await awardXPAndSync(-30 * completedChildCount);
   }
 
   if (isSupabaseConfigured && supabase) {

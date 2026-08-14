@@ -52,7 +52,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Done**, merged 2026-08-13 | See "M12 — done" section below. |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Done**, merged 2026-08-14 | See "M13 — done" section below. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Skipped, by decision** | Scoped out to 23 occurrences (16 named + 7 same-class), then skipped entirely — confirmed pure type-safety gap, no runtime/behavior impact, deferred indefinitely rather than done. |
-| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. Also now has a new item found during M16 — see above. |
+| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Done**, on branch `m15-remove-dead-code`, 2026-08-14 | See "M15 — done" section below. |
 | M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Done**, merged to `main` 2026-08-14 | See "M16 — done" section below. |
 
 ## New issue found during reconciliation (not in `AUDIT.md`, not yet in any milestone)
@@ -93,15 +93,15 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10/M11/M12/M13/M16 are done, in that order (M14 skipped, M16 taken
-out of order per your request). Remaining, top-to-bottom from where it left off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10/M11/M12/M13/M16/M15 are done, in that order (M14 skipped, M16/M15
+taken out of order per your request). Remaining, top-to-bottom from where it left off:
 
-1. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
-   unused imports — `oldMomentum` already satisfied by M11). Also now covers a new item found
-   while doing M16 (see below).
-2. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
-   sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
-   it's tracked separately).
+1. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+   the last milestone from `AUDIT.md`'s original plan.
+
+**New, not-yet-triaged item found during M15**: the subject/topic CRUD smoke test fails at
+subject *creation* (not touched by M15/M16) — see "M15 — done" below for detail. Not yet
+assigned a milestone number; needs your input on priority/whether to investigate.
 
 **M14 — skipped, not done.** Your call: `any` usage is a pure compile-time type-safety gap, not
 a live bug — `typecheck`/`lint`/`build` all already pass clean with it in place, and nothing in
@@ -236,6 +236,66 @@ exercising it requires the test account's password, which I won't type into a fo
 any circumstance, including with your authorization. If you want this exercised before merging,
 either run it yourself against the dev server, or let me know and I'll rely on typecheck/lint/
 build-clean plus the code read above as sufficient, same tradeoff M12 made.
+
+## M15 — done (2026-08-14)
+
+Fixed on `m15-remove-dead-code` (commits `8c1d7d3`, `a0aa3c9`, `d382fbd`, `6df3871`), pending merge
+to `main`. Four commits, one per item, per "small commits scoped to one concern each."
+
+**1. Removed `components/DDayBanner.tsx`** — grep confirmed zero imports anywhere in the codebase
+(only mentioned in `AUDIT.md`/`STATUS.md`'s own descriptions of it).
+
+**2. Removed `lib/supabase.ts:recordFocusSession()`** — grep confirmed zero call sites after
+removal too (no compile error, nothing else referenced it).
+
+**3. Removed a third, previously-unflagged dead `oldMomentum` computation**, in
+[components/ImageOcclusionViewer.tsx:121](components/ImageOcclusionViewer.tsx) — same pattern
+`AUDIT.md` flagged for `app/focus/page.tsx`/`FocusTimerBlock.tsx` (already fixed by M11), found
+here while re-checking the item's current scope. Confirmed `oldMomentum` was computed via
+`calculateMomentum()` but never read anywhere after; `newMomentum` (the value actually used, at
+line 181) is a separate variable, unaffected. Also confirmed the item `AUDIT.md` originally named
+— unused `calculateLevelAndProgress`/`calculateGlobalHunterRank` imports in `app/focus/page.tsx`/
+`FocusTimerBlock.tsx` — no longer exists at all (both files' import lists were fully replaced by
+M11's `useFocusTimer` extraction); no action needed there.
+
+**4. Removed `deleteSubject()`/`deleteTopic()`'s dead fallback branch** (the item found during
+M16) — made `completedChildCount` a required param and deleted the "re-fetch the count myself"
+branch, now unreachable since `app/topics/page.tsx` (M16) was the only caller that omitted it.
+
+Verified: `npm run typecheck`/`lint`/`build` all clean (identical pre-existing warning set, no new
+ones). Ran the Playwright smoke suite twice; the first two attempts (9 and then 8 of 9 failing)
+turned out to be a testing-process artifact, not a real regression — worth recording in detail
+since it looked alarming at first:
+
+- **Root cause, diagnosed then fixed**: an earlier `npm run test:e2e` run's own `webServer` had
+  started a production server that was never cleaned up (orphaned on port 3000, PID confirmed via
+  `netstat`). A later `npm run build` I ran manually for typecheck/lint verification regenerated
+  `.next` with a new build ID while that stale server was still alive — so its in-memory HTML kept
+  referencing JS/CSS chunk paths that no longer existed on disk (confirmed via the browser tool:
+  `main-app.js`, `layout.js`, `layout.css` etc. all 404ing). The app's React never hydrated as a
+  result, so *every* client-side effect — including `AuthGate`'s redirect check and the login
+  form's submit handler — silently never ran, which is why even the login-independent
+  "unauthenticated visitor redirected to `/login`" test hung for the full 30s timeout. Killed the
+  stale process (`taskkill //PID 16412 //F`) and re-ran cleanly.
+- **After the fix**: 8 of 9 pass — login, unauthenticated redirect, and all 6 core-navigation
+  pages. Confirms M15's actual code changes introduced no regression in anything those tests
+  cover.
+- **1 still failing, not caused by M15**: the subject/topic CRUD test fails at the *create*
+  step — the new subject never appears in the list after clicking "Add Subject" (the button ends
+  up disabled, consistent with the submit completing and the input clearing, but the list not
+  reflecting it). This never reaches `deleteSubject()`/`deleteTopic()` (M15's only change in this
+  area) — the test fails before deletion is ever attempted. Two live-account artifacts from the
+  earlier failed runs are visible in the page snapshot: several orphaned `Smoke Subject
+  <timestamp>` rows never got cleaned up (their runs failed before reaching the delete step) — one
+  possible contributing factor, not confirmed as the cause. **Not investigated further or fixed**
+  — `app/syllabus/page.tsx`'s create-subject flow and `createSubject()` are both untouched by
+  M15/M16, so this is either a pre-existing bug or a new one from something outside this session's
+  changes; flagging per the "call out rather than silently fold in" rule rather than expanding
+  M15's scope to chase it.
+
+**Not done**: cleanup of the orphaned `Smoke Subject <timestamp>` test rows left in the live
+account by earlier failed runs. Didn't attempt it — out of scope for M15, and touching live
+account data wasn't something this milestone called for.
 
 ## M13 — done (2026-08-14)
 
