@@ -170,6 +170,41 @@ alongside the other confirmed-dead-code cleanup, or happy to do it now if you'd 
     structural-only relocation with no intended behavior change.
 21. M12 merged to `main`.
 
+## Dashboard duplicate user_settings/focus_sessions fetches — fixed (2026-08-14)
+
+Outside the milestone plan — you shared a HAR capture of a `/` (dashboard) reload and asked
+whether the request volume was an issue. Fixed on `fix-dashboard-redundant-usersettings-fetch`
+(commit `008d07c`), merged to `main` 2026-08-14 (`f0548df`).
+
+**Root cause, confirmed from the HAR**: a single dashboard reload fired 6 separate
+`GET .../rest/v1/user_settings` requests and 6 separate `GET .../rest/v1/focus_sessions`
+requests, all within the same second (not cross-navigation traffic — timestamps confirmed this).
+[app/page.tsx](app/page.tsx) correctly loads `userSettings` once via `Promise.all(...)`, but four
+of its own child components each independently ran their own `fetchUserSettings()` on mount
+purely to read `day_end_time`, which the parent already has and just wasn't passing down:
+[components/NewStudyBlock.tsx](components/NewStudyBlock.tsx),
+[components/TaskCountersBlock.tsx](components/TaskCountersBlock.tsx),
+[components/RevisionBlock.tsx](components/RevisionBlock.tsx), and
+[components/CalendarBlock.tsx](components/CalendarBlock.tsx). The multiplier:
+[lib/supabase.ts:214-247](lib/supabase.ts) `fetchUserSettings()` always does a second, internal
+`focus_sessions` read on every call (to rebuild the weekly focus log), so each of those redundant
+`fetchUserSettings()` calls silently doubled into a `focus_sessions` read too.
+
+**Fix**: added an optional `dayEndTime` prop to all four components, defaulting to `'00:00'`
+(same default the removed local state used before the fetch resolved); `app/page.tsx` now passes
+its already-loaded `userSettings?.day_end_time` down instead of each block re-fetching it. Pure
+prop-threading, no behavior change to what's displayed. `components/Navbar.tsx`'s own independent
+`fetchUserSettings()` call was left alone — it's a separate component tree (global layout, not a
+child of the dashboard page) and out of scope for this fix.
+
+**Verified**: `typecheck`/`lint`/`build` all clean (identical pre-existing warnings, no new ones).
+Logged into the running production build and confirmed live via `performance.getEntriesByType`
+resource timings on a dashboard reload: `user_settings` 6 → 2 requests, `focus_sessions` 6 → 3
+(the 2 remaining `user_settings` calls are `app/page.tsx`'s own load plus `Navbar.tsx`'s, each of
+which still triggers one `focus_sessions` read internally — expected, not a residual bug).
+Dashboard content (D-Day counter, overdue tasks, calendar) rendered correctly with dates computed
+from the prop-passed `day_end_time`.
+
 ## Syllabus create/initial-load race — fixed (2026-08-14)
 
 Outside the milestone plan — you asked me to investigate the subject/topic CRUD smoke-test
