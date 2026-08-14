@@ -222,7 +222,7 @@ export default function DashboardPage() {
             }`}
           >
             {showRankFeatures && <FocusTimerBlock onSessionComplete={reloadSettings} tasks={tasks} />}
-            <TaskCountersBlock tasks={tasks} />
+            <TaskCountersBlock tasks={tasks} dayEndTime={userSettings?.day_end_time} />
             {showRankFeatures && <FocusStatsBlock settings={userSettings} sessions={sessions} />}
             <DDayBlock settings={userSettings} onSettingsUpdate={reloadSettings} />
           </div>
@@ -233,17 +233,19 @@ export default function DashboardPage() {
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
               onTaskCompleted={checkAuthAndLoad}
+              dayEndTime={userSettings?.day_end_time}
             />
 
             <RevisionBlock
               tasks={tasks}
               onUploadNote={(task) => setNoteTaskTarget(task)}
               onTaskCompleted={checkAuthAndLoad}
+              dayEndTime={userSettings?.day_end_time}
             />
           </div>
 
           {/* Enlarged 2-Week Calendar Block */}
-          <CalendarBlock tasks={tasks} />
+          <CalendarBlock tasks={tasks} dayEndTime={userSettings?.day_end_time} />
         </>
       )}
 

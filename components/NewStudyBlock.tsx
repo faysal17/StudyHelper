@@ -1,27 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Task } from '@/lib/types';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { fetchUserSettings, completeTaskManually } from '@/lib/supabase';
+import { completeTaskManually } from '@/lib/supabase';
 import { BookOpen, Eye, FileImage, Layers, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface NewStudyBlockProps {
   tasks: Task[];
   onUploadNote: (task: Task) => void;
   onTaskCompleted?: () => void;
+  dayEndTime?: string;
 }
 
-export default function NewStudyBlock({ tasks, onUploadNote, onTaskCompleted }: NewStudyBlockProps) {
-  const [dayEndTime, setDayEndTime] = useState('00:00');
+export default function NewStudyBlock({
+  tasks,
+  onUploadNote,
+  onTaskCompleted,
+  dayEndTime = '00:00',
+}: NewStudyBlockProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchUserSettings().then((s) => {
-      if (s?.day_end_time) setDayEndTime(s.day_end_time);
-    });
-  }, []);
 
   const handleMarkComplete = async (task: Task) => {
     setCompletingId(task.id);
