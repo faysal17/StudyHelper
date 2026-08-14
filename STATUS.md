@@ -50,7 +50,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M10 | `TaskCreatorModal` refetch-on-open | — | **Done**, merged 2026-08-13 | See "M10 — done" section below. |
 | M11 | Focus feature target pattern (`FlipDigit`, shared hook, `ModalShell`) | — | **Done**, merged 2026-08-13 | See "M11 — done" section below. |
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Done**, merged 2026-08-13 | See "M12 — done" section below. |
-| M13 | `clsx`/`tailwind-merge` unused deps | — | **Not started** | Still declared in `package.json`; zero usages confirmed via repo-wide search of `.ts`/`.tsx`. |
+| M13 | `clsx`/`tailwind-merge` unused deps | — | **Done**, merged 2026-08-14 | See "M13 — done" section below. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Not started** | Not re-audited in depth (out of scope for a spot-check); no reason to believe it changed. |
 | M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. |
 | M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Not started, still needs your input** | `deleteNote()` ([lib/supabase.ts:841](lib/supabase.ts)) still present, no call site found. `app/topics/page.tsx` unchanged. |
@@ -93,19 +93,20 @@ per approval.
 
 No re-prioritization needed — `AUDIT.md`'s ordering (security → the two recurring bugs →
 performance → component structure & standards → zombie code) still holds.
-M1/M2/M3/M5/M6/M7/M8/M9/M10/M11 are done, in that order. Remaining, top-to-bottom from where it
-left off:
+M1/M2/M3/M5/M6/M7/M8/M9/M10/M11/M12/M13 are done, in that order. Remaining, top-to-bottom from
+where it left off:
 
-1. **M12** — Consolidate direct-Supabase call sites into the data-access layer (open question: *(next up)*
-   keep `lib/supabase.ts` as one file or split per-domain — needs your input before starting).
-2. **M13** — Resolve `clsx`/`tailwind-merge` (remove or adopt — needs your input).
-3. **M14** — Replace `any` usage with `lib/types.ts` interfaces.
-4. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
+1. **M14** — Replace `any` usage with `lib/types.ts` interfaces. *(next up)*
+2. **M15** — Remove remaining confirmed-dead code (`DDayBanner.tsx`, `recordFocusSession()`,
    unused imports — `oldMomentum` already satisfied by M11).
-5. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
-6. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
+3. **M16** — `app/topics/page.tsx` and `deleteNote()` — needs your input, not auto-removed.
+4. **M4** — Next.js 14→16 upgrade — large breaking-change milestone, deliberately deferred;
    sequence wherever you'd like relative to the above (unchanged from `AUDIT.md`'s note that
    it's tracked separately).
+
+## Approvals received (2026-08-14)
+
+22. M13 direction: remove `clsx`/`tailwind-merge` rather than adopt them.
 
 ## Approvals received (2026-08-13)
 
@@ -145,6 +146,25 @@ left off:
     covers login/Navbar/6 core pages) as sufficient verification for this milestone, given it's a
     structural-only relocation with no intended behavior change.
 21. M12 merged to `main`.
+
+## M13 — done (2026-08-14)
+
+Fixed on `m13-remove-clsx-tailwind-merge` (commit `0a97fc4`), pending merge to `main`.
+
+Removed `clsx` and `tailwind-merge` from `package.json`'s `dependencies` and ran `npm install` to
+sync `package-lock.json` and `node_modules` (2 packages removed). Reconfirmed zero usages
+repo-wide (`.ts`/`.tsx`, both plain-string and `import` forms) immediately before removal — same
+result as the original audit and this file's earlier reconciliation.
+
+**Decision (2026-08-14, your call)**: remove rather than adopt. The ~25 files mixing inline
+`style` objects with Tailwind classes (`AUDIT.md`'s M13 finding) are left as-is — no behavior or
+markup change anywhere, this milestone only touches dependency manifests.
+
+Verified: `npm run typecheck` clean. `npm run lint` clean (identical pre-existing warning set —
+same `react-hooks/exhaustive-deps`/`no-img-element` warnings, no new ones, no clsx-related
+warnings since there were no usages to begin with). `npm run build` clean, route bundle sizes
+byte-identical to before this change (expected — these packages were never imported, so removing
+them changes nothing at build time). `npm run test:e2e`: 9/9 passing.
 
 ## M12 — done (2026-08-13)
 
