@@ -138,7 +138,7 @@ Phase 4 (fix, one milestone at a time):
 | M13 — resolve `clsx`/`tailwind-merge` (remove or adopt) | **Done**, merged (removed, unused) |
 | M14 — replace `any` usage with existing `lib/types.ts` interfaces | **Skipped** by decision — pure compile-time gap, no runtime/behavior impact |
 | M15 — remove confirmed-dead code | Not started (now also covers a `deleteSubject`/`deleteTopic` fallback branch made dead by M16 — see `STATUS.md`) |
-| M16 — `app/topics/page.tsx` / `lib/supabase.ts:deleteNote()` (needs user input, not auto-removed) | **Done** on branch, awaiting review/merge — deleted the page (superseded by `/syllabus`), finished `deleteNote()` into a real "Delete Note" button |
+| M16 — `app/topics/page.tsx` / `lib/supabase.ts:deleteNote()` (needs user input, not auto-removed) | **Done**, merged — deleted the page (superseded by `/syllabus`), finished `deleteNote()` into a real "Delete Note" button |
 
 Phase 5 (write this file) — in progress; this is that file, kept up to date as milestones land
 rather than written once at the end.

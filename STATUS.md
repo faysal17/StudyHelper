@@ -53,7 +53,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Done**, merged 2026-08-14 | See "M13 — done" section below. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Skipped, by decision** | Scoped out to 23 occurrences (16 named + 7 same-class), then skipped entirely — confirmed pure type-safety gap, no runtime/behavior impact, deferred indefinitely rather than done. |
 | M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Partially done** | `components/DDayBanner.tsx` still exists; `recordFocusSession()` ([lib/supabase.ts:555](lib/supabase.ts)) still exported, unchanged. The `oldMomentum` item is now satisfied — dropped as a side effect of M11's `useFocusTimer` extraction (see "M11 — done" below) rather than as its own milestone commit. Also now has a new item found during M16 — see above. |
-| M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Done**, on branch `m16-topics-page-deletenote`, 2026-08-14 | See "M16 — done" section below. |
+| M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Done**, merged to `main` 2026-08-14 | See "M16 — done" section below. |
 
 ## New issue found during reconciliation (not in `AUDIT.md`, not yet in any milestone)
 
@@ -121,13 +121,15 @@ alongside the other confirmed-dead-code cleanup, or happy to do it now if you'd 
 
 ## Approvals received (2026-08-14)
 
+22. M13 direction: remove `clsx`/`tailwind-merge` rather than adopt them.
 23. Skip M14 (`any` cleanup) — confirmed no runtime/behavior impact either way, deferred
     indefinitely rather than done now.
 24. Do M16 next (ahead of M15), with both decisions below.
 25. `app/topics/page.tsx`: delete it (fully superseded by `/syllabus`).
 26. `deleteNote()`: finish the feature — wire it up to a real "Delete Note" button rather than
     deleting the function or leaving it unused.
-22. M13 direction: remove `clsx`/`tailwind-merge` rather than adopt them.
+27. M16 merged to `main`. Proceed to M15, folding in the `deleteSubject`/`deleteTopic`
+    dead-fallback-branch item found during M16.
 
 ## Approvals received (2026-08-13)
 
