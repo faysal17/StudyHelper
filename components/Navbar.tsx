@@ -125,7 +125,7 @@ export default function Navbar() {
             <Link
               href="/syllabus"
               className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center space-x-2 ${
-                pathname === '/syllabus' || pathname === '/topics'
+                pathname === '/syllabus'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
@@ -258,7 +258,7 @@ export default function Navbar() {
             <Link
               href="/syllabus"
               className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-2 ${
-                pathname === '/syllabus' || pathname === '/topics'
+                pathname === '/syllabus'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700/60'
                   : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
               }`}
