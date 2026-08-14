@@ -585,10 +585,6 @@ export async function updateLastVocabXPDate(dateStr: string): Promise<void> {
   }
 }
 
-export async function recordFocusSession(minutes: number): Promise<UserSettings> {
-  return recordRatedFocusSession(minutes, 4);
-}
-
 // SUBJECT, TOPIC, SUBTOPIC DATA API
 
 export async function fetchSubjects(): Promise<Subject[]> {
