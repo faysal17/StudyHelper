@@ -174,7 +174,7 @@ alongside the other confirmed-dead-code cleanup, or happy to do it now if you'd 
 
 Outside the milestone plan — you asked me to investigate the subject/topic CRUD smoke-test
 failure flagged in "M15 — done" below. Fixed on `fix-syllabus-create-load-race` (commit
-`bcab791`), pending merge to `main`.
+`bcab791`), merged to `main` 2026-08-14.
 
 **Root cause, confirmed with hard evidence, not just code-reading**: extracted the failed test
 run's Playwright trace (`trace.zip`, network events) and found the create-subject `POST
@@ -218,8 +218,8 @@ it done separately.
 
 ## M16 — done (2026-08-14)
 
-Fixed on `m16-topics-page-deletenote` (commits `a83e9c9`, `74b9b82`, `d046fee`), pending merge to
-`main`. Three separate commits, per the "never mix a structural refactor with a behavior change"
+Fixed on `m16-topics-page-deletenote` (commits `a83e9c9`, `74b9b82`, `d046fee`), merged to `main`
+2026-08-14. Three separate commits, per the "never mix a structural refactor with a behavior change"
 rule: removal, then a bug fix the new UI depends on, then the new UI itself.
 
 **Investigation, before either decision was made**: traced both items past what `AUDIT.md`
@@ -285,8 +285,8 @@ build-clean plus the code read above as sufficient, same tradeoff M12 made.
 
 ## M15 — done (2026-08-14)
 
-Fixed on `m15-remove-dead-code` (commits `8c1d7d3`, `a0aa3c9`, `d382fbd`, `6df3871`), pending merge
-to `main`. Four commits, one per item, per "small commits scoped to one concern each."
+Fixed on `m15-remove-dead-code` (commits `8c1d7d3`, `a0aa3c9`, `d382fbd`, `6df3871`), merged to
+`main` 2026-08-14. Four commits, one per item, per "small commits scoped to one concern each."
 
 **1. Removed `components/DDayBanner.tsx`** — grep confirmed zero imports anywhere in the codebase
 (only mentioned in `AUDIT.md`/`STATUS.md`'s own descriptions of it).
@@ -345,7 +345,7 @@ account data wasn't something this milestone called for.
 
 ## M13 — done (2026-08-14)
 
-Fixed on `m13-remove-clsx-tailwind-merge` (commit `0a97fc4`), pending merge to `main`.
+Fixed on `m13-remove-clsx-tailwind-merge` (commit `0a97fc4`), merged to `main`.
 
 Removed `clsx` and `tailwind-merge` from `package.json`'s `dependencies` and ran `npm install` to
 sync `package-lock.json` and `node_modules` (2 packages removed). Reconfirmed zero usages
