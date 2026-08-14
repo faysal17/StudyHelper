@@ -52,7 +52,7 @@ Verdict: **`CLAUDE.md`'s claims all check out.**
 | M12 | Consolidate direct-Supabase call sites into `lib/supabase.ts` | — | **Done**, merged 2026-08-13 | See "M12 — done" section below. |
 | M13 | `clsx`/`tailwind-merge` unused deps | — | **Done**, merged 2026-08-14 | See "M13 — done" section below. |
 | M14 | Replace `any` with `lib/types.ts` interfaces | — | **Skipped, by decision** | Scoped out to 23 occurrences (16 named + 7 same-class), then skipped entirely — confirmed pure type-safety gap, no runtime/behavior impact, deferred indefinitely rather than done. |
-| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Done**, on branch `m15-remove-dead-code`, 2026-08-14 | See "M15 — done" section below. |
+| M15 | Remove confirmed-dead code | `DDayBanner.tsx`, `recordFocusSession()`, unused imports, `oldMomentum` | **Done**, merged to `main` 2026-08-14 | See "M15 — done" section below. |
 | M16 | `app/topics/page.tsx` / `deleteNote()` — needs your input | — | **Done**, merged to `main` 2026-08-14 | See "M16 — done" section below. |
 
 ## New issue found during reconciliation (not in `AUDIT.md`, not yet in any milestone)
