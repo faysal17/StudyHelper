@@ -921,7 +921,8 @@ export async function deleteNote(id: string): Promise<void> {
       console.error('Error clearing note image during note deletion:', err);
     }
 
-    await supabase.from('notes').delete().eq('id', id);
+    const { error } = await supabase.from('notes').delete().eq('id', id);
+    if (error) throw error;
   }
 }
 
