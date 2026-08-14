@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Task } from '@/lib/types';
 import { getTodayDateString, getLogicalTodayDate } from '@/lib/spacedRepetition';
-import { fetchUserSettings } from '@/lib/supabase';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 interface CalendarBlockProps {
   tasks: Task[];
+  dayEndTime?: string;
 }
 
 function getISOWeekNumber(d: Date): number {
@@ -19,15 +19,7 @@ function getISOWeekNumber(d: Date): number {
   return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
 
-export default function CalendarBlock({ tasks }: CalendarBlockProps) {
-  const [dayEndTime, setDayEndTime] = useState('00:00');
-
-  useEffect(() => {
-    fetchUserSettings().then((s) => {
-      if (s?.day_end_time) setDayEndTime(s.day_end_time);
-    });
-  }, []);
-
+export default function CalendarBlock({ tasks, dayEndTime = '00:00' }: CalendarBlockProps) {
   const todayStr = getTodayDateString(dayEndTime);
   const todayObj = getLogicalTodayDate(dayEndTime);
 

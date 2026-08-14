@@ -1,27 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Task, StatusColor } from '@/lib/types';
 import { RotateCcw, Eye, FileImage, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { getTodayDateString } from '@/lib/spacedRepetition';
-import { fetchUserSettings, completeTaskManually } from '@/lib/supabase';
+import { completeTaskManually } from '@/lib/supabase';
 
 interface RevisionBlockProps {
   tasks: Task[];
   onUploadNote: (task: Task) => void;
   onTaskCompleted?: () => void;
+  dayEndTime?: string;
 }
 
-export default function RevisionBlock({ tasks, onUploadNote, onTaskCompleted }: RevisionBlockProps) {
-  const [dayEndTime, setDayEndTime] = useState('00:00');
+export default function RevisionBlock({
+  tasks,
+  onUploadNote,
+  onTaskCompleted,
+  dayEndTime = '00:00',
+}: RevisionBlockProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchUserSettings().then((s) => {
-      if (s?.day_end_time) setDayEndTime(s.day_end_time);
-    });
-  }, []);
 
   const handleMarkComplete = async (task: Task) => {
     setCompletingId(task.id);
