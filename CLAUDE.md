@@ -143,6 +143,13 @@ Phase 4 (fix, one milestone at a time):
 Phase 5 (write this file) — in progress; this is that file, kept up to date as milestones land
 rather than written once at the end.
 
+**Outside the milestone plan**: `app/syllabus/page.tsx`'s three creation forms (subject/topic/
+subtopic) are gated on the page's own `loading` flag (fixed 2026-08-14) — they used to be
+interactive before the initial data load settled, which could race a fast create against the
+slower initial fetch and silently drop the created row from the UI (it was still saved
+correctly). See `STATUS.md`'s "Syllabus create/initial-load race — fixed" section for the full
+root-cause trace.
+
 ## Working rules for this remediation
 
 These are the process rules being followed for this remediation specifically, not general
