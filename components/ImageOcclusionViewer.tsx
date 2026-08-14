@@ -118,7 +118,6 @@ export default function ImageOcclusionViewer({ task, note, overlays: initialOver
       const oldSettings = await fetchUserSettings();
       const oldLevel = oldSettings?.level || 1;
       const oldRank = oldSettings?.current_rank || 'E-Rank';
-      const oldMomentum = calculateMomentum(oldSettings);
       const oldGlobalPos = oldSettings?.official_weekly_rank || 500;
 
       const score = Math.round((100 - srResult.weightedErrorPercent) * 10) / 10;
